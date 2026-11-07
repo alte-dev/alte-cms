@@ -1,10 +1,5 @@
-import type { CollectionConfig, Access, FieldAccess } from "payload";
+import type { CollectionConfig, Access, FieldAccess, Where } from "payload";
 import { USER_ROLES, type UserRole } from "@alte/shared";
-
-// Check if user has administrative privileges
-const isAdmin = (role?: UserRole): boolean => {
-  return role === "super-admin" || role === "admin";
-};
 
 // Access Control: Read Users
 // Only authenticated staff members can read the Users collection.
@@ -19,38 +14,82 @@ export const canReadUsers: Access = ({ req: { user } }) => {
 // Access Control: Create Users
 // ONLY existing Admins or Super-Admins can create new staff users.
 // Public / anonymous registration is strictly BLOCKED.
-export const canCreateUsers: Access = ({ req: { user } }) => {
+// 'super-admin' role can ONLY be assigned by an existing 'super-admin'.
+export const canCreateUsers: Access = ({ req: { user }, data }) => {
   if (!user) return false;
-  return isAdmin(user.role as UserRole);
+  const userRole = user.role as UserRole;
+  if (userRole === "super-admin") return true;
+  if (userRole === "admin") {
+    // Admin cannot create a super-admin user
+    if (data?.role === "super-admin") return false;
+    return true;
+  }
+  return false;
 };
 
 // Access Control: Update Users
-// Admins can update any staff user; individual staff can update their own profile (name, password).
+// Super-Admins can update any staff user.
+// Admins can update staff users EXCEPT super-admin users (cannot edit super-admin or self-elevate).
+// Individual staff can only update their own profile (name, password).
 export const canUpdateUsers: Access = ({ req: { user } }) => {
   if (!user) return false;
-  const role = user.role as UserRole;
-  if (isAdmin(role)) return true;
+  const userRole = user.role as UserRole;
+  if (userRole === "super-admin") return true;
+  if (userRole === "admin") {
+    // Admin can update staff users EXCEPT super-admin users
+    const query: Where = {
+      role: {
+        not_equals: "super-admin",
+      },
+    };
+    return query;
+  }
 
   // Staff can only update their own profile
-  return {
+  const query: Where = {
     id: {
       equals: user.id,
     },
   };
+  return query;
 };
 
 // Access Control: Delete Users
-// Only Admins or Super-Admins can delete staff accounts.
+// Super-Admins can delete any staff account.
+// Admins can delete staff accounts EXCEPT super-admin users.
 export const canDeleteUsers: Access = ({ req: { user } }) => {
   if (!user) return false;
-  return isAdmin(user.role as UserRole);
+  const userRole = user.role as UserRole;
+  if (userRole === "super-admin") return true;
+  if (userRole === "admin") {
+    // Admin can delete staff accounts EXCEPT super-admin users
+    const query: Where = {
+      role: {
+        not_equals: "super-admin",
+      },
+    };
+    return query;
+  }
+  return false;
 };
 
-// Field Level Access: Only Admins/Super-Admins can assign or modify roles
-export const canChangeRole: FieldAccess = ({ req: { user } }) => {
+// Field Level Access: Role assignment and modification
+// Only Super-Admin can assign or elevate to 'super-admin'.
+// Admin can assign other staff roles, but cannot assign/elevate to 'super-admin'.
+export const canAssignRole: FieldAccess = ({ req: { user }, data, siblingData }) => {
   if (!user) return false;
-  return isAdmin(user.role as UserRole);
+  const userRole = user.role as UserRole;
+  if (userRole === "super-admin") return true;
+  if (userRole === "admin") {
+    const targetRole = (siblingData?.role ?? data?.role) as UserRole | undefined;
+    if (targetRole === "super-admin") return false;
+    return true;
+  }
+  return false;
 };
+
+// Backward compatible export alias
+export const canChangeRole = canAssignRole;
 
 export const Users: CollectionConfig = {
   slug: "users",
@@ -66,7 +105,7 @@ export const Users: CollectionConfig = {
   },
   access: {
     read: canReadUsers,
-    create: canCreateUsers, // Strictly restricted to admin/super-admin
+    create: canCreateUsers,
     update: canUpdateUsers,
     delete: canDeleteUsers,
     admin: ({ req: { user } }) => Boolean(user), // All users in Users collection are staff
@@ -87,7 +126,8 @@ export const Users: CollectionConfig = {
         value: role,
       })),
       access: {
-        update: canChangeRole,
+        create: canAssignRole,
+        update: canAssignRole,
       },
     },
   ],

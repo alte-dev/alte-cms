@@ -1,11 +1,11 @@
 # Bellek Tüketim Raporu ve Temel Çizgi (MEMORY-BASELINE.md)
 
 > **Durum:** ⚠️ **ÖLÇÜLMEDİ**  
-> **Tarih:** 2026-11-07T08:51:22.689Z  
+> **Tarih:** 2026-11-07T13:50:56.162Z  
 > **Neden:** Yerel geliştirme servisleri veya Docker arka plan süreçleri kapalı:
 
-- Medusa v2 (Port 9000): Port 9000 bellek ölçümü başarısız: Command failed: netstat -ano -p tcp | findstr :9000 | findstr LISTENING
-- Web Storefront / Payload (Port 3100): Port 3100 bellek ölçümü başarısız: Command failed: netstat -ano -p tcp | findstr :3100 | findstr LISTENING
+- Medusa v2 (Port 9000): Port 9000 bellek ölçümü başarısız: Port 9000 üzerinde dinleyen aktif süreç bulunamadı.
+- Web Storefront / Payload (Port 3100): Port 3100 bellek ölçümü başarısız: Port 3100 üzerinde dinleyen aktif süreç bulunamadı.
 - PostgreSQL Docker (alte_postgres_dev): Docker konteynerine (alte_postgres_dev) erişilemedi: Command failed: docker stats --no-stream --format "{{.MemUsage}}" alte_postgres_dev
   failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
 

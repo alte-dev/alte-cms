@@ -40,10 +40,10 @@ _\* Not: `admin` rolü yeni personel kullanıcısı açabilir ve rolleri düzenl
 Payload CMS'te yetkiler her koleksiyonun `access` nesnesi ve alan seviyesindeki `access` fonksiyonları ile denetlenir:
 
 1. **Users Koleksiyonu (Yalnızca Personel):**
-   - `create`: Anonim kayıt kapalıdır. Yalnızca `admin` ve `super-admin` yeni personel kullanıcısı oluşturabilir. İlk süper admin kurulumu için CLI bootstrap scripti (`pnpm create-admin`) kullanılır.
+   - `create`: Anonim kayıt kapalıdır. Yalnızca `admin` ve `super-admin` yeni personel kullanıcısı oluşturabilir (`admin` kullanıcıları `super-admin` oluşturamaz). İlk süper admin kurulumu için CLI bootstrap scripti (`pnpm create-admin`) kullanılır. Üretimde önce `pnpm create-admin` çalıştırılmadan /admin dışarı açılmaz.
    - `read`: Anonim engelli. Personel kullanıcılar kendi profilini veya admin/super-admin tüm personeli görebilir.
-   - `update`: Personel kendi ad/soyad ve şifresini günceller. `role` alanı alan-seviyesi `canChangeRole` kontrolüyle yalnızca `admin` ve `super-admin`'e açılmıştır (`admin` kullanıcıları kimseye `super-admin` veremez).
-   - `delete`: Yalnızca `super-admin`.
+   - `update`: Personel kendi ad/soyad ve şifresini günceller. `role` alanı alan-seviyesi `canAssignRole` kontrolüyle denetlenir: yalnızca `super-admin` rolü `super-admin` atayabilir; `admin` rolü `super-admin` kullanıcıları düzenleyemez ve kendi rolünü yükseltemez.
+   - `delete`: Yalnızca `super-admin` tüm personeli silebilir. `admin` kullanıcıları `super-admin` hesaplarını silemez.
    - `admin`: Panel erişimi (`access.admin`) Users koleksiyonundaki tüm geçerli personel rollerine (`super-admin`, `admin`, `shop-manager`, `editor`, `author`) açıktır.
 2. **Media Koleksiyonu:**
    - `read`: Genel (Storefront görselleri için `true`).

@@ -30,7 +30,8 @@ Payload CMS 3 üzerinde Users koleksiyonu **yalnızca personel ve yönetim kadro
   4. `editor`: Tüm sayfa, blog ve medya içeriklerini düzenleme ve yayınlama.
   5. `author`: Yalnızca kendi yazdığı blog içeriklerini düzenleme.
 - **Anonim Kayıt Yasağı:** Users koleksiyonunda anonim kayıt (`Users.create`) kapalıdır. Yeni kullanıcılar yalnızca mevcut bir `admin` veya `super-admin` tarafından oluşturulabilir.
-- **İlk Süper Admin:** İlk kurulum için CLI bootstrap scripti (`pnpm create-admin`) kullanılır.
+- **Yetki Sınırları ve Ayrımı:** `super-admin` rolünü yalnızca mevcut bir `super-admin` atayabilir veya değiştirebilir. `admin` rolündeki kullanıcılar `super-admin` kullanıcıları düzenleyemez, silemez ve kendi rollerini `super-admin` seviyesine yükseltemez.
+- **İlk Süper Admin ve Üretim Kuralı:** İlk kurulum için CLI bootstrap scripti (`pnpm create-admin`) kullanılır. Üretimde önce `pnpm create-admin` çalıştırılmadan /admin dışarı açılmaz.
 - **Müşteri Hesapları:** Müşteriler Payload CMS'te yer almaz (`customer` rolü Payload'dan ve `@alte/shared` rol sabitlerinden tamamen kaldırılmıştır). Müşteriler Medusa v2 Storefront API (`/store/customers`, `/auth/customer/emailpass`) üzerinden yönetilir.
 
 ---

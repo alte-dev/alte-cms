@@ -7,14 +7,15 @@
  * Scenarios:
  *   (a) Idle 60s (sampled every 2s, 30 samples)
  *   (b) 20 Page navigations
- *   (c) 60s Light load (concurrency = 10, sampled every 2s)
- *   (d) Seed 100 items (real Medusa v2 products)
- *   (e) Seed 1000 items (real Medusa v2 products)
+ *   (c) 60s Light load (concurrency = 10, sampled every 2s, exactly 30 samples)
+ *   (d) Seed 100 items (real Medusa v2 products via seed-fake-catalog)
+ *   (e) Seed 1000 items (real Medusa v2 products via seed-fake-catalog)
  */
 
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { seedProducts } from "./seed-fake-catalog";
 
 const TOTAL_BUDGET_MB = 1100;
 const MEDUSA_PORT = 9000;
@@ -147,30 +148,52 @@ export function getProcessTreeRssMb(port: number): ProcessMetrics {
     let rootPid: number | null = null;
 
     if (isWindows) {
-      const netstat = execSync(`netstat -ano -p tcp | findstr :${port} | findstr LISTENING`, {
+      // Exact port match: ":PORT " followed strictly by whitespace, then any characters, then LISTENING, then PID
+      const netstat = execSync(`netstat -ano -p tcp`, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
-        timeout: 3000,
+        timeout: 5000,
       }).trim();
 
-      const lines = netstat.split("\n");
-      for (const line of lines) {
-        const parts = line.trim().split(/\s+/);
-        const pidStr = parts[parts.length - 1];
-        const parsed = parseInt(pidStr, 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          rootPid = parsed;
-          break;
+      const portRegex = new RegExp(`:${port}\\s+.*LISTENING\\s+(\\d+)`, "i");
+      for (const line of netstat.split(/\r?\n/)) {
+        const match = line.trim().match(portRegex);
+        if (match) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            rootPid = parsed;
+            break;
+          }
         }
       }
     } else {
-      const pidStr = execSync(`lsof -ti :${port} -sTCP:LISTEN`, {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-      const parsed = parseInt(pidStr, 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        rootPid = parsed;
+      // Linux: first attempt lsof, fallback to ss if lsof is not installed
+      try {
+        const pidStr = execSync(`lsof -ti :${port} -sTCP:LISTEN`, {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        const parsed = parseInt(pidStr.split(/\s+/)[0], 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          rootPid = parsed;
+        }
+      } catch {
+        // Fallback: ss -ltnp sport = :port
+        try {
+          const ssOut = execSync(`ss -ltnp sport = :${port}`, {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+          });
+          const match = ssOut.match(/pid=(\d+)/);
+          if (match) {
+            const parsed = parseInt(match[1], 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              rootPid = parsed;
+            }
+          }
+        } catch {
+          // Both failed
+        }
       }
     }
 
@@ -441,24 +464,55 @@ async function main() {
   }
   summaries.push(calculateSummary("20 Sayfa Gezme", navSamples));
 
-  // Scenario C: 60s Light Load (concurrency = 10)
-  console.log("\n▶ Senaryo C: 60 saniye Hafif Yük (10 Eşzamanlı İstek, 2s aralıkla 30 örnek)...");
+  // Scenario C: 60s Light Load (concurrency = 10, sampled every 2s, exactly 30 samples)
+  console.log(
+    "\n▶ Senaryo C: 60 saniye Hafif Yük (10 Eşzamanlı İstek, 2s aralıkla tam 30 örnek)...",
+  );
   const loadSamples: SystemSample[] = [];
-  const startTime = Date.now();
-  let sampleCount = 0;
-
-  while (Date.now() - startTime < 60000) {
-    sampleCount++;
-    await runConcurrentRequests("http://localhost:3100/", 10, 10);
-    await new Promise((r) => setTimeout(r, 1000));
-    const sample = captureSystemSample("Hafif Yük (10 Eşzamanlı)", sampleCount);
+  for (let i = 1; i <= 30; i++) {
+    const requestPromise = runConcurrentRequests("http://localhost:3100/", 10, 10);
+    await new Promise((r) => setTimeout(r, 2000));
+    await requestPromise;
+    const sample = captureSystemSample("Hafif Yük (10 Eşzamanlı)", i);
     loadSamples.push(sample);
     allSamples.push(sample);
-    if (sampleCount % 5 === 0) {
-      console.log(`   Örnek ${sampleCount}: Toplam ${sample.totalMb} MB`);
+    if (i % 5 === 0) {
+      console.log(`   Örnek ${i}/30: Toplam ${sample.totalMb} MB`);
     }
   }
   summaries.push(calculateSummary("Hafif Yük (10 Eşzamanlı)", loadSamples));
+
+  // Scenario D: Seed 100 Products (Real Medusa API seeding, then sample)
+  console.log("\n▶ Senaryo D: 100 Ürün Tohumlama (Seed 100) ve Ölçüm...");
+  try {
+    await seedProducts(100);
+    const seed100Samples: SystemSample[] = [];
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const sample = captureSystemSample("Seed 100 Ürün", i);
+      seed100Samples.push(sample);
+      allSamples.push(sample);
+    }
+    summaries.push(calculateSummary("Seed 100 Ürün", seed100Samples));
+  } catch (err: any) {
+    console.error(`   ⚠️ Seed 100 ürün aktarımı başarısız: ${err.message}`);
+  }
+
+  // Scenario E: Seed 1000 Products (Real Medusa API seeding, then sample)
+  console.log("\n▶ Senaryo E: 1000 Ürün Tohumlama (Seed 1000) ve Ölçüm...");
+  try {
+    await seedProducts(1000);
+    const seed1000Samples: SystemSample[] = [];
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const sample = captureSystemSample("Seed 1000 Ürün", i);
+      seed1000Samples.push(sample);
+      allSamples.push(sample);
+    }
+    summaries.push(calculateSummary("Seed 1000 Ürün", seed1000Samples));
+  } catch (err: any) {
+    console.error(`   ⚠️ Seed 1000 ürün aktarımı başarısız: ${err.message}`);
+  }
 
   // Save CSV with one row per sample
   const outDir = path.resolve(process.cwd(), "docs/measurements");
