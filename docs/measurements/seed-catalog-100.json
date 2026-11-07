@@ -1,0 +1,7005 @@
+{
+  "count": 100,
+  "products": [
+    {
+      "id": "prod_test_0001",
+      "title": "Örnek Test Ürünü #1 (Aksesuar)",
+      "handle": "ornek-urun-1",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#1).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-1-BE-S",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-1-BE-M",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-1-BE-L",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-1-BE-XL",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0002",
+      "title": "Örnek Test Ürünü #2 (Ayakkabı)",
+      "handle": "ornek-urun-2",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#2).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-2-MA-S",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-2-MA-M",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-2-MA-L",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-2-MA-XL",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0003",
+      "title": "Örnek Test Ürünü #3 (Ev & Yaşam)",
+      "handle": "ornek-urun-3",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#3).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-3-GR-S",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-3-GR-M",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-3-GR-L",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-3-GR-XL",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0004",
+      "title": "Örnek Test Ürünü #4 (Spor)",
+      "handle": "ornek-urun-4",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#4).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-4-BE-S",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-4-BE-M",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-4-BE-L",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-4-BE-XL",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0005",
+      "title": "Örnek Test Ürünü #5 (Giyim)",
+      "handle": "ornek-urun-5",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#5).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-5-SI-S",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-5-SI-M",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-5-SI-L",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-5-SI-XL",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0006",
+      "title": "Örnek Test Ürünü #6 (Aksesuar)",
+      "handle": "ornek-urun-6",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#6).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-6-BE-S",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-6-BE-M",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-6-BE-L",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-6-BE-XL",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0007",
+      "title": "Örnek Test Ürünü #7 (Ayakkabı)",
+      "handle": "ornek-urun-7",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#7).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-7-MA-S",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-7-MA-M",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-7-MA-L",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-7-MA-XL",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0008",
+      "title": "Örnek Test Ürünü #8 (Ev & Yaşam)",
+      "handle": "ornek-urun-8",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#8).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-8-GR-S",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-8-GR-M",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-8-GR-L",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-8-GR-XL",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0009",
+      "title": "Örnek Test Ürünü #9 (Spor)",
+      "handle": "ornek-urun-9",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#9).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-9-BE-S",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-9-BE-M",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-9-BE-L",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-9-BE-XL",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0010",
+      "title": "Örnek Test Ürünü #10 (Giyim)",
+      "handle": "ornek-urun-10",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#10).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-10-SI-S",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-10-SI-M",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-10-SI-L",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-10-SI-XL",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0011",
+      "title": "Örnek Test Ürünü #11 (Aksesuar)",
+      "handle": "ornek-urun-11",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#11).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-11-BE-S",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-11-BE-M",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-11-BE-L",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-11-BE-XL",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0012",
+      "title": "Örnek Test Ürünü #12 (Ayakkabı)",
+      "handle": "ornek-urun-12",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#12).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-12-MA-S",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-12-MA-M",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-12-MA-L",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-12-MA-XL",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0013",
+      "title": "Örnek Test Ürünü #13 (Ev & Yaşam)",
+      "handle": "ornek-urun-13",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#13).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-13-GR-S",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-13-GR-M",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-13-GR-L",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-13-GR-XL",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0014",
+      "title": "Örnek Test Ürünü #14 (Spor)",
+      "handle": "ornek-urun-14",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#14).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-14-BE-S",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-14-BE-M",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-14-BE-L",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-14-BE-XL",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0015",
+      "title": "Örnek Test Ürünü #15 (Giyim)",
+      "handle": "ornek-urun-15",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#15).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-15-SI-S",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-15-SI-M",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-15-SI-L",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-15-SI-XL",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0016",
+      "title": "Örnek Test Ürünü #16 (Aksesuar)",
+      "handle": "ornek-urun-16",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#16).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-16-BE-S",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-16-BE-M",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-16-BE-L",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-16-BE-XL",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0017",
+      "title": "Örnek Test Ürünü #17 (Ayakkabı)",
+      "handle": "ornek-urun-17",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#17).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-17-MA-S",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-17-MA-M",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-17-MA-L",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-17-MA-XL",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0018",
+      "title": "Örnek Test Ürünü #18 (Ev & Yaşam)",
+      "handle": "ornek-urun-18",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#18).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-18-GR-S",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-18-GR-M",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-18-GR-L",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-18-GR-XL",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0019",
+      "title": "Örnek Test Ürünü #19 (Spor)",
+      "handle": "ornek-urun-19",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#19).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-19-BE-S",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-19-BE-M",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-19-BE-L",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-19-BE-XL",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0020",
+      "title": "Örnek Test Ürünü #20 (Giyim)",
+      "handle": "ornek-urun-20",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#20).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-20-SI-S",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-20-SI-M",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-20-SI-L",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-20-SI-XL",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0021",
+      "title": "Örnek Test Ürünü #21 (Aksesuar)",
+      "handle": "ornek-urun-21",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#21).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-21-BE-S",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-21-BE-M",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-21-BE-L",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-21-BE-XL",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0022",
+      "title": "Örnek Test Ürünü #22 (Ayakkabı)",
+      "handle": "ornek-urun-22",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#22).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-22-MA-S",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-22-MA-M",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-22-MA-L",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-22-MA-XL",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0023",
+      "title": "Örnek Test Ürünü #23 (Ev & Yaşam)",
+      "handle": "ornek-urun-23",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#23).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-23-GR-S",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-23-GR-M",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-23-GR-L",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-23-GR-XL",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0024",
+      "title": "Örnek Test Ürünü #24 (Spor)",
+      "handle": "ornek-urun-24",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#24).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-24-BE-S",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-24-BE-M",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-24-BE-L",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-24-BE-XL",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0025",
+      "title": "Örnek Test Ürünü #25 (Giyim)",
+      "handle": "ornek-urun-25",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#25).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-25-SI-S",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-25-SI-M",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-25-SI-L",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-25-SI-XL",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0026",
+      "title": "Örnek Test Ürünü #26 (Aksesuar)",
+      "handle": "ornek-urun-26",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#26).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-26-BE-S",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-26-BE-M",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-26-BE-L",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-26-BE-XL",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0027",
+      "title": "Örnek Test Ürünü #27 (Ayakkabı)",
+      "handle": "ornek-urun-27",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#27).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-27-MA-S",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-27-MA-M",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-27-MA-L",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-27-MA-XL",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0028",
+      "title": "Örnek Test Ürünü #28 (Ev & Yaşam)",
+      "handle": "ornek-urun-28",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#28).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-28-GR-S",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-28-GR-M",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-28-GR-L",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-28-GR-XL",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0029",
+      "title": "Örnek Test Ürünü #29 (Spor)",
+      "handle": "ornek-urun-29",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#29).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-29-BE-S",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-29-BE-M",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-29-BE-L",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-29-BE-XL",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0030",
+      "title": "Örnek Test Ürünü #30 (Giyim)",
+      "handle": "ornek-urun-30",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#30).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-30-SI-S",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-30-SI-M",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-30-SI-L",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-30-SI-XL",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0031",
+      "title": "Örnek Test Ürünü #31 (Aksesuar)",
+      "handle": "ornek-urun-31",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#31).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-31-BE-S",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-31-BE-M",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-31-BE-L",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-31-BE-XL",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0032",
+      "title": "Örnek Test Ürünü #32 (Ayakkabı)",
+      "handle": "ornek-urun-32",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#32).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-32-MA-S",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-32-MA-M",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-32-MA-L",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-32-MA-XL",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0033",
+      "title": "Örnek Test Ürünü #33 (Ev & Yaşam)",
+      "handle": "ornek-urun-33",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#33).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-33-GR-S",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-33-GR-M",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-33-GR-L",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-33-GR-XL",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0034",
+      "title": "Örnek Test Ürünü #34 (Spor)",
+      "handle": "ornek-urun-34",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#34).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-34-BE-S",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-34-BE-M",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-34-BE-L",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-34-BE-XL",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0035",
+      "title": "Örnek Test Ürünü #35 (Giyim)",
+      "handle": "ornek-urun-35",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#35).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-35-SI-S",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-35-SI-M",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-35-SI-L",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-35-SI-XL",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0036",
+      "title": "Örnek Test Ürünü #36 (Aksesuar)",
+      "handle": "ornek-urun-36",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#36).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-36-BE-S",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-36-BE-M",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-36-BE-L",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-36-BE-XL",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0037",
+      "title": "Örnek Test Ürünü #37 (Ayakkabı)",
+      "handle": "ornek-urun-37",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#37).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-37-MA-S",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-37-MA-M",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-37-MA-L",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-37-MA-XL",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0038",
+      "title": "Örnek Test Ürünü #38 (Ev & Yaşam)",
+      "handle": "ornek-urun-38",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#38).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-38-GR-S",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-38-GR-M",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-38-GR-L",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-38-GR-XL",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0039",
+      "title": "Örnek Test Ürünü #39 (Spor)",
+      "handle": "ornek-urun-39",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#39).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-39-BE-S",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-39-BE-M",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-39-BE-L",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-39-BE-XL",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0040",
+      "title": "Örnek Test Ürünü #40 (Giyim)",
+      "handle": "ornek-urun-40",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#40).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-40-SI-S",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-40-SI-M",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-40-SI-L",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-40-SI-XL",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0041",
+      "title": "Örnek Test Ürünü #41 (Aksesuar)",
+      "handle": "ornek-urun-41",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#41).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-41-BE-S",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-41-BE-M",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-41-BE-L",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-41-BE-XL",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0042",
+      "title": "Örnek Test Ürünü #42 (Ayakkabı)",
+      "handle": "ornek-urun-42",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#42).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-42-MA-S",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-42-MA-M",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-42-MA-L",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-42-MA-XL",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0043",
+      "title": "Örnek Test Ürünü #43 (Ev & Yaşam)",
+      "handle": "ornek-urun-43",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#43).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-43-GR-S",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-43-GR-M",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-43-GR-L",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-43-GR-XL",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0044",
+      "title": "Örnek Test Ürünü #44 (Spor)",
+      "handle": "ornek-urun-44",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#44).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-44-BE-S",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-44-BE-M",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-44-BE-L",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-44-BE-XL",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0045",
+      "title": "Örnek Test Ürünü #45 (Giyim)",
+      "handle": "ornek-urun-45",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#45).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-45-SI-S",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-45-SI-M",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-45-SI-L",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-45-SI-XL",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0046",
+      "title": "Örnek Test Ürünü #46 (Aksesuar)",
+      "handle": "ornek-urun-46",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#46).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-46-BE-S",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-46-BE-M",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-46-BE-L",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-46-BE-XL",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0047",
+      "title": "Örnek Test Ürünü #47 (Ayakkabı)",
+      "handle": "ornek-urun-47",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#47).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-47-MA-S",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-47-MA-M",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-47-MA-L",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-47-MA-XL",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0048",
+      "title": "Örnek Test Ürünü #48 (Ev & Yaşam)",
+      "handle": "ornek-urun-48",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#48).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-48-GR-S",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-48-GR-M",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-48-GR-L",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-48-GR-XL",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0049",
+      "title": "Örnek Test Ürünü #49 (Spor)",
+      "handle": "ornek-urun-49",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#49).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-49-BE-S",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-49-BE-M",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-49-BE-L",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-49-BE-XL",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0050",
+      "title": "Örnek Test Ürünü #50 (Giyim)",
+      "handle": "ornek-urun-50",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#50).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-50-SI-S",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-50-SI-M",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-50-SI-L",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-50-SI-XL",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0051",
+      "title": "Örnek Test Ürünü #51 (Aksesuar)",
+      "handle": "ornek-urun-51",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#51).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-51-BE-S",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-51-BE-M",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-51-BE-L",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-51-BE-XL",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0052",
+      "title": "Örnek Test Ürünü #52 (Ayakkabı)",
+      "handle": "ornek-urun-52",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#52).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-52-MA-S",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-52-MA-M",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-52-MA-L",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-52-MA-XL",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0053",
+      "title": "Örnek Test Ürünü #53 (Ev & Yaşam)",
+      "handle": "ornek-urun-53",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#53).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-53-GR-S",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-53-GR-M",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-53-GR-L",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-53-GR-XL",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0054",
+      "title": "Örnek Test Ürünü #54 (Spor)",
+      "handle": "ornek-urun-54",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#54).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-54-BE-S",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-54-BE-M",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-54-BE-L",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-54-BE-XL",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0055",
+      "title": "Örnek Test Ürünü #55 (Giyim)",
+      "handle": "ornek-urun-55",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#55).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-55-SI-S",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-55-SI-M",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-55-SI-L",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-55-SI-XL",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0056",
+      "title": "Örnek Test Ürünü #56 (Aksesuar)",
+      "handle": "ornek-urun-56",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#56).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-56-BE-S",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-56-BE-M",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-56-BE-L",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-56-BE-XL",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0057",
+      "title": "Örnek Test Ürünü #57 (Ayakkabı)",
+      "handle": "ornek-urun-57",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#57).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-57-MA-S",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-57-MA-M",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-57-MA-L",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-57-MA-XL",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0058",
+      "title": "Örnek Test Ürünü #58 (Ev & Yaşam)",
+      "handle": "ornek-urun-58",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#58).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-58-GR-S",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-58-GR-M",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-58-GR-L",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-58-GR-XL",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0059",
+      "title": "Örnek Test Ürünü #59 (Spor)",
+      "handle": "ornek-urun-59",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#59).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-59-BE-S",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-59-BE-M",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-59-BE-L",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-59-BE-XL",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0060",
+      "title": "Örnek Test Ürünü #60 (Giyim)",
+      "handle": "ornek-urun-60",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#60).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-60-SI-S",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-60-SI-M",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-60-SI-L",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-60-SI-XL",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0061",
+      "title": "Örnek Test Ürünü #61 (Aksesuar)",
+      "handle": "ornek-urun-61",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#61).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-61-BE-S",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-61-BE-M",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-61-BE-L",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-61-BE-XL",
+          "prices": [
+            {
+              "amount": 625,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0062",
+      "title": "Örnek Test Ürünü #62 (Ayakkabı)",
+      "handle": "ornek-urun-62",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#62).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-62-MA-S",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-62-MA-M",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-62-MA-L",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-62-MA-XL",
+          "prices": [
+            {
+              "amount": 650,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0063",
+      "title": "Örnek Test Ürünü #63 (Ev & Yaşam)",
+      "handle": "ornek-urun-63",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#63).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-63-GR-S",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-63-GR-M",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-63-GR-L",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-63-GR-XL",
+          "prices": [
+            {
+              "amount": 675,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0064",
+      "title": "Örnek Test Ürünü #64 (Spor)",
+      "handle": "ornek-urun-64",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#64).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-64-BE-S",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-64-BE-M",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-64-BE-L",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-64-BE-XL",
+          "prices": [
+            {
+              "amount": 700,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0065",
+      "title": "Örnek Test Ürünü #65 (Giyim)",
+      "handle": "ornek-urun-65",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#65).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-65-SI-S",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-65-SI-M",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-65-SI-L",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-65-SI-XL",
+          "prices": [
+            {
+              "amount": 725,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0066",
+      "title": "Örnek Test Ürünü #66 (Aksesuar)",
+      "handle": "ornek-urun-66",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#66).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-66-BE-S",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-66-BE-M",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-66-BE-L",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-66-BE-XL",
+          "prices": [
+            {
+              "amount": 750,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0067",
+      "title": "Örnek Test Ürünü #67 (Ayakkabı)",
+      "handle": "ornek-urun-67",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#67).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-67-MA-S",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-67-MA-M",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-67-MA-L",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-67-MA-XL",
+          "prices": [
+            {
+              "amount": 775,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0068",
+      "title": "Örnek Test Ürünü #68 (Ev & Yaşam)",
+      "handle": "ornek-urun-68",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#68).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-68-GR-S",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-68-GR-M",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-68-GR-L",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-68-GR-XL",
+          "prices": [
+            {
+              "amount": 800,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0069",
+      "title": "Örnek Test Ürünü #69 (Spor)",
+      "handle": "ornek-urun-69",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#69).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-69-BE-S",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-69-BE-M",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-69-BE-L",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-69-BE-XL",
+          "prices": [
+            {
+              "amount": 825,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0070",
+      "title": "Örnek Test Ürünü #70 (Giyim)",
+      "handle": "ornek-urun-70",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#70).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-70-SI-S",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-70-SI-M",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-70-SI-L",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-70-SI-XL",
+          "prices": [
+            {
+              "amount": 850,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0071",
+      "title": "Örnek Test Ürünü #71 (Aksesuar)",
+      "handle": "ornek-urun-71",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#71).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-71-BE-S",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-71-BE-M",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-71-BE-L",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-71-BE-XL",
+          "prices": [
+            {
+              "amount": 875,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0072",
+      "title": "Örnek Test Ürünü #72 (Ayakkabı)",
+      "handle": "ornek-urun-72",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#72).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-72-MA-S",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-72-MA-M",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-72-MA-L",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-72-MA-XL",
+          "prices": [
+            {
+              "amount": 900,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0073",
+      "title": "Örnek Test Ürünü #73 (Ev & Yaşam)",
+      "handle": "ornek-urun-73",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#73).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-73-GR-S",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-73-GR-M",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-73-GR-L",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-73-GR-XL",
+          "prices": [
+            {
+              "amount": 925,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0074",
+      "title": "Örnek Test Ürünü #74 (Spor)",
+      "handle": "ornek-urun-74",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#74).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-74-BE-S",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-74-BE-M",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-74-BE-L",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-74-BE-XL",
+          "prices": [
+            {
+              "amount": 950,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0075",
+      "title": "Örnek Test Ürünü #75 (Giyim)",
+      "handle": "ornek-urun-75",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#75).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-75-SI-S",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-75-SI-M",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-75-SI-L",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-75-SI-XL",
+          "prices": [
+            {
+              "amount": 975,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0076",
+      "title": "Örnek Test Ürünü #76 (Aksesuar)",
+      "handle": "ornek-urun-76",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#76).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-76-BE-S",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-76-BE-M",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-76-BE-L",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-76-BE-XL",
+          "prices": [
+            {
+              "amount": 1000,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0077",
+      "title": "Örnek Test Ürünü #77 (Ayakkabı)",
+      "handle": "ornek-urun-77",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#77).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-77-MA-S",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-77-MA-M",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-77-MA-L",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-77-MA-XL",
+          "prices": [
+            {
+              "amount": 1025,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0078",
+      "title": "Örnek Test Ürünü #78 (Ev & Yaşam)",
+      "handle": "ornek-urun-78",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#78).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-78-GR-S",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-78-GR-M",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-78-GR-L",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-78-GR-XL",
+          "prices": [
+            {
+              "amount": 1050,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0079",
+      "title": "Örnek Test Ürünü #79 (Spor)",
+      "handle": "ornek-urun-79",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#79).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-79-BE-S",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-79-BE-M",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-79-BE-L",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-79-BE-XL",
+          "prices": [
+            {
+              "amount": 1075,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0080",
+      "title": "Örnek Test Ürünü #80 (Giyim)",
+      "handle": "ornek-urun-80",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#80).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-80-SI-S",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-80-SI-M",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-80-SI-L",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-80-SI-XL",
+          "prices": [
+            {
+              "amount": 100,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0081",
+      "title": "Örnek Test Ürünü #81 (Aksesuar)",
+      "handle": "ornek-urun-81",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#81).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-81-BE-S",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-81-BE-M",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-81-BE-L",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-81-BE-XL",
+          "prices": [
+            {
+              "amount": 125,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0082",
+      "title": "Örnek Test Ürünü #82 (Ayakkabı)",
+      "handle": "ornek-urun-82",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#82).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-82-MA-S",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-82-MA-M",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-82-MA-L",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-82-MA-XL",
+          "prices": [
+            {
+              "amount": 150,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0083",
+      "title": "Örnek Test Ürünü #83 (Ev & Yaşam)",
+      "handle": "ornek-urun-83",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#83).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-83-GR-S",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-83-GR-M",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-83-GR-L",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-83-GR-XL",
+          "prices": [
+            {
+              "amount": 175,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0084",
+      "title": "Örnek Test Ürünü #84 (Spor)",
+      "handle": "ornek-urun-84",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#84).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-84-BE-S",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-84-BE-M",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-84-BE-L",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-84-BE-XL",
+          "prices": [
+            {
+              "amount": 200,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0085",
+      "title": "Örnek Test Ürünü #85 (Giyim)",
+      "handle": "ornek-urun-85",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#85).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-85-SI-S",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-85-SI-M",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-85-SI-L",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-85-SI-XL",
+          "prices": [
+            {
+              "amount": 225,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0086",
+      "title": "Örnek Test Ürünü #86 (Aksesuar)",
+      "handle": "ornek-urun-86",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#86).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-86-BE-S",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-86-BE-M",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-86-BE-L",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-86-BE-XL",
+          "prices": [
+            {
+              "amount": 250,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0087",
+      "title": "Örnek Test Ürünü #87 (Ayakkabı)",
+      "handle": "ornek-urun-87",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#87).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-87-MA-S",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-87-MA-M",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-87-MA-L",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-87-MA-XL",
+          "prices": [
+            {
+              "amount": 275,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0088",
+      "title": "Örnek Test Ürünü #88 (Ev & Yaşam)",
+      "handle": "ornek-urun-88",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#88).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-88-GR-S",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-88-GR-M",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-88-GR-L",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-88-GR-XL",
+          "prices": [
+            {
+              "amount": 300,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0089",
+      "title": "Örnek Test Ürünü #89 (Spor)",
+      "handle": "ornek-urun-89",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#89).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-89-BE-S",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-89-BE-M",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-89-BE-L",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-89-BE-XL",
+          "prices": [
+            {
+              "amount": 325,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0090",
+      "title": "Örnek Test Ürünü #90 (Giyim)",
+      "handle": "ornek-urun-90",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#90).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-90-SI-S",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-90-SI-M",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-90-SI-L",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-90-SI-XL",
+          "prices": [
+            {
+              "amount": 350,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0091",
+      "title": "Örnek Test Ürünü #91 (Aksesuar)",
+      "handle": "ornek-urun-91",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#91).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/1.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-91-BE-S",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-91-BE-M",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-91-BE-L",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-91-BE-XL",
+          "prices": [
+            {
+              "amount": 375,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0092",
+      "title": "Örnek Test Ürünü #92 (Ayakkabı)",
+      "handle": "ornek-urun-92",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#92).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/2.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-92-MA-S",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-92-MA-M",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-92-MA-L",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-92-MA-XL",
+          "prices": [
+            {
+              "amount": 400,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0093",
+      "title": "Örnek Test Ürünü #93 (Ev & Yaşam)",
+      "handle": "ornek-urun-93",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#93).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/3.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-93-GR-S",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-93-GR-M",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-93-GR-L",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-93-GR-XL",
+          "prices": [
+            {
+              "amount": 425,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0094",
+      "title": "Örnek Test Ürünü #94 (Spor)",
+      "handle": "ornek-urun-94",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#94).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/4.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-94-BE-S",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-94-BE-M",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-94-BE-L",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-94-BE-XL",
+          "prices": [
+            {
+              "amount": 450,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0095",
+      "title": "Örnek Test Ürünü #95 (Giyim)",
+      "handle": "ornek-urun-95",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#95).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/5.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-95-SI-S",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-95-SI-M",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-95-SI-L",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-95-SI-XL",
+          "prices": [
+            {
+              "amount": 475,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0096",
+      "title": "Örnek Test Ürünü #96 (Aksesuar)",
+      "handle": "ornek-urun-96",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#96).",
+      "category": "Aksesuar",
+      "thumbnail": "https://images.example.com/placeholder/6.jpg",
+      "variants": [
+        {
+          "title": "Beyaz / S",
+          "sku": "SKU-96-BE-S",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / M",
+          "sku": "SKU-96-BE-M",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / L",
+          "sku": "SKU-96-BE-L",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Beyaz / XL",
+          "sku": "SKU-96-BE-XL",
+          "prices": [
+            {
+              "amount": 500,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Beyaz",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0097",
+      "title": "Örnek Test Ürünü #97 (Ayakkabı)",
+      "handle": "ornek-urun-97",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#97).",
+      "category": "Ayakkabı",
+      "thumbnail": "https://images.example.com/placeholder/7.jpg",
+      "variants": [
+        {
+          "title": "Mavi / S",
+          "sku": "SKU-97-MA-S",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / M",
+          "sku": "SKU-97-MA-M",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / L",
+          "sku": "SKU-97-MA-L",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Mavi / XL",
+          "sku": "SKU-97-MA-XL",
+          "prices": [
+            {
+              "amount": 525,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Mavi",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0098",
+      "title": "Örnek Test Ürünü #98 (Ev & Yaşam)",
+      "handle": "ornek-urun-98",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#98).",
+      "category": "Ev & Yaşam",
+      "thumbnail": "https://images.example.com/placeholder/8.jpg",
+      "variants": [
+        {
+          "title": "Gri / S",
+          "sku": "SKU-98-GR-S",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / M",
+          "sku": "SKU-98-GR-M",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / L",
+          "sku": "SKU-98-GR-L",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Gri / XL",
+          "sku": "SKU-98-GR-XL",
+          "prices": [
+            {
+              "amount": 550,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Gri",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0099",
+      "title": "Örnek Test Ürünü #99 (Spor)",
+      "handle": "ornek-urun-99",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#99).",
+      "category": "Spor",
+      "thumbnail": "https://images.example.com/placeholder/9.jpg",
+      "variants": [
+        {
+          "title": "Bej / S",
+          "sku": "SKU-99-BE-S",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / M",
+          "sku": "SKU-99-BE-M",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / L",
+          "sku": "SKU-99-BE-L",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Bej / XL",
+          "sku": "SKU-99-BE-XL",
+          "prices": [
+            {
+              "amount": 575,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Bej",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    },
+    {
+      "id": "prod_test_0100",
+      "title": "Örnek Test Ürünü #100 (Giyim)",
+      "handle": "ornek-urun-100",
+      "description": "Bu ürün otomatik performans ve bellek ölçüm senaryosu için üretilmiş örnek test verisidir (#100).",
+      "category": "Giyim",
+      "thumbnail": "https://images.example.com/placeholder/0.jpg",
+      "variants": [
+        {
+          "title": "Siyah / S",
+          "sku": "SKU-100-SI-S",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "S"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / M",
+          "sku": "SKU-100-SI-M",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "M"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / L",
+          "sku": "SKU-100-SI-L",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "L"
+          },
+          "inventory_quantity": 50
+        },
+        {
+          "title": "Siyah / XL",
+          "sku": "SKU-100-SI-XL",
+          "prices": [
+            {
+              "amount": 600,
+              "currency_code": "TRY"
+            }
+          ],
+          "options": {
+            "Renk": "Siyah",
+            "Beden": "XL"
+          },
+          "inventory_quantity": 50
+        }
+      ]
+    }
+  ]
+}
