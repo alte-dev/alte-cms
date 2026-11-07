@@ -22,6 +22,7 @@
     "measure:memory": "tsx scripts/measure-memory.ts",
     "setup:store": "pnpm --filter @alte/medusa setup:store",
     "verify:store": "tsx scripts/verify-store.ts",
+    "verify:storefront": "tsx scripts/verify-storefront.ts",
     "seed:fake": "tsx scripts/seed-fake-catalog.ts",
     "create-admin": "pnpm --filter @alte/web create-admin",
     "prepare": "lefthook install"
