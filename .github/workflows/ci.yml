@@ -1,0 +1,94 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+# Public repo security: read-only token permissions
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-and-quality:
+    name: Security Scan, Quality & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pinned to commit SHA: actions/checkout@v4.2.2
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      # Pinned to commit SHA: gitleaks/gitleaks-action@v2.3.9
+      - name: Gitleaks Secret Scanner (Fail on Secret Leak)
+        uses: gitleaks/gitleaks-action@785501d5dd578e9f50f4a2d8fa320f7881c95786
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+
+      # Pinned to commit SHA: pnpm/action-setup@v4.1.0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a3252b78d4704f53f34012df31337ca53f25621a
+        with:
+          version: 10.5.2
+
+      # Pinned to commit SHA: actions/setup-node@v4.2.0
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@1e60f620b9541d16abce94c540972c47ca712ce0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Code Formatting Check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit & Security Tests
+        run: pnpm test
+        env:
+          NEXT_PUBLIC_SERVER_URL: "http://localhost:3100"
+          DATABASE_URI: "postgres://payload_user:dev-only-payload-password@127.0.0.1:5432/payload_db"
+          PAYLOAD_SECRET: "ci-dummy-payload-secret-at-least-32-chars-long-random"
+          NEXT_PUBLIC_MEDUSA_URL: "http://api.localhost:9000"
+          MEDUSA_BACKEND_URL: "http://127.0.0.1:9000"
+          DATABASE_URL: "postgres://medusa_user:dev-only-medusa-password@127.0.0.1:5432/medusa_db"
+          REDIS_URL: "redis://127.0.0.1:6379"
+          JWT_SECRET: "ci-dummy-jwt-signing-secret-at-least-32-chars-long-random"
+          COOKIE_SECRET: "ci-dummy-cookie-session-secret-at-least-32-chars-random"
+          STORE_CORS: "http://localhost:3100"
+          ADMIN_CORS: "http://api.localhost:9000"
+          AUTH_CORS: "http://api.localhost:9000"
+
+      - name: Production Build Verification
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SERVER_URL: "http://localhost:3100"
+          DATABASE_URI: "postgres://payload_user:dev-only-payload-password@127.0.0.1:5432/payload_db"
+          PAYLOAD_SECRET: "ci-dummy-payload-secret-at-least-32-chars-long-random"
+          NEXT_PUBLIC_MEDUSA_URL: "http://api.localhost:9000"
+          MEDUSA_BACKEND_URL: "http://127.0.0.1:9000"
+          DATABASE_URL: "postgres://medusa_user:dev-only-medusa-password@127.0.0.1:5432/medusa_db"
+          REDIS_URL: "redis://127.0.0.1:6379"
+          JWT_SECRET: "ci-dummy-jwt-signing-secret-at-least-32-chars-long-random"
+          COOKIE_SECRET: "ci-dummy-cookie-session-secret-at-least-32-chars-random"
+          STORE_CORS: "http://localhost:3100"
+          ADMIN_CORS: "http://api.localhost:9000"
+          AUTH_CORS: "http://api.localhost:9000"
+
+      - name: Dependency Audit
+        run: pnpm audit --prod --audit-level=high
