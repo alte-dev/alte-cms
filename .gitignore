@@ -59,6 +59,7 @@ coverage/
 cypress/videos/
 cypress/screenshots/
 .turbo/
+*.tsbuildinfo
 
 # System / Temporary files
 tmp/
