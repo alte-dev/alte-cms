@@ -31,12 +31,20 @@ Bu doküman, aşamalı e-ticaret platformunun geliştirme fazlarını, teslimat 
 
 ---
 
-### 📋 Faz 1: Medusa v2 Temel Ticaret Motoru
+### ✅ Faz 1: Medusa v2 Türkiye Mağazası ve Temel Ticaret Motoru (TAMAMLANDI)
 
-- [ ] Türkiye e-ticaret kuralları: Türk Lirası (TRY), %20 standart KDV vergi oranı
-- [ ] Ürün ve varyant modeli (Beden, Renk, Materyal vb.)
-- [ ] Stok takibi ve envanter yönetimi
-- [ ] Medusa Admin paneli (`/app`) üzerinde ürün yönetim doğrulaması
+- [x] Türkiye e-ticaret kuralları: Türk Lirası (TRY), tek para birimi, %20 Standart KDV, %10 Gıda KDV, %1 Özel İndirimli KDV
+- [x] KDV Dahil fiyatlandırma (`is_tax_inclusive = true`, Price Preference) ve sepette ayrı KDV satırı
+- [x] İdempotent mağaza kurulumu (`setup-store.ts`, tek komut: `pnpm setup:store`)
+- [x] Stok konumu ("Ana Depo") ve servis bölgesi ("Türkiye")
+- [x] 3 Kargo seçeneği: Standart Kargo (89.90 TL), Ücretsiz Kargo (1500 TL üzeri kuralı), Mağazadan Teslim (0 TL)
+- [x] Hiyerarşik kategoriler (Giyim -> Üst Giyim / Alt Giyim, Aksesuar, Ev & Yaşam) ve temiz ASCII slug normalizasyonu
+- [x] Koleksiyonlar (Yeni Gelenler, İndirimdekiler) ve etiketler (organik, yeni-sezon, one-cikan)
+- [x] Publishable API Key oluşturma ve satış kanalına bağlama
+- [x] Envanter yönetimi, varyant stok bağlama ve stoksuz ürün sepete ekleme reddi (HTTP 400 insufficient_inventory)
+- [x] İndirimli fiyat listesi (Sale Price List) ile `calculated_price < original_price` doğrulaması
+- [x] Otomatik mağaza doğrulama paketi (`scripts/verify-store.ts`, `pnpm verify:store`)
+- [x] Kapsamlı mimari dokümanları (`docs/CATALOG-MODEL.md`, `docs/TAX.md`) ve unit testler
 
 ---
 

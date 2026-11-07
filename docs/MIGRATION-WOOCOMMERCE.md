@@ -16,14 +16,16 @@ Bu doküman, Faz 9'da hayata geçirilecek olan canlı WooCommerce mağazasından
 
 ## 2. Veri Eşleme Modeli (Data Mapping)
 
-| WooCommerce Kaynağı              | Hedef Platform             | Eşleme Yöntemi ve Kurallar                                                                             |
-| :------------------------------- | :------------------------- | :----------------------------------------------------------------------------------------------------- |
-| **Ürünler (Simple & Variable)**  | Medusa v2 Products         | Başlık, slug/handle, açıklama, stok miktarı ve KDV dahil satış fiyatı aktarılır.                       |
-| **Varyantlar (Beden, Renk vb.)** | Medusa Product Variants    | SKU, barkod, fiyat ve envanter seviyesi varyant olarak eşlenir.                                        |
-| **Kategoriler & Etiketler**      | Medusa Product Categories  | Hiyerarşik kategori ağacı korunur.                                                                     |
-| **Müşteri Hesapları**            | Medusa Customers           | Ad, soyad, e-posta ve kayıtlı teslimat/fatura adresleri aktarılır.                                     |
-| **Sipariş Geçmişi**              | Medusa Orders (Historical) | Geçmiş siparişler "arşiv" durumunda, eski sipariş numarası meta veriye eklenerek aktarılır.            |
-| **Statik Sayfalar & Blog**       | Payload CMS 3              | Hakkımızda, Gizlilik, İletişim sayfaları ve blog yazıları Payload Pages/Posts koleksiyonuna aktarılır. |
+| WooCommerce Kaynağı              | Hedef Platform             | Eşleme Yöntemi ve Kurallar                                                                                                                                                   |
+| :------------------------------- | :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ürünler (Simple & Variable)**  | Medusa v2 Products         | Başlık, slug/handle, açıklama, stok miktarı ve KDV dahil satış fiyatı aktarılır. Faz 1'de oluşturulan `apps/medusa/src/config/store-defaults.ts` şemasına göre dönüştürülür. |
+| **Varyantlar (Beden, Renk vb.)** | Medusa Product Variants    | SKU, barkod, TRY fiyatı ve Ana Depo envanter seviyesi (`LocationLevel`) varyant olarak eşlenir.                                                                              |
+| **Kategoriler & Etiketler**      | Medusa Product Categories  | Hiyerarşik kategori ağacı korunur, Türkçe karakterler `normalizeTurkishSlug` ile URL-safe ASCII slug'lara çevrilir.                                                          |
+| **KDV Oranları**                 | Medusa v2 Tax Rates        | WooCommerce vergi sınıfları: Standart -> KDV20 (%20), Gıda -> KDV10 (%10), İndirimli -> KDV1 (%1) kuralları ile otomatik eşleştirilir.                                       |
+| **İndirimli Fiyatlar**           | Medusa Price Lists (Sale)  | WooCommerce `_sale_price` değerleri Medusa `type: "sale"` Price List kayıtlarına aktarılır.                                                                                  |
+| **Müşteri Hesapları**            | Medusa Customers           | Ad, soyad, e-posta ve kayıtlı teslimat/fatura adresleri aktarılır.                                                                                                           |
+| **Sipariş Geçmişi**              | Medusa Orders (Historical) | Geçmiş siparişler "arşiv" durumunda, eski sipariş numarası meta veriye eklenerek aktarılır.                                                                                  |
+| **Statik Sayfalar & Blog**       | Payload CMS 3              | Hakkımızda, Gizlilik, İletişim sayfaları ve blog yazıları Payload Pages/Posts koleksiyonuna aktarılır.                                                                       |
 
 ---
 
