@@ -1,0 +1,30 @@
+{
+  "name": "@alte/medusa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Medusa v2 Commerce Engine",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "medusa develop",
+    "build": "medusa build",
+    "start": "medusa start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "clean": "rimraf .medusa dist"
+  },
+  "dependencies": {
+    "@medusajs/framework": "2.22.4",
+    "@medusajs/icons": "2.22.4",
+    "@medusajs/medusa": "2.22.4",
+    "dotenv": "16.4.7",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@medusajs/cli": "2.22.4",
+    "@types/node": "22.10.7",
+    "rimraf": "6.0.1",
+    "typescript": "5.7.3",
+    "vitest": "3.0.7"
+  }
+}
