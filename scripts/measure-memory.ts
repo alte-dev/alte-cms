@@ -5,17 +5,17 @@
  * If services are offline, the script FAILS CLOSED (exit 1) and records "ÖLÇÜLMEDİ".
  *
  * Scenarios:
- *   (a) Idle 60s (sampled every 2s, 30 samples)
- *   (b) 20 Page navigations
- *   (c) 60s Light load (concurrency = 10, sampled every 2s, exactly 30 samples)
- *   (d) Seed 100 items (real Medusa v2 products via seed-fake-catalog)
- *   (e) Seed 1000 items (real Medusa v2 products via seed-fake-catalog)
+ *   (a) Idle 60s (sampled every 2s, 30 samples) with initial baseline & cooldown
+ *   (b) 20 Page navigations with initial baseline & cooldown
+ *   (c) 60s Light load (concurrency = 10, sampled every 2s, exactly 30 samples) with cooldown
+ *   (d) Seed 100 items: Real-time sampling during seeding + at least 15 samples after completion
+ *   (e) Seed 1000 items: Real-time sampling during seeding + at least 15 samples after completion
  */
 
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { seedProducts } from "./seed-fake-catalog";
+import { seedProducts, SeedResult } from "./seed-fake-catalog";
 
 const TOTAL_BUDGET_MB = 1100;
 const MEDUSA_PORT = 9000;
@@ -53,6 +53,9 @@ export interface ScenarioSummary {
   redisPeakMb: number;
   totalAvgMb: number;
   totalPeakMb: number;
+  failedPostCount: number;
+  isValid: boolean;
+  invalidReason?: string;
 }
 
 /**
@@ -64,7 +67,7 @@ export function getDockerMemoryMb(containerName: string): number {
     const output = execSync(`docker stats --no-stream --format "{{.MemUsage}}" ${containerName}`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 4000,
+      timeout: 5000,
     }).trim();
 
     if (!output) {
@@ -305,7 +308,13 @@ async function runConcurrentRequests(
   return { success, failed };
 }
 
-function calculateSummary(scenario: string, samples: SystemSample[]): ScenarioSummary {
+function calculateSummary(
+  scenario: string,
+  samples: SystemSample[],
+  failedPostCount = 0,
+  isValid = true,
+  invalidReason?: string,
+): ScenarioSummary {
   const count = samples.length;
   if (count === 0) {
     return {
@@ -321,6 +330,9 @@ function calculateSummary(scenario: string, samples: SystemSample[]): ScenarioSu
       redisPeakMb: 0,
       totalAvgMb: 0,
       totalPeakMb: 0,
+      failedPostCount,
+      isValid: false,
+      invalidReason: "Örnek toplanamadı",
     };
   }
 
@@ -348,7 +360,15 @@ function calculateSummary(scenario: string, samples: SystemSample[]): ScenarioSu
     redisPeakMb: Math.max(...samples.map((s) => s.redisRssMb)),
     totalAvgMb: Math.round(sum.total / count),
     totalPeakMb: Math.max(...samples.map((s) => s.totalMb)),
+    failedPostCount,
+    isValid,
+    invalidReason,
   };
+}
+
+async function cooldown(seconds: number, message: string): Promise<void> {
+  console.log(`   ⏳ Bekleme ve soğuma (${seconds}s): ${message}...`);
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 }
 
 export function writeUnmeasuredReport(reason: string) {
@@ -379,6 +399,97 @@ Servisler ayağa kaldırıldıktan sonra \`pnpm measure:memory\` çalıştırıl
 `;
   fs.writeFileSync(reportPath, content, "utf8");
   console.log(`\n📄 docs/MEMORY-BASELINE.md güncellendi (ÖLÇÜLMEDİ olarak işaretlendi).`);
+}
+
+async function runSeedScenario(
+  scenarioName: string,
+  productCount: number,
+  allSamples: SystemSample[],
+  minPostSeedSamples = 15,
+): Promise<ScenarioSummary> {
+  console.log(`\n▶ ${scenarioName}: ${productCount} Ürün Tohumlama ve Bellek Ölçümü...`);
+
+  // 1. Cooldown & initial baseline sample
+  await cooldown(5, `${scenarioName} öncesi stabilizasyon`);
+  const scenarioSamples: SystemSample[] = [];
+  let sampleIdx = 0;
+  const baselineSample = captureSystemSample(`${scenarioName} (Başlangıç)`, sampleIdx++);
+  scenarioSamples.push(baselineSample);
+  allSamples.push(baselineSample);
+  console.log(
+    `   Başlangıç Tabanı: Toplam ${baselineSample.totalMb} MB (Medusa: ${baselineSample.medusaRssMb}M, Web: ${baselineSample.webRssMb}M, PG: ${baselineSample.postgresRssMb}M)`,
+  );
+
+  // 2. Start seeding in background while taking real-time samples every 2s
+  let isSeeding = true;
+  let seedResult: SeedResult = { success: false, created: 0, failed: 0 };
+  let seedError: string | null = null;
+
+  const seedPromise = seedProducts(productCount)
+    .then((res) => {
+      seedResult = res;
+      isSeeding = false;
+    })
+    .catch((err) => {
+      seedError = err.message || String(err);
+      isSeeding = false;
+    });
+
+  console.log(
+    `   📊 ${scenarioName}: Tohumlama sürerken 2s aralıkla gerçek örnekler toplanıyor...`,
+  );
+  while (isSeeding) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const sample = captureSystemSample(`${scenarioName} (Tohumlama Sırasında)`, sampleIdx++);
+    scenarioSamples.push(sample);
+    allSamples.push(sample);
+    if (sampleIdx % 5 === 0) {
+      console.log(
+        `      Örnek ${sampleIdx}: Toplam ${sample.totalMb} MB (Medusa: ${sample.medusaRssMb}M, Web: ${sample.webRssMb}M, PG: ${sample.postgresRssMb}M)`,
+      );
+    }
+  }
+
+  await seedPromise;
+
+  if (seedError) {
+    console.error(`   ❌ Tohumlama sırasında kritik hata oluştu: ${seedError}`);
+  } else {
+    console.log(
+      `   ✔️ Tohumlama bitti. Aktarılan: ${seedResult.created}/${productCount}, Başarısız: ${seedResult.failed}`,
+    );
+  }
+
+  // 3. Post-seed sampling: at least minPostSeedSamples at 2s interval
+  console.log(
+    `   📊 ${scenarioName}: Tohumlama sonrası ${minPostSeedSamples} örnek alınıyor (2s aralıkla)...`,
+  );
+  for (let i = 1; i <= minPostSeedSamples; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const sample = captureSystemSample(`${scenarioName} (Tohumlama Sonrası)`, sampleIdx++);
+    scenarioSamples.push(sample);
+    allSamples.push(sample);
+    if (i % 5 === 0 || i === minPostSeedSamples) {
+      console.log(
+        `      Sonrası Örnek ${i}/${minPostSeedSamples}: Toplam ${sample.totalMb} MB (Medusa: ${sample.medusaRssMb}M, Web: ${sample.webRssMb}M, PG: ${sample.postgresRssMb}M)`,
+      );
+    }
+  }
+
+  // 4. Cooldown after scenario
+  await cooldown(5, `${scenarioName} sonrası soğuma`);
+
+  // 5. Evaluate validity: failed > 0 => GEÇERSİZ
+  const isValid = !seedError && seedResult.failed === 0 && seedResult.created === productCount;
+  const invalidReason = seedError
+    ? `Kritik tohumlama hatası: ${seedError}`
+    : seedResult.failed > 0
+      ? `${seedResult.failed} adet ürün POST isteği başarısız oldu`
+      : seedResult.created < productCount
+        ? `Eksik ürün yüklendi: ${seedResult.created}/${productCount}`
+        : undefined;
+
+  return calculateSummary(scenarioName, scenarioSamples, seedResult.failed, isValid, invalidReason);
 }
 
 async function main() {
@@ -436,9 +547,14 @@ async function main() {
   const allSamples: SystemSample[] = [];
   const summaries: ScenarioSummary[] = [];
 
-  // Scenario A: Idle 60s (30 samples, 2s interval)
+  // Scenario A: Idle 60s (30 samples, 2s interval) with initial baseline & cooldown
   console.log("▶ Senaryo A: 60 saniye Boşta (Idle) Bekleme (2s aralıkla 30 örnek)...");
+  await cooldown(5, "Senaryo A öncesi stabilizasyon");
   const idleSamples: SystemSample[] = [];
+  const idleBaseline = captureSystemSample("Boşta (Idle 60s) (Başlangıç)", 0);
+  idleSamples.push(idleBaseline);
+  allSamples.push(idleBaseline);
+
   for (let i = 1; i <= 30; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     const sample = captureSystemSample("Boşta (Idle 60s)", i);
@@ -450,11 +566,17 @@ async function main() {
       );
     }
   }
-  summaries.push(calculateSummary("Boşta (Idle 60s)", idleSamples));
+  summaries.push(calculateSummary("Boşta (Idle 60s)", idleSamples, 0, true));
+  await cooldown(5, "Senaryo A sonrası soğuma");
 
   // Scenario B: 20 Page navigations
   console.log("\n▶ Senaryo B: 20 Sayfa Gezme (SSR & API istekleri)...");
+  await cooldown(5, "Senaryo B öncesi stabilizasyon");
   const navSamples: SystemSample[] = [];
+  const navBaseline = captureSystemSample("20 Sayfa Gezme (Başlangıç)", 0);
+  navSamples.push(navBaseline);
+  allSamples.push(navBaseline);
+
   for (let i = 1; i <= 20; i++) {
     await runConcurrentRequests("http://localhost:3100/", 1, 1);
     await new Promise((r) => setTimeout(r, 200));
@@ -462,13 +584,19 @@ async function main() {
     navSamples.push(sample);
     allSamples.push(sample);
   }
-  summaries.push(calculateSummary("20 Sayfa Gezme", navSamples));
+  summaries.push(calculateSummary("20 Sayfa Gezme", navSamples, 0, true));
+  await cooldown(5, "Senaryo B sonrası soğuma");
 
   // Scenario C: 60s Light Load (concurrency = 10, sampled every 2s, exactly 30 samples)
   console.log(
     "\n▶ Senaryo C: 60 saniye Hafif Yük (10 Eşzamanlı İstek, 2s aralıkla tam 30 örnek)...",
   );
+  await cooldown(5, "Senaryo C öncesi stabilizasyon");
   const loadSamples: SystemSample[] = [];
+  const loadBaseline = captureSystemSample("Hafif Yük (10 Eşzamanlı) (Başlangıç)", 0);
+  loadSamples.push(loadBaseline);
+  allSamples.push(loadBaseline);
+
   for (let i = 1; i <= 30; i++) {
     const requestPromise = runConcurrentRequests("http://localhost:3100/", 10, 10);
     await new Promise((r) => setTimeout(r, 2000));
@@ -480,39 +608,16 @@ async function main() {
       console.log(`   Örnek ${i}/30: Toplam ${sample.totalMb} MB`);
     }
   }
-  summaries.push(calculateSummary("Hafif Yük (10 Eşzamanlı)", loadSamples));
+  summaries.push(calculateSummary("Hafif Yük (10 Eşzamanlı)", loadSamples, 0, true));
+  await cooldown(5, "Senaryo C sonrası soğuma");
 
-  // Scenario D: Seed 100 Products (Real Medusa API seeding, then sample)
-  console.log("\n▶ Senaryo D: 100 Ürün Tohumlama (Seed 100) ve Ölçüm...");
-  try {
-    await seedProducts(100);
-    const seed100Samples: SystemSample[] = [];
-    for (let i = 1; i <= 10; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const sample = captureSystemSample("Seed 100 Ürün", i);
-      seed100Samples.push(sample);
-      allSamples.push(sample);
-    }
-    summaries.push(calculateSummary("Seed 100 Ürün", seed100Samples));
-  } catch (err: any) {
-    console.error(`   ⚠️ Seed 100 ürün aktarımı başarısız: ${err.message}`);
-  }
+  // Scenario D: Seed 100 Products
+  const seed100Summary = await runSeedScenario("Seed 100 Ürün", 100, allSamples, 15);
+  summaries.push(seed100Summary);
 
-  // Scenario E: Seed 1000 Products (Real Medusa API seeding, then sample)
-  console.log("\n▶ Senaryo E: 1000 Ürün Tohumlama (Seed 1000) ve Ölçüm...");
-  try {
-    await seedProducts(1000);
-    const seed1000Samples: SystemSample[] = [];
-    for (let i = 1; i <= 10; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const sample = captureSystemSample("Seed 1000 Ürün", i);
-      seed1000Samples.push(sample);
-      allSamples.push(sample);
-    }
-    summaries.push(calculateSummary("Seed 1000 Ürün", seed1000Samples));
-  } catch (err: any) {
-    console.error(`   ⚠️ Seed 1000 ürün aktarımı başarısız: ${err.message}`);
-  }
+  // Scenario E: Seed 1000 Products
+  const seed1000Summary = await runSeedScenario("Seed 1000 Ürün", 1000, allSamples, 15);
+  summaries.push(seed1000Summary);
 
   // Save CSV with one row per sample
   const outDir = path.resolve(process.cwd(), "docs/measurements");
@@ -532,24 +637,32 @@ async function main() {
 
   // Write markdown report
   const peakTotal = Math.max(...summaries.map((s) => s.totalPeakMb));
+  const hasInvalid = summaries.some((s) => !s.isValid);
+
   const mdContent = `# Bellek Tüketim Raporu ve Temel Çizgi (MEMORY-BASELINE.md)
 
-> **Durum:** ✅ **GERÇEK ÖLÇÜM TAMAMLANDI**  
+> **Durum:** ${hasInvalid ? "⚠️ **BAZI SENARYOLAR GEÇERSİZ**" : "✅ **GERÇEK ÖLÇÜM TAMAMLANDI**"}  
 > **Tarih:** ${new Date().toISOString()}  
 > **Hedef Kaynak Bütçesi:** Toplam yeni yük en fazla **~1.1 GB RAM (1100 MB)**  
 > **Tepe RAM Tüketimi:** **${peakTotal} MB** (${peakTotal <= TOTAL_BUDGET_MB ? `Bütçe dahilinde: +${TOTAL_BUDGET_MB - peakTotal} MB rezerv` : `Bütçe aşıldı: -${peakTotal - TOTAL_BUDGET_MB} MB`})  
-> **Ölçüm Yöntemi:** Process Tree Working Set (Windows 11) / RSS (Linux) + Docker Stats API. Her senaryoda 2 saniyelik periyotlarla ham örnekleme.
+> **Ölçüm Yöntemi:** Process Tree Working Set (Windows 11) / RSS (Linux) + Docker Stats API. Her senaryoda başlangıç tabanı, işlem sırası ve tohumlama sonrası en az 15 örnek ile 2 saniyelik periyotlarla ham örnekleme.
 
 ---
 
 ## 1. Özet Bellek Tüketim Tablosu
 
-| Senaryo | Medusa v2 (Ort / Tepe) | Next.js + Payload (Ort / Tepe) | PostgreSQL (Ort / Tepe) | Redis (Ort / Tepe) | Toplam RAM (Ortalama) | Toplam RAM (Tepe) | Bütçe Durumu (~1.1 GB) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Senaryo | Medusa v2 (Ort / Tepe) | Next.js + Payload (Ort / Tepe) | PostgreSQL (Ort / Tepe) | Redis (Ort / Tepe) | Toplam RAM (Ortalama) | Toplam RAM (Tepe) | Başarısız POST | Bütçe Durumu (~1.1 GB) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 ${summaries
   .map(
     (s) =>
-      `| **${s.scenario}** | ${s.medusaAvgMb} / ${s.medusaPeakMb} MB | ${s.webAvgMb} / ${s.webPeakMb} MB | ${s.postgresAvgMb} / ${s.postgresPeakMb} MB | ${s.redisAvgMb} / ${s.redisPeakMb} MB | **${s.totalAvgMb} MB** | **${s.totalPeakMb} MB** | ${s.totalPeakMb <= TOTAL_BUDGET_MB ? "✅ UYGUN" : "❌ AŞILDI"} |`,
+      `| **${s.scenario}** | ${s.medusaAvgMb} / ${s.medusaPeakMb} MB | ${s.webAvgMb} / ${s.webPeakMb} MB | ${s.postgresAvgMb} / ${s.postgresPeakMb} MB | ${s.redisAvgMb} / ${s.redisPeakMb} MB | **${s.totalAvgMb} MB** | **${s.totalPeakMb} MB** | **${s.failedPostCount}** | ${
+        !s.isValid
+          ? `❌ GEÇERSİZ (${s.invalidReason || "Hata"})`
+          : s.totalPeakMb <= TOTAL_BUDGET_MB
+            ? "✅ UYGUN"
+            : "❌ AŞILDI"
+      } |`,
   )
   .join("\n")}
 
@@ -566,6 +679,6 @@ Detaylı saniye bazlı örnekler: \`${path.basename(csvFile)}\`
 if (process.argv[1]?.includes("measure-memory")) {
   main().catch((err) => {
     console.error("❌ Ölçüm yürütülemedi:", err);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }
