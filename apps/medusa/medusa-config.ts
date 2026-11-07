@@ -20,4 +20,9 @@ module.exports = defineConfig({
     disable: false,
     backendUrl: process.env.MEDUSA_ADMIN_BACKEND_URL || `http://${env.HOST}:${env.PORT}`,
   },
+  modules: [
+    {
+      resolve: "./src/modules/payment-guard",
+    },
+  ],
 });
