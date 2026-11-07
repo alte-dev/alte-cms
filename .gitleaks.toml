@@ -1,0 +1,21 @@
+title = "Gitleaks Configuration for alte-cms"
+
+[extend]
+# Use default gitleaks rules
+
+[allowlist]
+description = "Global allowlist for example and dummy test files"
+paths = [
+  '''^\.env\.example$''',
+  '''^apps/[^/]+/\.env\.example$''',
+  '''^pnpm-lock\.yaml$''',
+  '''^docs/.*\.md$''',
+  '''^tests/fixtures/.*''',
+]
+regexes = [
+  '''dev-only-password''',
+  '''dev_db_password''',
+  '''dev_redis_password''',
+  '''example\.com''',
+  '''dev-secret-key-do-not-use-in-production-must-be-min-32-chars''',
+]

@@ -1,0 +1,8 @@
+pre-commit:
+  commands:
+    gitleaks:
+      tags: security secret-scan
+      run: gitleaks protect --staged --verbose
+    lint:
+      tags: style
+      run: pnpm lint
