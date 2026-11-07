@@ -120,4 +120,6 @@ Bir faz ancak şu koşullar sağlandığında tamamlanmış sayılır:
 2. Sahte buton, prototip veya simüle edilmiş kod bırakılmamıştır.
 3. Otomatik birim/entegrasyon testleri yazılmış ve CI üzerinde yeşil geçmiştir.
 4. Gitleaks taraması tüm commit geçmişinde temiz çıkmıştır.
-5. Zorunlu 7 maddelik faz sonu raporu hazırlanmıştır.
+5. main dalına doğrudan push yapılmamış, tüm değişiklikler görev dalı üzerinden PR açılarak ve CI doğrulamasıyla merge edilmiştir ([CONTRIBUTING.md](CONTRIBUTING.md)).
+6. Yerel admin parolaları sadece geliştirme içindir; staging/production'da güçlü, benzersiz parola kullanılır.
+7. Zorunlu faz sonu raporu hazırlanmıştır.
