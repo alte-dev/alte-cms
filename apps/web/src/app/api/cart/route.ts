@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import {
   addItemToCart,
+  applyPromotionCode,
   getCart,
   getOrCreateCart,
   getShippingRules,
   removeCartItem,
+  removePromotionCode,
   updateCartItem,
 } from "../../../lib/medusa/cart";
 import { getCartId } from "../../../lib/medusa/cookies";
 import { calculateFreeShippingProgress, mapMedusaError } from "../../../lib/medusa/format";
-import { AddToCartSchema, UpdateCartItemSchema } from "../../../lib/medusa/validation";
+import {
+  AddToCartSchema,
+  ApplyCouponSchema,
+  UpdateCartItemSchema,
+} from "../../../lib/medusa/validation";
 
 export async function GET() {
   try {
@@ -79,6 +85,29 @@ export async function POST(req: Request) {
       }
 
       const updated = await removeCartItem(cart.id, lineItemId);
+      return NextResponse.json({ success: true, cart: updated });
+    }
+
+    if (action === "apply_coupon") {
+      const parsed = ApplyCouponSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: parsed.error.issues[0]?.message || "Lütfen geçerli bir kupon kodu giriniz." },
+          { status: 400 },
+        );
+      }
+
+      const updated = await applyPromotionCode(cart.id, parsed.data.code);
+      return NextResponse.json({ success: true, cart: updated });
+    }
+
+    if (action === "remove_coupon") {
+      const code = typeof body.code === "string" ? body.code : "";
+      if (!code) {
+        return NextResponse.json({ error: "Kupon kodu eksik" }, { status: 400 });
+      }
+
+      const updated = await removePromotionCode(cart.id, code);
       return NextResponse.json({ success: true, cart: updated });
     }
 
