@@ -1,10 +1,27 @@
 import { medusaFetch } from "./client";
 import { getCartId, setCartId } from "./cookies";
 import { getDefaultRegion } from "./products";
-import { StoreCart, StoreCartResponse, StoreShippingOption } from "./types";
+import {
+  StoreAddress,
+  StoreCart,
+  StoreCartResponse,
+  StoreOrder,
+  StoreOrderResponse,
+  StoreShippingOption,
+} from "./types";
 
 const CART_FIELDS =
-  "*items,*items.variant,*items.variant.product,*shipping_methods,*shipping_methods.shipping_option";
+  "*items,*items.variant,*items.variant.product,*shipping_methods,*shipping_methods.shipping_option,*shipping_address,*billing_address,*promotions";
+
+const ORDER_FIELDS = "*items,*items.variant,*shipping_address,*billing_address";
+
+/**
+ * Checks whether development dummy payment is allowed.
+ * Fail-closed: Strictly forbidden in production; requires explicit ALLOW_DEV_PAYMENT=true in dev.
+ */
+export function isDevPaymentAllowed(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_PAYMENT === "true";
+}
 
 /**
  * Retrieves a cart by ID from Medusa Store API.
@@ -124,6 +141,221 @@ export async function removeCartItem(cartId: string, lineItemId: string): Promis
     throw new Error("Sepet güncellenemedi.");
   }
   return refreshedCart;
+}
+
+/**
+ * Updates cart general details (email, addresses, metadata).
+ */
+export async function updateCart(
+  cartId: string,
+  data: {
+    email?: string;
+    shipping_address?: Partial<StoreAddress>;
+    billing_address?: Partial<StoreAddress>;
+    metadata?: Record<string, unknown>;
+    promo_codes?: string[];
+  },
+): Promise<StoreCart> {
+  const res = await medusaFetch<StoreCartResponse>(`/store/carts/${cartId}?fields=${CART_FIELDS}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+  return res.cart;
+}
+
+/**
+ * Updates customer email and metadata on a cart.
+ */
+export async function updateCartCustomer(
+  cartId: string,
+  input: { email?: string; metadata?: Record<string, unknown> },
+): Promise<StoreCart> {
+  return updateCart(cartId, input);
+}
+
+/**
+ * Sets shipping address on cart.
+ */
+export async function setCartShippingAddress(
+  cartId: string,
+  address: Partial<StoreAddress>,
+): Promise<StoreCart> {
+  return updateCart(cartId, { shipping_address: address });
+}
+
+/**
+ * Sets billing address on cart.
+ */
+export async function setCartBillingAddress(
+  cartId: string,
+  address: Partial<StoreAddress>,
+): Promise<StoreCart> {
+  return updateCart(cartId, { billing_address: address });
+}
+
+/**
+ * Selects/updates shipping option on the cart.
+ */
+export async function setCartShippingMethod(
+  cartId: string,
+  shippingOptionId: string,
+): Promise<StoreCart> {
+  const data = await medusaFetch<StoreCartResponse>(
+    `/store/carts/${cartId}/shipping-methods?fields=${CART_FIELDS}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ option_id: shippingOptionId }),
+      cache: "no-store",
+    },
+  );
+  return data.cart;
+}
+
+/**
+ * Applies a promotion code (coupon) to the cart.
+ * Maps Medusa error to friendly Turkish validation message.
+ */
+export async function applyPromotionCode(cartId: string, code: string): Promise<StoreCart> {
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanCode) {
+    throw new Error("Lütfen geçerli bir kupon kodu giriniz.");
+  }
+
+  try {
+    const data = await medusaFetch<StoreCartResponse>(
+      `/store/carts/${cartId}/promotions?fields=${CART_FIELDS}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ promo_codes: [cleanCode] }),
+        cache: "no-store",
+      },
+    );
+    return data.cart;
+  } catch {
+    throw new Error("Geçersiz veya süresi dolmuş kupon kodu.");
+  }
+}
+
+/**
+ * Removes an applied promotion code from the cart.
+ */
+export async function removePromotionCode(cartId: string, code: string): Promise<StoreCart> {
+  const cleanCode = code.trim().toUpperCase();
+  try {
+    const data = await medusaFetch<StoreCartResponse>(
+      `/store/carts/${cartId}/promotions?fields=${CART_FIELDS}`,
+      {
+        method: "DELETE",
+        body: JSON.stringify({ promo_codes: [cleanCode] }),
+        cache: "no-store",
+      },
+    );
+    return data.cart;
+  } catch {
+    const refreshed = await getCart(cartId);
+    if (!refreshed) {
+      throw new Error("Kupon kaldırılamadı.");
+    }
+    return refreshed;
+  }
+}
+
+export interface CompleteCartResult {
+  success: boolean;
+  order?: StoreOrder;
+  error?: string;
+}
+
+/**
+ * Completes a cart to create an order.
+ * Strictly gated by isDevPaymentAllowed() to prevent dummy payment bypass in production.
+ */
+export async function completeCart(cartId: string): Promise<CompleteCartResult> {
+  if (!isDevPaymentAllowed()) {
+    return {
+      success: false,
+      error: "Ödeme yöntemi henüz yapılandırılmadı.",
+    };
+  }
+
+  try {
+    // 1. Create or retrieve payment collection
+    const collectionData = await medusaFetch<{ payment_collection: { id: string } }>(
+      "/store/payment-collections",
+      {
+        method: "POST",
+        body: JSON.stringify({ cart_id: cartId }),
+        cache: "no-store",
+      },
+    );
+
+    const paymentCollectionId = collectionData?.payment_collection?.id;
+    if (!paymentCollectionId) {
+      return {
+        success: false,
+        error: "Ödeme oturumu başlatılamadı.",
+      };
+    }
+
+    // 2. Initialize payment session with pp_system_default (dev only)
+    await medusaFetch(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
+      method: "POST",
+      body: JSON.stringify({ provider_id: "pp_system_default" }),
+      cache: "no-store",
+    });
+
+    // 3. Complete cart
+    const completeRes = await medusaFetch<{
+      type: "order" | "cart";
+      order?: StoreOrder;
+      cart?: StoreCart;
+      error?: { message: string; name: string; type: string };
+    }>(`/store/carts/${cartId}/complete`, {
+      method: "POST",
+      cache: "no-store",
+    });
+
+    if (completeRes.type === "order" && completeRes.order) {
+      return {
+        success: true,
+        order: completeRes.order,
+      };
+    }
+
+    if (completeRes.error) {
+      return {
+        success: false,
+        error: completeRes.error.message || "Sipariş tamamlanırken bir hata oluştu.",
+      };
+    }
+
+    return {
+      success: false,
+      error: "Sipariş tamamlanamadı.",
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error?.message || "Sipariş tamamlanamadı.",
+    };
+  }
+}
+
+/**
+ * Retrieves an order by its UUID.
+ */
+export async function getOrder(orderId: string): Promise<StoreOrder | null> {
+  if (!orderId) return null;
+  try {
+    const data = await medusaFetch<StoreOrderResponse>(
+      `/store/orders/${orderId}?fields=${ORDER_FIELDS}`,
+      { cache: "no-store" },
+    );
+    return data.order || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
