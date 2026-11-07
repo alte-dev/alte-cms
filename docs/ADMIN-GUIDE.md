@@ -130,3 +130,54 @@ Medusa v2'de WooCommerce'teki "İndirimli Satış Fiyatı" mekanizması **Price 
    - **Yeni Gelenler** (Anasayfa vitrininde listelenir)
    - **İndirimdekiler**
 3. Yeni bir koleksiyon oluşturmak için **"Create Collection"** butonuna tıklayın ve ürünleri koleksiyona atayın.
+
+---
+
+## 7. Promosyonlar ve Kupon Kodları Yönetimi (Promotions)
+
+Medusa v2 Admin panelinde promosyonlar **Promotions** sekmesinden yönetilir.
+
+### 7.1 Kupon Kodu Oluşturma
+
+1. Sol menüden **Promotions (Promosyonlar)** sayfasına gidin.
+2. **"Create Promotion"** butonuna tıklayın.
+3. Promosyon tipini seçin:
+   - **Standard Promotion:** Kupon kodu girilerek uygulanan promosyon.
+   - **Automatic Promotion:** Koşullar sağlandığında sepete otomatik uygulanan promosyon.
+4. **Promotion Code:** Müşterinin sepet/ödeme adımında gireceği kodu belirleyin (Örn: `TEST10`, `BAHAR2026`).
+5. **Application Method:**
+   - **Percentage:** Yüzdelik indirim (örn: %10).
+   - **Fixed:** Sabit tutar indirimi (örn: 50 TL - `currency_code: try`).
+6. **Allocation:** İndirimin tüm sepete mi (`across_items`) yoksa her bir kaleme mi (`each_item`) uygulanacağını belirleyin.
+
+### 7.2 CLI ile Kupon Tohumlama (Geliştirme / Test)
+
+Test ortamında idempotent kupon oluşturmak için monorepo komutu:
+
+```bash
+pnpm seed:promotions
+```
+
+Bu komut `TEST10` (%10) ve `TEST50TL` (50 TL) kuponlarını otomatik oluşturur veya varsa atlar.
+
+---
+
+## 8. Siparişler ve Ödeme Güvenlik Denetimi (Orders)
+
+### 8.1 Gelen Siparişleri İnceleme
+
+1. Sol menüden **Orders (Siparişler)** sayfasına gidin.
+2. Sipariş numarası (`display_id`, örn: `#1`), sipariş tarihi, müşteri e-postası ve toplam tutar listelenir.
+3. Sipariş detayında:
+   - **Items:** Sipariş edilen ürün ve varyantlar,
+   - **Shipping Address:** Teslimat adresi (İlçe / İl / Türkiye),
+   - **Billing Address & Metadata:** Fatura türü (Bireysel / Kurumsal), kurumsal faturalarda şirket unvanı, vergi dairesi ve 10 haneli vergi numarası yer alır.
+
+### 8.2 Ödeme Güvenlik Kapısı
+
+- **Geliştirme:** Yalnızca `NODE_ENV !== "production"` ve `ALLOW_DEV_PAYMENT="true"` olduğunda sahte sistem ödemesi (`pp_system_default`) ile sipariş tamamlanabilir.
+- **Üretim:** Medusa Payment Guard modülü açılışta ve Next.js vitrin checkout API'si istek anında fail-closed prensibiyle sahte ödemeyi engeller; gerçek bir ödeme sağlayıcısı (örn. PayTR) olmadan sipariş alınamaz.
+- **Uçtan Uca Doğrulama:**
+  ```bash
+  pnpm verify:checkout
+  ```

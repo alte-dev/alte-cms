@@ -48,43 +48,42 @@ Bu doküman, aşamalı e-ticaret platformunun geliştirme fazlarını, teslimat 
 
 ---
 
-### 📋 Faz 2: Payload CMS 3 ve Puck Görsel Sayfa Düzenleyici
+### ✅ Faz 2: Vitrin (Storefront) ve Sepet Deneyimi (TAMAMLANDI)
 
-- [ ] Puck görsel blok bileşenleri (Hero, Ürün Izgarası, Metin & Görsel, Banner, SSS)
-- [ ] JSON veri modelinin Payload CMS'e entegrasyonu
-- [ ] Ürün sayfalarını `medusaProductId` ile zenginleştirme altyapısı
-- [ ] Blog ve kurumsal sayfalar koleksiyonları
-
----
-
-### 📋 Faz 3: Storefront Arayüzü ve Kullanıcı Deneyimi
-
-- [ ] Medusa resmi starter storefront temelinde modern, responsive arayüz
-- [ ] Ürün listeleme, filtreleme (kategori, fiyat, varyant) ve anlık arama
-- [ ] Ürün detay sayfası (galeri, varyant seçimi, stok durumu, KDV dahil fiyat)
-- [ ] Boş durum (empty state) ve yüklenme (skeleton) bileşenleri
+- [x] Next.js 15 App Router vitrin mimarisi (Anasayfa, /urunler, /urun/[handle], /kategori/[slug], /sepet)
+- [x] SSR ürün listeleme, filtreleme, sıralama ve sayfalama
+- [x] Dinamik ücretsiz kargo barajı göstergesi (Medusa kargo kurallarından dinamik okuma)
+- [x] Sepet çekmecesi ve sepet sayfası (ekleme, adet güncelleme, silme, KDV dahil ara toplam/toplam)
+- [x] Stok koruması: Yetersiz stokta (N+1) HTTP 400 ve dostça Türkçe hata bildirimi
+- [x] JSON-LD Product ve Breadcrumb şemaları
+- [x] Otomatik vitrin doğrulama paketi (`scripts/verify-storefront.ts`, `pnpm verify:storefront`)
 
 ---
 
-### 📋 Faz 4: Müşteri Hesabı ve Kimlik Doğrulama
+### ✅ Faz 3: Misafir Checkout, Kupon ve Sipariş Onayı (TAMAMLANDI)
 
-- [ ] Müşteri kayıt ve giriş akışları (Rate-limit korumalı)
-- [ ] Şifremi unuttum / Şifre sıfırlama e-posta akışı
-- [ ] Profil düzenleme ve teslimat/fatura adres defteri
-- [ ] Müşteri sipariş geçmişi ve durum sorgulama ekranı
+- [x] Yasal placeholder sayfaları (`/sayfa/mesafeli-satis-sozlesmesi`, `/sayfa/kvkk`)
+- [x] Medusa v2 promosyon ve kupon entegrasyonu (`POST/DELETE /store/carts/:id/promotions`, `TEST10`, `TEST50TL`)
+- [x] Geçersiz kuponda kullanıcı dostu Türkçe hata: _"Geçersiz veya süresi dolmuş kupon kodu."_
+- [x] Misafir checkout formu (`/odeme`):
+  - İletişim bilgileri ve Türkiye cep telefonu E.164 normalizasyonu (`+905...`)
+  - Teslimat adresi (Ad, Soyad, 81 il dropdown, İlçe, Açık adres, Posta kodu)
+  - Fatura bilgileri (Bireysel / Kurumsal geçişi; Kurumsal için 10 haneli Vergi No; **TC Kimlik No kesinlikle toplanmaz**)
+  - Kargo yöntemi seçimi (`/store/shipping-options`)
+  - Mesafeli Satış Sözleşmesi ve KVKK yasal onay checkbox'ları (audit zaman damgalı)
+  - Çift sipariş koruması (submit butonu loading durumunda devre dışı)
+- [x] Sipariş tamamlama ve güvenlik kapısı:
+  - Fail-closed: `NODE_ENV=production` veya `ALLOW_DEV_PAYMENT !== 'true'` olduğunda ödeme çağrısı durdurulur.
+  - Sadece development + `ALLOW_DEV_PAYMENT=true` olduğunda sipariş tamamlanır.
+- [x] Sipariş onayı (`/siparis-onay`):
+  - Sipariş sonrası kısa ömürlü (1 saat) `_order_confirmation` httpOnly cookie'si yazılır, `cart_id` silinir.
+  - Cookie yoksa `/` ana sayfaya yönlendirilir; varsa Medusa'dan siparişi çekip TL formatında özetler.
+- [x] Vitest birim testleri (18 test, telefon normalizasyonu, vergi no, 81 il, checkout schema, payment gate)
+- [x] Uçtan uca E2E test script'i (`scripts/verify-checkout.ts`, `pnpm verify:checkout`)
 
 ---
 
-### 📋 Faz 5: Sepet, Kupon ve Kargo Motoru
-
-- [ ] Dinamik sepet çekmecesi ve sepet sayfası
-- [ ] İndirim kuponu ve promosyon kodu motoru (brute-force korumalı)
-- [ ] Kargo ücreti hesaplama (belirli sepet tutarı üzeri ücretsiz kargo desteği)
-- [ ] Adres adımları ve form doğrulamaları (TC Kimlik / Vergi No opsiyonel desteği)
-
----
-
-### 📋 Faz 6: Ödeme Sağlayıcıları (PayTR & Kapıda Ödeme)
+### 📋 Faz 4: Ödeme Sağlayıcıları (PayTR & Kapıda Ödeme)
 
 - [ ] PayTR iFrame ve 3D Secure ödeme sağlayıcısı eklentisi
 - [ ] PayTR sunucu bildirim (callback/webhook) işleyicisi (HMAC, timingSafeEqual, tutar kontrolü, idempotency)
