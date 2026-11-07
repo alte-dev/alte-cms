@@ -1,13 +1,8 @@
 import { Module } from "@medusajs/framework/utils";
-import productionPaymentGuardLoader from "../../loaders/production-payment-guard";
+import { PaymentGuardModuleService } from "./service";
 
-export class PaymentGuardModuleService {
-  async onApplicationStart() {
-    // Ensured via loader
-  }
-}
+export * from "./service";
 
 export default Module("paymentGuardModuleService", {
   service: PaymentGuardModuleService,
-  loaders: [productionPaymentGuardLoader],
 });
