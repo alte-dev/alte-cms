@@ -2,6 +2,13 @@ import type { CollectionConfig, Access } from "payload";
 import type { UserRole } from "@alte/shared";
 import path from "path";
 
+export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+export function validateFileSize(fileSize?: number): boolean {
+  if (!fileSize) return true;
+  return fileSize <= MAX_FILE_SIZE_BYTES;
+}
+
 const isStaffOrAdmin: Access = ({ req: { user } }) => {
   if (!user) return false;
   const role = user.role as UserRole;
@@ -58,6 +65,19 @@ export const Media: CollectionConfig = {
     create: isStaffOrAdmin,
     update: isStaffOrAdmin,
     delete: isAdminOrShopManager,
+  },
+  hooks: {
+    beforeChange: [
+      ({ req, data }) => {
+        const file = (req as any)?.file;
+        if (file && !validateFileSize(file.size)) {
+          throw new Error(
+            `Dosya boyutu 5 MB sınırını aşamaz (Yüklenen boyut: ${(file.size / (1024 * 1024)).toFixed(2)} MB).`,
+          );
+        }
+        return data;
+      },
+    ],
   },
   fields: [
     {

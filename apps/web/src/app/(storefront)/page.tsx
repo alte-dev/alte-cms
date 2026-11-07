@@ -169,6 +169,7 @@ export default async function HomePage() {
                     }}
                   >
                     {product.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={product.thumbnail}
                         alt={product.title}

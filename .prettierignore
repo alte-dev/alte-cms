@@ -8,3 +8,5 @@ pnpm-lock.yaml
 media/uploads
 .gitleaks.toml
 next-env.d.ts
+.medusa
+
