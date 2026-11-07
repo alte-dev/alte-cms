@@ -73,7 +73,27 @@ cp apps/web/.env.example apps/web/.env
 
 > Zorunlu ortam değişkenleri eksik olduğunda uygulamalar güvenlik sebebiyle başlamayacaktır (Fail-closed mimarisi).
 
-### Adım 5: Geliştirme Modunda Çalıştırma
+### Adım 5: Türkiye Mağaza Yapılandırması ve Test Kataloğu
+
+Medusa veritabanını Türkiye mağazasına (TRY, KDV, Ana Depo, Kargo kuralları) göre tek komutla idempotent yapılandırın:
+
+```bash
+pnpm setup:store
+```
+
+Kataloğa otomatik varyantlı ve envanterli test ürünleri yükleyin:
+
+```bash
+pnpm seed:fake --count 100
+```
+
+Mağaza ayarlarını, vergi ve kargo eşiklerini otomatik doğrulayın:
+
+```bash
+pnpm verify:store
+```
+
+### Adım 6: Geliştirme Modunda Çalıştırma
 
 Tüm servisleri tek komutla başlatın:
 
