@@ -2,6 +2,7 @@
 .env*
 !.env.example
 *.sql
+!scripts/docker-init-db.sql
 *.dump
 *.tgz
 *.tar.gz
@@ -18,8 +19,9 @@ node_modules/
 .pnpm-store/
 .pnpm-debug.log*
 
-# Next.js Build & Outputs
+# Next.js & Medusa Build Outputs
 .next/
+.medusa/
 out/
 build/
 dist/
@@ -27,8 +29,10 @@ dist/
 # Payload CMS & Media Uploads
 media/uploads/
 uploads/
-*.sqlite
-*.sqlite3
+*.sql
+!scripts/docker-init-db.sqlite
+*.sql
+!scripts/docker-init-db.sqlite3
 *.db
 payload.db*
 
@@ -56,7 +60,13 @@ coverage/
 cypress/videos/
 cypress/screenshots/
 .turbo/
+*.tsbuildinfo
 
 # System / Temporary files
 tmp/
 temp/
+
+# Benchmark & Measurement Raw Outputs
+docs/measurements/*.csv
+docs/measurements/seed-catalog-*.json
+

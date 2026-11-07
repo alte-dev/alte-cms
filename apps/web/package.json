@@ -1,0 +1,37 @@
+{
+  "name": "@alte/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Storefront (Next.js 15) and Payload CMS 3 Admin",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "create-admin": "tsx src/scripts/create-first-admin.ts"
+  },
+  "dependencies": {
+    "@alte/shared": "workspace:*",
+    "@payloadcms/db-postgres": "3.93.0",
+    "@payloadcms/next": "3.93.0",
+    "@payloadcms/richtext-lexical": "3.93.0",
+    "dotenv": "16.4.7",
+    "graphql": "16.10.0",
+    "lucide-react": "^1.16.0",
+    "next": "15.5.29",
+    "payload": "3.93.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "15.5.29",
+    "@types/node": "22.10.7",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "typescript": "5.7.3",
+    "vitest": "3.0.7"
+  }
+}

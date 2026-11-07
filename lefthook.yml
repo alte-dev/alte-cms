@@ -2,7 +2,7 @@ pre-commit:
   commands:
     gitleaks:
       tags: security secret-scan
-      run: gitleaks protect --staged --verbose
+      run: npx tsx scripts/check-gitleaks.ts
     lint:
       tags: style
       run: pnpm lint
