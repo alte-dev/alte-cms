@@ -206,9 +206,15 @@ export function generateSeedPayload(
 
     if (isSimple) {
       products.push({
-        title: i === 1 ? "Örnek Sabit Test Ürünü #1" : `Örnek Sade Ürün #${i} ${category ? `(${category.name})` : ""}`,
+        title:
+          i === 1
+            ? "Örnek Sabit Test Ürünü #1"
+            : `Örnek Sade Ürün #${i} ${category ? `(${category.name})` : ""}`,
         handle,
-        description: i === 1 ? "Deterministik vitrin ve stok testleri için sabit test ürünü #1." : `Otomatik katalog testi için sade ürün #${i} (Batch: ${batchId}).`,
+        description:
+          i === 1
+            ? "Deterministik vitrin ve stok testleri için sabit test ürünü #1."
+            : `Otomatik katalog testi için sade ürün #${i} (Batch: ${batchId}).`,
         status: "published",
         shipping_profile_id: metadata.shippingProfileId,
         sales_channels: [{ id: metadata.salesChannelId }],
@@ -313,6 +319,26 @@ export async function seedProducts(
   for (let i = 0; i < payloads.length; i++) {
     const product = payloads[i];
     try {
+      if (product.handle === "test-urun-sabit-1") {
+        try {
+          const checkRes = await fetch(
+            `${MEDUSA_URL}/admin/products?handle[]=test-urun-sabit-1&fields=*variants`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+          if (checkRes.ok) {
+            const checkData = (await checkRes.json()) as any;
+            if (checkData.products && checkData.products.length > 0) {
+              created++;
+              continue; // test-urun-sabit-1 is already present in DB
+            }
+          }
+        } catch {
+          // ignore check error and proceed
+        }
+      }
+
       const res = await fetch(`${MEDUSA_URL}/admin/products`, {
         method: "POST",
         headers: {

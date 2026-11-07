@@ -72,7 +72,9 @@ describe("productionPaymentGuard", () => {
       await executePaymentSecurityCheck(mockContainer, mockLogger, "development");
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('[Payment Guard] Bulunan ödeme sağlayıcıları: ["pp_system_default"]'),
+        expect.stringContaining(
+          '[Payment Guard] Bulunan ödeme sağlayıcıları: ["pp_system_default"]',
+        ),
       );
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining("Medusa is operating with dummy 'pp_system_default'"),
@@ -132,7 +134,9 @@ describe("productionPaymentGuard", () => {
       try {
         await executePaymentSecurityCheck(mockContainer, mockLogger, "production");
         expect(mockLogger.error).toHaveBeenCalledWith(
-          expect.stringContaining("Fail-closed: Exiting process due to payment provider query error"),
+          expect.stringContaining(
+            "Fail-closed: Exiting process due to payment provider query error",
+          ),
         );
         expect(exitMock).toHaveBeenCalledWith(1);
       } finally {
