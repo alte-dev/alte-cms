@@ -21,17 +21,17 @@ Depo herkese açık (Public) olduğu için güvenlik standartları "Sıfır Güv
 
 ## 2. Erişim Denetimi ve Rol İlkeleri (RBAC)
 
-Payload CMS 3 üzerinde tüm koleksiyon ve global nesneler için varsayılan kural **"kapalı" (default-closed)** ilkesidir:
+Payload CMS 3 üzerinde Users koleksiyonu **yalnızca personel ve yönetim kadrosu içindir**. Müşteri hesapları, oturumları, sepet ve sipariş geçmişi tamamen Medusa v2 Auth & Customer altyapısında tutulur.
 
-- **Rol Hiyerarşisi:**
+- **Payload CMS Rol Hiyerarşisi (Yalnızca Personel):**
   1. `super-admin`: Sistem genelinde tam yetki (kullanıcı rolü değiştirme, silme, yapılandırma).
-  2. `admin`: Mağaza ve CMS yönetimi.
+  2. `admin`: Mağaza ve CMS yönetimi, personel kullanıcıları oluşturma ve yönetme.
   3. `shop-manager`: Ürün, sipariş, stok ve kargo yönetimi.
   4. `editor`: Tüm sayfa, blog ve medya içeriklerini düzenleme ve yayınlama.
   5. `author`: Yalnızca kendi yazdığı blog içeriklerini düzenleme.
-  6. `customer`: Varsayılan rol. Yalnızca kendi müşteri profilini ve sipariş geçmişini görüntüleyebilir.
-- **Anonim Erişim Yasağı:** Kimliği doğrulanmamış (ziyaretçi) kullanıcılar Users koleksiyonundan hiçbir veri okuyamaz.
-- **Yetki Yükseltme Koruması (Privilege Escalation):** Kayıt sırasında veya müşteri profil güncellemesinde `role` alanı sunucu tarafında kilitlenmiştir; sadece `admin` veya `super-admin` tarafından güncellenebilir.
+- **Anonim Kayıt Yasağı:** Users koleksiyonunda anonim kayıt (`Users.create`) kapalıdır. Yeni kullanıcılar yalnızca mevcut bir `admin` veya `super-admin` tarafından oluşturulabilir.
+- **İlk Süper Admin:** İlk kurulum için CLI bootstrap scripti (`pnpm create-admin`) kullanılır.
+- **Müşteri Hesapları:** Müşteriler Payload CMS'te yer almaz (`customer` rolü Payload'dan ve `@alte/shared` rol sabitlerinden tamamen kaldırılmıştır). Müşteriler Medusa v2 Storefront API (`/store/customers`, `/auth/customer/emailpass`) üzerinden yönetilir.
 
 ---
 
@@ -80,3 +80,16 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
 - [ ] **User-Agent Kontrolü:** ModSecurity varsayılan kuralları (OWASP CRS), boş veya standart dışı `User-Agent` içeren istekleri (örneğin PayTR botunu) engelleyebilir. Callback rotasında User-Agent kuralı bypass edilmelidir.
 - [ ] **IP Whitelist Kontrolü (Doğrulanması gereken):** PayTR teknik destek tarafından paylaşılan resmi bildirim IP blokları güvenlik duvarında beyaz listeye alınmalıdır.
 - [ ] **Hız Sınırlaması İstisnası:** Callback rotası genel müşteri rate limit kurallarından muaf tutulmalı, yalnızca PayTR sunucu IP'lerine açık olmalıdır.
+
+---
+
+## 6. Bilinen Bağımlılık İstisnaları (Known Security Exceptions)
+
+`pnpm audit --prod --audit-level=high` sonucu **0 yüksek / 0 kritik açık** ile temizdir. Üretim bağımlılıklarında kalan orta ve düşük seviyeli 2 bulgu aşağıda teknik gerekçeleriyle listelenmiştir:
+
+1. **`uuid <11.1.1` (Moderate - GHSA-w5hq-g745-h8pq):**
+   - **Yol:** `apps/medusa > @medusajs/medusa > @medusajs/event-bus-redis > bullmq@5.13.0 > uuid@9.0.1`
+   - **Gerekçe:** Güvenlik açığı, `uuid` kütüphanesinin v3/v5/v6 metotlarına kullanıcı kontrolündeki harici `buffer` sağlandığında sınır denetimi eksikliğinden kaynaklanır. BullMQ yalnızca dahili iş (job) kimlikleri için `uuid.v4()` çağırır; harici buffer kabul etmez. BullMQ v5, `uuid` major sürümünü yükseltmediği için `pnpm.overrides` ile zorlanması durumunda ESM/CJS uyumsuzluğu riski vardır. Mevcut kullanım bağlamında istismar edilemez.
+2. **`deepmerge <=4.3.1` (Low - GHSA-gcqx-w48m-w2h4):**
+   - **Yol:** `apps/web > @payloadcms/db-postgres > @payloadcms/drizzle > payload@3.93.0 > deepmerge@4.3.1` ve `@sendgrid/helpers > deepmerge@4.3.1`
+   - **Gerekçe:** `deepmerge` kütüphanesinin prototip kirlenmesi (prototype pollution) zafiyeti olup, upstream geliştirici tarafından henüz yamalanmamıştır (`Patched versions: <0.0.0`). Payload CMS ve SendGrid dahili nesne birleştirmede kullanmakta olup, girdi doğrulama Zod şemaları ve Payload strict collection tanımlarıyla sınırlandırılmıştır. Upstream yama yayınlandığında güncellenecektir.

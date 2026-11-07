@@ -26,22 +26,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Pinned to commit SHA: gitleaks/gitleaks-action@v2.3.9
-      - name: Gitleaks Secret Scanner (Fail on Secret Leak)
-        uses: gitleaks/gitleaks-action@785501d5dd578e9f50f4a2d8fa320f7881c95786
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+      # Standalone Gitleaks binary with verified SHA-256 checksum
+      # Prevents GitHub organization licensing error on alte-dev org
+      - name: Install and Run Gitleaks (Secret Scanner)
+        run: |
+          GITLEAKS_VERSION="8.24.0"
+          GITLEAKS_CHECKSUM="cb49b7de5ee986510fe8666ca0273a6cc15eb82571f2f14832c9e8920751f3a4"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          echo "${GITLEAKS_CHECKSUM}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/
+          rm gitleaks.tar.gz
+          gitleaks detect --source . --verbose --redact
 
-      # Pinned to commit SHA: pnpm/action-setup@v4.1.0
+      # Pinned to commit SHA: pnpm/action-setup@v4.1.0 (commit a7487c7e89a18df4991f7f222e4898a00d66ddda)
       - name: Setup pnpm
-        uses: pnpm/action-setup@a3252b78d4704f53f34012df31337ca53f25621a
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
         with:
           version: 10.5.2
 
       # Pinned to commit SHA: actions/setup-node@v4.2.0
       - name: Setup Node.js 22 LTS
-        uses: actions/setup-node@1e60f620b9541d16abce94c540972c47ca712ce0
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
