@@ -563,7 +563,9 @@ Detaylı saniye bazlı örnekler: \`${path.basename(csvFile)}\`
   console.log(`\n📄 docs/MEMORY-BASELINE.md başarıyla üretildi.`);
 }
 
-main().catch((err) => {
-  console.error("❌ Ölçüm yürütülemedi:", err);
-  process.exit(1);
-});
+if (process.argv[1]?.includes("measure-memory")) {
+  main().catch((err) => {
+    console.error("❌ Ölçüm yürütülemedi:", err);
+    process.exit(1);
+  });
+}

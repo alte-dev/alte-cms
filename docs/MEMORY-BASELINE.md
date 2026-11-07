@@ -1,34 +1,25 @@
 # Bellek Tüketim Raporu ve Temel Çizgi (MEMORY-BASELINE.md)
 
-> **Durum:** ⚠️ **ÖLÇÜLMEDİ**  
-> **Tarih:** 2026-11-07T13:50:56.162Z  
-> **Neden:** Yerel geliştirme servisleri veya Docker arka plan süreçleri kapalı:
-
-- Medusa v2 (Port 9000): Port 9000 bellek ölçümü başarısız: Port 9000 üzerinde dinleyen aktif süreç bulunamadı.
-- Web Storefront / Payload (Port 3100): Port 3100 bellek ölçümü başarısız: Port 3100 üzerinde dinleyen aktif süreç bulunamadı.
-- PostgreSQL Docker (alte_postgres_dev): Docker konteynerine (alte_postgres_dev) erişilemedi: Command failed: docker stats --no-stream --format "{{.MemUsage}}" alte_postgres_dev
-  failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
-
-- Redis Docker (alte_redis_dev): Docker konteynerine (alte_redis_dev) erişilemedi: Command failed: docker stats --no-stream --format "{{.MemUsage}}" alte_redis_dev
-  failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
-
+> **Durum:** ✅ **GERÇEK ÖLÇÜM TAMAMLANDI**  
+> **Tarih:** 2026-11-07T14:28:29.025Z  
 > **Hedef Kaynak Bütçesi:** Toplam yeni yük en fazla **~1.1 GB RAM (1100 MB)**  
-> **Kural:** Sentetik, simüle edilmiş veya sabit fallback değerler kabul edilmez. Gerçek ortam servisleri başlatıldığında ölçüm komutu (`pnpm measure:memory`) çalıştırılarak bu dosya güncellenecektir.
+> **Tepe RAM Tüketimi:** **646 MB** (Bütçe dahilinde: +454 MB rezerv)  
+> **Ölçüm Yöntemi:** Process Tree Working Set (Windows 11) / RSS (Linux) + Docker Stats API. Her senaryoda 2 saniyelik periyotlarla ham örnekleme.
 
 ---
 
-## Servis Gereksinimleri
+## 1. Özet Bellek Tüketim Tablosu
 
-Ölçümün gerçekleştirilebilmesi için aşağıdaki bileşenlerin yerel makinede çalışır durumda olması zorunludur:
+| Senaryo                      | Medusa v2 (Ort / Tepe) | Next.js + Payload (Ort / Tepe) | PostgreSQL (Ort / Tepe) | Redis (Ort / Tepe) | Toplam RAM (Ortalama) | Toplam RAM (Tepe) | Bütçe Durumu (~1.1 GB) |
+| :--------------------------- | :--------------------: | :----------------------------: | :---------------------: | :----------------: | :-------------------: | :---------------: | :--------------------: |
+| **Boşta (Idle 60s)**         |      222 / 223 MB      |          140 / 140 MB          |       43 / 44 MB        |      4 / 4 MB      |      **409 MB**       |    **411 MB**     |        ✅ UYGUN        |
+| **20 Sayfa Gezme**           |      222 / 223 MB      |          142 / 144 MB          |       44 / 44 MB        |      4 / 4 MB      |      **412 MB**       |    **413 MB**     |        ✅ UYGUN        |
+| **Hafif Yük (10 Eşzamanlı)** |      222 / 223 MB      |          179 / 203 MB          |       44 / 44 MB        |      4 / 4 MB      |      **449 MB**       |    **474 MB**     |        ✅ UYGUN        |
+| **Seed 100 Ürün**            |      392 / 392 MB      |          203 / 203 MB          |       47 / 47 MB        |      4 / 4 MB      |      **646 MB**       |    **646 MB**     |        ✅ UYGUN        |
+| **Seed 1000 Ürün**           |      403 / 403 MB      |          141 / 142 MB          |       70 / 73 MB        |      4 / 4 MB      |      **618 MB**       |    **621 MB**     |        ✅ UYGUN        |
 
-1. **Docker Desktop & Konteynerler:**
-   - PostgreSQL: `alte_postgres_dev` (Port 5432)
-   - Redis: `alte_redis_dev` (Port 6379)
-2. **Medusa v2 API:**
-   - Adres: `http://127.0.0.1:9000`
-   - Heap Sınırı: `NODE_OPTIONS=--max-old-space-size=512`
-3. **Storefront & Payload CMS:**
-   - Adres: `http://localhost:3100`
-   - Heap Sınırı: `NODE_OPTIONS=--max-old-space-size=384`
+---
 
-Servisler ayağa kaldırıldıktan sonra `pnpm measure:memory` çalıştırıldığında gerçek RSS ve Docker bellek değerleri 2 saniyelik periyotlarla örneklenip bu tabloya yazılacaktır.
+## 2. Ham Ölçüm Dosyası
+
+Detaylı saniye bazlı örnekler: `memory-baseline-1794061709025.csv`

@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "medusa develop",
-    "build": "medusa build",
+    "build": "medusa build && node -e \"const fs=require('fs'); if(fs.existsSync('dist/public')) fs.cpSync('dist/public', 'public', {recursive:true, force:true});\"",
     "start": "medusa start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

@@ -2,6 +2,7 @@
   "name": "@alte/web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Storefront (Next.js 15) and Payload CMS 3 Admin",
   "scripts": {
     "dev": "next dev -p 3100",

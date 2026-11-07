@@ -6,6 +6,12 @@
  * 3. Storefront SSR verification (localhost:3100)
  */
 
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
+dotenv.config();
+
 interface TestResult {
   name: string;
   url: string;
