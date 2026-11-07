@@ -178,7 +178,7 @@ export function generateSeedPayload(
   const products: SeedProductInput[] = [];
 
   for (let i = 1; i <= count; i++) {
-    const handle = `test-urun-${batchId}-${i}`;
+    const handle = i === 1 ? "test-urun-sabit-1" : `test-urun-${batchId}-${i}`;
     const basePrice = 150 + (i % 30) * 25; // in TRY decimal
     const category =
       metadata.categories.length > 0
@@ -199,15 +199,16 @@ export function generateSeedPayload(
     }
 
     // Determine product pattern:
+    // i === 1: Fixed sample product with single variant and stock = 5 for deterministic tests
     // i % 3 !== 1: Simple product (single default variant)
-    // i % 3 === 1: Variant product (Beden / Renk variants)
-    const isSimple = i % 3 !== 1;
+    // i % 3 === 1 (i > 1): Variant product (Beden / Renk variants)
+    const isSimple = i === 1 || i % 3 !== 1;
 
     if (isSimple) {
       products.push({
-        title: `Örnek Sade Ürün #${i} ${category ? `(${category.name})` : ""}`,
+        title: i === 1 ? "Örnek Sabit Test Ürünü #1" : `Örnek Sade Ürün #${i} ${category ? `(${category.name})` : ""}`,
         handle,
-        description: `Otomatik katalog testi için sade ürün #${i} (Batch: ${batchId}).`,
+        description: i === 1 ? "Deterministik vitrin ve stok testleri için sabit test ürünü #1." : `Otomatik katalog testi için sade ürün #${i} (Batch: ${batchId}).`,
         status: "published",
         shipping_profile_id: metadata.shippingProfileId,
         sales_channels: [{ id: metadata.salesChannelId }],
@@ -219,7 +220,7 @@ export function generateSeedPayload(
         variants: [
           {
             title: "Standart",
-            sku: `SKU-${batchId}-${i}-STD`,
+            sku: i === 1 ? "SKU-SABIT-1-STD" : `SKU-${batchId}-${i}-STD`,
             manage_inventory: true,
             allow_backorder: false,
             options: { Varsayılan: "Standart" },
@@ -330,9 +331,10 @@ export async function seedProducts(
         // Set inventory level for each variant at Ana Depo
         for (let vIdx = 0; vIdx < variants.length; vIdx++) {
           const variant = variants[vIdx];
+          // First product has exactly 5 units (for exact N+1 insufficient inventory test)
           // Last product has 0 stock (out-of-stock test), others have 50 units
           const isOutOfStock = i === payloads.length - 1;
-          const stockedQuantity = isOutOfStock ? 0 : 50;
+          const stockedQuantity = isOutOfStock ? 0 : i === 0 ? 5 : 50;
 
           try {
             // Find inventory item by SKU
