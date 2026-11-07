@@ -1,42 +1,37 @@
 import type { CollectionConfig, Access, FieldAccess } from "payload";
 import { USER_ROLES, type UserRole } from "@alte/shared";
 
-// Check if user has administrative or staff role
-const isStaff = (role?: UserRole): boolean => {
-  return ["super-admin", "admin", "shop-manager", "editor", "author"].includes(role as string);
-};
-
+// Check if user has administrative privileges
 const isAdmin = (role?: UserRole): boolean => {
   return role === "super-admin" || role === "admin";
 };
 
 // Access Control: Read Users
-// Anonymous cannot read; Customers only read their own document; Staff/Admins can read all.
+// Only authenticated staff members can read the Users collection.
+// Anonymous visitors and external customers have ZERO access.
 export const canReadUsers: Access = ({ req: { user } }) => {
   if (!user) {
     return false; // Default closed: anonymous blocked!
   }
+  return true; // All users in this collection are authenticated staff
+};
 
-  const role = user.role as UserRole;
-  if (isAdmin(role) || isStaff(role)) {
-    return true;
-  }
-
-  // Customer can only read their own profile
-  return {
-    id: {
-      equals: user.id,
-    },
-  };
+// Access Control: Create Users
+// ONLY existing Admins or Super-Admins can create new staff users.
+// Public / anonymous registration is strictly BLOCKED.
+export const canCreateUsers: Access = ({ req: { user } }) => {
+  if (!user) return false;
+  return isAdmin(user.role as UserRole);
 };
 
 // Access Control: Update Users
+// Admins can update any staff user; individual staff can update their own profile (name, password).
 export const canUpdateUsers: Access = ({ req: { user } }) => {
   if (!user) return false;
   const role = user.role as UserRole;
   if (isAdmin(role)) return true;
 
-  // Customers and staff can only update themselves
+  // Staff can only update their own profile
   return {
     id: {
       equals: user.id,
@@ -45,12 +40,13 @@ export const canUpdateUsers: Access = ({ req: { user } }) => {
 };
 
 // Access Control: Delete Users
+// Only Admins or Super-Admins can delete staff accounts.
 export const canDeleteUsers: Access = ({ req: { user } }) => {
   if (!user) return false;
   return isAdmin(user.role as UserRole);
 };
 
-// Field Level Access: Only Admins can modify the role field
+// Field Level Access: Only Admins/Super-Admins can assign or modify roles
 export const canChangeRole: FieldAccess = ({ req: { user } }) => {
   if (!user) return false;
   return isAdmin(user.role as UserRole);
@@ -70,13 +66,10 @@ export const Users: CollectionConfig = {
   },
   access: {
     read: canReadUsers,
-    create: () => true, // Registration allowed
+    create: canCreateUsers, // Strictly restricted to admin/super-admin
     update: canUpdateUsers,
     delete: canDeleteUsers,
-    admin: ({ req: { user } }) => {
-      if (!user) return false;
-      return isStaff(user.role as UserRole);
-    },
+    admin: ({ req: { user } }) => Boolean(user), // All users in Users collection are staff
   },
   fields: [
     {
@@ -88,26 +81,13 @@ export const Users: CollectionConfig = {
       name: "role",
       type: "select",
       required: true,
-      defaultValue: "customer",
+      defaultValue: "editor",
       options: USER_ROLES.map((role) => ({
         label: role,
         value: role,
       })),
       access: {
         update: canChangeRole,
-      },
-      hooks: {
-        beforeChange: [
-          ({ req: { user }, value, operation }) => {
-            // If creating an account anonymously or by non-admin, force default role 'customer'
-            if (operation === "create") {
-              if (!user || !isAdmin(user.role as UserRole)) {
-                return "customer";
-              }
-            }
-            return value;
-          },
-        ],
       },
     },
   ],

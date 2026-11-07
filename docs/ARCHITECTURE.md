@@ -62,6 +62,9 @@ Platform iki ana uygulama ve ortak bir kütüphane paketinden (`pnpm monorepo`) 
   - SSR (Server-Side Rendering) ile hızlı ilk sayfa yükleme ve SEO
   - Medusa API'si üzerinden ürün listeleme ve sepet arayüzü
   - Türkçe (tr-TR) yerelleştirme, Türk Lirası (₺) ve KDV dahil fiyat gösterimi
+- **Kullanıcı & Oturum Ayrımı (Personel vs Müşteri):**
+  - **Personel:** Payload CMS `Users` koleksiyonu yalnızca personel içindir (`super-admin`, `admin`, `shop-manager`, `editor`, `author`). Müşteri rolü barındırmaz.
+  - **Müşteriler:** Müşteri hesapları, sepet oturumları ve sipariş geçmişi doğrudan Medusa v2 Storefront API üzerinden yönetilir.
 
 ---
 

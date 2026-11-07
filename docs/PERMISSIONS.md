@@ -1,6 +1,10 @@
 # Roller ve İzin Matrisi (PERMISSIONS.md)
 
-Bu doküman, platformun 6 rolü ile yönetim modülleri arasındaki yetki matrisini ve bu matrisin Payload CMS 3 ile Medusa v2 üzerinde nasıl karşılandığını detaylandırır.
+Bu doküman, platformun personel rolleri ile yönetim modülleri arasındaki yetki matrisini ve bu matrisin Payload CMS 3 ile Medusa v2 üzerinde nasıl karşılandığını detaylandırır.
+
+> **Önemli Tasarım İlkesi (Personel vs Müşteri Ayrımı):**  
+> Payload CMS 3 `Users` koleksiyonu **yalnızca personel ve yönetim kadrosu içindir** (5 rol: `super-admin`, `admin`, `shop-manager`, `editor`, `author`).  
+> Müşteri hesapları, oturumları, sepet ve sipariş geçmişi **Medusa v2** altyapısında tutulur. `customer` rolü Payload'dan ve `@alte/shared` rol sabitlerinden tamamen kaldırılmıştır.
 
 ---
 
@@ -11,37 +15,39 @@ Bu doküman, platformun 6 rolü ile yönetim modülleri arasındaki yetki matris
 - **Tam (CRUD):** Oluşturma, Okuma, Güncelleme, Silme ve Yayınlama yetkisi.
 - **Yönet (RW):** Okuma ve Güncelleme yetkisi.
 - **Gör (R):** Yalnızca Okuma (Görüntüleme) yetkisi.
-- **Kendi (Own):** Yalnızca kendi oluşturduğu içeriği düzenleme veya kendi profilini görme yetkisi.
+- **Kendi (Own):** Yalnızca kendi oluşturduğu içeriği düzenleme yetkisi.
 - **Yok (-):** Erişim tamamen kapalı.
 
-| Modül                           | super-admin |    admin     | shop-manager |   editor   |       author       |     customer     |
-| :------------------------------ | :---------: | :----------: | :----------: | :--------: | :----------------: | :--------------: |
-| **1. Ürünler (Katalog)**        |     Tam     |     Tam      |     Tam      |  Gör (R)   |         -          | Gör (Storefront) |
-| **2. Siparişler**               |     Tam     |     Tam      |     Tam      |  Gör (R)   |         -          |   Kendi (Own)    |
-| **3. Müşteriler**               |     Tam     |     Tam      |  Yönet (RW)  |     -      |         -          |   Kendi (Own)    |
-| **4. Ödemeler & Finans**        |     Tam     |     Tam      |  Yönet (RW)  |     -      |         -          |        -         |
-| **5. Mağaza Ayarları**          |     Tam     |     Tam      |   Gör (R)    |     -      |         -          |        -         |
-| **6. Sayfa Oluşturucu (Puck)**  |     Tam     |     Tam      |      -       |    Tam     | Kendi (Own Taslak) |        -         |
-| **7. Tema & Menü Ayarları**     |     Tam     |     Tam      |      -       | Yönet (RW) |         -          |        -         |
-| **8. Analitik & Raporlar**      |     Tam     |     Tam      |     Tam      |     -      |         -          |        -         |
-| **9. Eklentiler & Entegrasyon** |     Tam     |  Yönet (RW)  |      -       |     -      |         -          |        -         |
-| **10. Kullanıcılar & Roller**   |     Tam     | Yönet (RW)\* |      -       |     -      |         -          |  Kendi (Profil)  |
+| Modül                           | super-admin |    admin     | shop-manager |   editor   |       author       | Müşteri (Medusa Storefront) |
+| :------------------------------ | :---------: | :----------: | :----------: | :--------: | :----------------: | :-------------------------: |
+| **1. Ürünler (Katalog)**        |     Tam     |     Tam      |     Tam      |  Gör (R)   |         -          |      Gör (Storefront)       |
+| **2. Siparişler**               |     Tam     |     Tam      |     Tam      |  Gör (R)   |         -          |       Kendi (Medusa)        |
+| **3. Müşteriler**               |     Tam     |     Tam      |  Yönet (RW)  |     -      |         -          |       Kendi (Medusa)        |
+| **4. Ödemeler & Finans**        |     Tam     |     Tam      |  Yönet (RW)  |     -      |         -          |              -              |
+| **5. Mağaza Ayarları**          |     Tam     |     Tam      |   Gör (R)    |     -      |         -          |              -              |
+| **6. Sayfa Oluşturucu (Puck)**  |     Tam     |     Tam      |      -       |    Tam     | Kendi (Own Taslak) |              -              |
+| **7. Tema & Menü Ayarları**     |     Tam     |     Tam      |      -       | Yönet (RW) |         -          |              -              |
+| **8. Analitik & Raporlar**      |     Tam     |     Tam      |     Tam      |     -      |         -          |              -              |
+| **9. Eklentiler & Entegrasyon** |     Tam     |  Yönet (RW)  |      -       |     -      |         -          |              -              |
+| **10. Personel & Roller**       |     Tam     | Yönet (RW)\* |      -       |     -      |         -          |              -              |
 
-_\* Not: `admin` rolü yeni kullanıcı açabilir ve müşteri rollerini düzenleyebilir, ancak başka bir kullanıcıyı `super-admin` yapamaz._
+_\* Not: `admin` rolü yeni personel kullanıcısı açabilir ve rolleri düzenleyebilir, ancak başka bir kullanıcıyı `super-admin` yapamaz. Anonim kullanıcı oluşturma kapalıdır._
 
 ---
 
-## 2. Payload CMS 3 Tarafında Uygulama
+## 2. Payload CMS 3 Tarafında Uygulama (Yalnızca Personel)
 
 Payload CMS'te yetkiler her koleksiyonun `access` nesnesi ve alan seviyesindeki `access` fonksiyonları ile denetlenir:
 
-1. **Users Koleksiyonu:**
-   - `read`: Anonim engelli. Müşteri yalnızca kendi ID'sine ait kaydı görebilir (`{ id: { equals: user.id } }`). Admin/Super-admin tümünü görür.
-   - `update`: Müşteri yalnızca ad/soyad ve şifresini günceller. `role` alanı alan-seviyesi `canChangeRole` kontrolüyle yalnızca `admin` ve `super-admin`'e açılmıştır.
-   - `admin`: Panel erişimi (`access.admin`) yalnızca `super-admin`, `admin`, `shop-manager`, `editor` ve `author` rollerine açıktır (`customer` panele giriş yapamaz).
+1. **Users Koleksiyonu (Yalnızca Personel):**
+   - `create`: Anonim kayıt kapalıdır. Yalnızca `admin` ve `super-admin` yeni personel kullanıcısı oluşturabilir. İlk süper admin kurulumu için CLI bootstrap scripti (`pnpm create-admin`) kullanılır.
+   - `read`: Anonim engelli. Personel kullanıcılar kendi profilini veya admin/super-admin tüm personeli görebilir.
+   - `update`: Personel kendi ad/soyad ve şifresini günceller. `role` alanı alan-seviyesi `canChangeRole` kontrolüyle yalnızca `admin` ve `super-admin`'e açılmıştır (`admin` kullanıcıları kimseye `super-admin` veremez).
+   - `delete`: Yalnızca `super-admin`.
+   - `admin`: Panel erişimi (`access.admin`) Users koleksiyonundaki tüm geçerli personel rollerine (`super-admin`, `admin`, `shop-manager`, `editor`, `author`) açıktır.
 2. **Media Koleksiyonu:**
    - `read`: Genel (Storefront görselleri için `true`).
-   - `create` / `update`: `editor`, `shop-manager`, `admin`, `super-admin`.
+   - `create` / `update`: `editor`, `shop-manager`, `admin`, `super-admin`. Dosya boyutu sınırı: 5 MB (SVG engelli, yalnızca raster görseller).
    - `delete`: Yalnızca `shop-manager`, `admin`, `super-admin`.
 3. **Pages & Blog Koleksiyonları (Faz 2-3):**
    - `author`: Yalnızca `author === user.id` olan dokümanları güncelleyebilir ve yayınlayamaz (yalnızca `draft` durumunda kaydeder).

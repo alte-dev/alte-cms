@@ -1,15 +1,9 @@
 /**
  * Shared Roles across Payload CMS and Monorepo
- * 6 roles, default role is 'customer'.
+ * Payload Users are strictly STAFF/ADMINISTRATIVE members.
+ * Customer accounts are managed exclusively within Medusa v2.
  */
-export const USER_ROLES = [
-  "super-admin",
-  "admin",
-  "shop-manager",
-  "editor",
-  "author",
-  "customer",
-] as const;
+export const USER_ROLES = ["super-admin", "admin", "shop-manager", "editor", "author"] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
 
