@@ -1,0 +1,49 @@
+# DEV ONLY: Docker Compose for Local Development
+# DİKKAT: Docker ÜRETİM ortamında KULLANILMAYACAKTIR.
+# Bu dosya yerel makinede (Windows 11) sunucu kaynak kısıtlarını taklit ederek
+# PostgreSQL 16 ve Redis 7 servislerini başlatmak içindir.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: alte_postgres_dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev-only-postgres-password
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c max_connections=30
+      -c work_mem=4MB
+      -c maintenance_work_mem=16MB
+      -c effective_cache_size=128MB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/docker-init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    container_name: alte_redis_dev
+    command: >
+      redis-server
+      --maxmemory 64mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+
+volumes:
+  postgres_data:
