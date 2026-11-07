@@ -18,6 +18,6 @@ module.exports = defineConfig({
   },
   admin: {
     disable: false,
-    backendUrl: `http://${env.HOST}:${env.PORT}`,
+    backendUrl: process.env.MEDUSA_ADMIN_BACKEND_URL || `http://${env.HOST}:${env.PORT}`,
   },
 });

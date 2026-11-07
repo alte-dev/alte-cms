@@ -14,16 +14,21 @@
     "clean": "rimraf .medusa dist"
   },
   "dependencies": {
+    "@medusajs/admin-sdk": "2.22.4",
+    "@medusajs/dashboard": "2.22.4",
     "@medusajs/framework": "2.22.4",
     "@medusajs/icons": "2.22.4",
     "@medusajs/medusa": "2.22.4",
     "dotenv": "16.4.7",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "zod": "3.24.2"
   },
   "devDependencies": {
     "@medusajs/cli": "2.22.4",
     "@types/node": "22.10.7",
     "rimraf": "6.0.1",
+    "ts-node": "10.9.2",
     "typescript": "5.7.3",
     "vitest": "3.0.7"
   }

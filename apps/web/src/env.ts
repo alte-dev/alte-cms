@@ -14,7 +14,7 @@ const weakSecretPatterns = [
 ];
 
 const secretValidator = z
-  .string({ required_error: "PAYLOAD_SECRET is required" })
+  .string()
   .min(32, { message: "PAYLOAD_SECRET must be at least 32 characters long" })
   .refine(
     (val) => {
@@ -28,17 +28,21 @@ const secretValidator = z
 
 export const webEnvSchema = z.object({
   NEXT_PUBLIC_SERVER_URL: z
-    .string({ required_error: "NEXT_PUBLIC_SERVER_URL is required" })
+    .string()
+    .min(1, "NEXT_PUBLIC_SERVER_URL is required")
     .url("NEXT_PUBLIC_SERVER_URL must be a valid URL"),
   DATABASE_URI: z
-    .string({ required_error: "DATABASE_URI is required" })
+    .string()
+    .min(1, "DATABASE_URI is required")
     .url("DATABASE_URI must be a valid PostgreSQL connection URL"),
   PAYLOAD_SECRET: secretValidator,
   NEXT_PUBLIC_MEDUSA_URL: z
-    .string({ required_error: "NEXT_PUBLIC_MEDUSA_URL is required" })
+    .string()
+    .min(1, "NEXT_PUBLIC_MEDUSA_URL is required")
     .url("NEXT_PUBLIC_MEDUSA_URL must be a valid URL"),
   MEDUSA_BACKEND_URL: z
-    .string({ required_error: "MEDUSA_BACKEND_URL is required" })
+    .string()
+    .min(1, "MEDUSA_BACKEND_URL is required")
     .url("MEDUSA_BACKEND_URL must be a valid URL"),
   PAYLOAD_MEDIA_DIR: z.string().optional().default("media/uploads"),
   TRUST_PROXY: z
