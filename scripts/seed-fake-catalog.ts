@@ -8,9 +8,15 @@
  *   npx tsx scripts/seed-fake-catalog.ts --count 1000
  */
 
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
+dotenv.config();
+
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 
-interface SeedProductInput {
+export interface SeedProductInput {
   title: string;
   handle: string;
   description: string;
@@ -31,17 +37,26 @@ interface SeedProductInput {
   }>;
 }
 
+export interface SeedResult {
+  success: boolean;
+  created: number;
+  failed: number;
+}
+
 const CATEGORIES = ["Giyim", "Aksesuar", "Ayakkabı", "Ev & Yaşam", "Spor"];
 const SIZES = ["S", "M", "L", "XL"];
 const COLORS = ["Siyah", "Beyaz", "Mavi"];
 
-export function generateSeedPayload(count: number): SeedProductInput[] {
+export function generateSeedPayload(
+  count: number,
+  batchId = Date.now().toString(36),
+): SeedProductInput[] {
   const products: SeedProductInput[] = [];
 
   for (let i = 1; i <= count; i++) {
     const category = CATEGORIES[i % CATEGORIES.length];
-    const basePrice = (100 + (i % 40) * 25) * 100; // in kuruş (Medusa stores amounts in smallest currency unit)
-    const handle = `test-urun-${i}-${Date.now()}`;
+    const basePrice = (100 + (i % 40) * 25) * 100; // in kuruş (Medusa smallest unit)
+    const handle = `test-urun-${batchId}-${i}`;
     const title = `Örnek Test Ürünü #${i} (${category})`;
 
     const variants: SeedProductInput["variants"] = [];
@@ -50,7 +65,7 @@ export function generateSeedPayload(count: number): SeedProductInput[] {
       for (const size of SIZES) {
         variants.push({
           title: `${color} / ${size}`,
-          sku: `SKU-${i}-${color.substring(0, 2).toUpperCase()}-${size}`,
+          sku: `SKU-${batchId}-${i}-${color.substring(0, 2).toUpperCase()}-${size}`,
           manage_inventory: false,
           options: {
             Renk: color,
@@ -69,7 +84,7 @@ export function generateSeedPayload(count: number): SeedProductInput[] {
     products.push({
       title,
       handle,
-      description: `Otomatik bellek ve yük testi için sentetik ürün verisi #${i}.`,
+      description: `Otomatik bellek ve yük testi için sentetik ürün verisi #${i} (Batch: ${batchId}).`,
       status: "published",
       options: [
         { title: "Renk", values: COLORS },
@@ -97,9 +112,19 @@ async function getAdminToken(): Promise<string | null> {
     return process.env.MEDUSA_ADMIN_TOKEN;
   }
 
-  // Attempt to authenticate using dev credentials
-  const email = process.env.MEDUSA_ADMIN_EMAIL || "admin@example.com";
-  const password = process.env.MEDUSA_ADMIN_PASSWORD || "dev-only-password-min-32-chars-long";
+  const email = process.env.MEDUSA_ADMIN_EMAIL;
+  const password = process.env.MEDUSA_ADMIN_PASSWORD;
+
+  // STRICT REQUIREMENT: No hardcoded fallback credentials.
+  if (!email || !password) {
+    console.error(
+      "❌ HATA: MEDUSA_ADMIN_EMAIL veya MEDUSA_ADMIN_PASSWORD ortam değişkenleri tanımlı değil.",
+    );
+    console.error(
+      "Lütfen .env dosyasında MEDUSA_ADMIN_EMAIL ve MEDUSA_ADMIN_PASSWORD değerlerini sağlayın veya MEDUSA_ADMIN_TOKEN belirtin.",
+    );
+    process.exit(1);
+  }
 
   try {
     const res = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {
@@ -117,7 +142,10 @@ async function getAdminToken(): Promise<string | null> {
   }
 }
 
-export async function seedProducts(count: number): Promise<{ success: boolean; created: number }> {
+export async function seedProducts(
+  count: number,
+  onProgress?: (created: number, total: number, failed: number) => void,
+): Promise<SeedResult> {
   const isHealthy = await checkMedusaHealth();
   if (!isHealthy) {
     console.error(`❌ HATA: Medusa sunucusuna (${MEDUSA_URL}) erişilemedi.`);
@@ -133,8 +161,10 @@ export async function seedProducts(count: number): Promise<{ success: boolean; c
   }
 
   console.log(`🚀 ${count} adet test ürünü Medusa v2 API'sine aktarılıyor...`);
-  const payloads = generateSeedPayload(count);
+  const batchId = Date.now().toString(36);
+  const payloads = generateSeedPayload(count, batchId);
   let created = 0;
+  let failed = 0;
 
   for (let i = 0; i < payloads.length; i++) {
     const product = payloads[i];
@@ -155,16 +185,22 @@ export async function seedProducts(count: number): Promise<{ success: boolean; c
           console.log(`   İlerleme: ${created}/${count} ürün yüklendi.`);
         }
       } else {
+        failed++;
         const errorText = await res.text();
         console.error(`   ⚠️ Ürün #${i + 1} yüklenemedi: ${res.status} - ${errorText}`);
       }
     } catch (err: any) {
+      failed++;
       console.error(`   ⚠️ Ürün #${i + 1} isteği zaman aşımına uğradı: ${err.message}`);
+    }
+
+    if (onProgress) {
+      onProgress(created, count, failed);
     }
   }
 
-  console.log(`✅ Tamamlandı: Toplam ${created}/${count} ürün Medusa'ya aktarıldı.`);
-  return { success: created > 0, created };
+  console.log(`✅ Tamamlandı: Toplam ${created}/${count} ürün aktarıldı (Başarısız: ${failed}).`);
+  return { success: failed === 0 && created === count, created, failed };
 }
 
 async function main() {
