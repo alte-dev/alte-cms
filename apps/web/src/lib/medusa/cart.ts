@@ -143,7 +143,8 @@ export async function getCartShippingOptions(cartId: string): Promise<StoreShipp
 
 export interface ShippingRulesResult {
   threshold: number | null;
-  shipping_options: StoreShippingOption[];
+  options: Array<{ id: string; name: string }>;
+  shipping_options?: Array<{ id: string; name: string }>;
 }
 
 /**
@@ -155,10 +156,15 @@ export async function getShippingRules(): Promise<ShippingRulesResult> {
     const data = await medusaFetch<ShippingRulesResult>("/store/shipping-rules", {
       next: { revalidate: 60 },
     });
-    return data;
+    return {
+      threshold: data.threshold,
+      options: data.options || data.shipping_options || [],
+      shipping_options: data.options || data.shipping_options || [],
+    };
   } catch {
     return {
       threshold: null,
+      options: [],
       shipping_options: [],
     };
   }

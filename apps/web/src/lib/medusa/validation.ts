@@ -26,11 +26,23 @@ export const HandleParamSchema = z
   .regex(/^[a-z0-9-]+$/, "Geçersiz handle formatı");
 
 export const AddToCartSchema = z.object({
-  variantId: z.string().min(1, "Varyant ID zorunludur"),
-  quantity: z.coerce.number().int().min(1, "Adet en az 1 olmalıdır").max(99),
+  variantId: z
+    .string({ required_error: "Varyant seçimi zorunludur" })
+    .min(1, "Varyant seçimi zorunludur"),
+  quantity: z.coerce
+    .number({ invalid_type_error: "Geçerli bir adet giriniz" })
+    .int("Adet tam sayı olmalıdır")
+    .min(1, "Adet 1 ile 99 arasında olmalıdır")
+    .max(99, "Adet 1 ile 99 arasında olmalıdır"),
 });
 
 export const UpdateCartItemSchema = z.object({
-  lineItemId: z.string().min(1, "Sepet kalemi ID zorunludur"),
-  quantity: z.coerce.number().int().min(0, "Adet 0 veya daha fazla olmalıdır").max(99),
+  lineItemId: z
+    .string({ required_error: "Sepet kalemi ID zorunludur" })
+    .min(1, "Sepet kalemi ID zorunludur"),
+  quantity: z.coerce
+    .number({ invalid_type_error: "Geçerli bir adet giriniz" })
+    .int("Adet tam sayı olmalıdır")
+    .min(0, "Adet 0 veya daha fazla olmalıdır")
+    .max(99, "Adet 99'dan fazla olamaz"),
 });
