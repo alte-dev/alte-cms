@@ -20,6 +20,8 @@
     "test": "pnpm --recursive test",
     "test:smoke": "tsx scripts/smoke-test.ts",
     "measure:memory": "tsx scripts/measure-memory.ts",
+    "setup:store": "pnpm --filter @alte/medusa setup:store",
+    "verify:store": "tsx scripts/verify-store.ts",
     "seed:fake": "tsx scripts/seed-fake-catalog.ts",
     "create-admin": "pnpm --filter @alte/web create-admin",
     "prepare": "lefthook install"
@@ -34,7 +36,9 @@
       "zod": "4.6.7",
       "@types/react": "19.0.10",
       "@types/react-dom": "19.0.4",
-      "esbuild": "0.25.0"
+      "esbuild": "0.25.0",
+      "vitest": "^3.2.6",
+      "tinypool": ">=2.1.2"
     }
   },
   "devDependencies": {
