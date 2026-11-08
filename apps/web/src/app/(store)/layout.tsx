@@ -2,12 +2,13 @@ import React from "react";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { STORE_NAME } from "@/lib/constants/store-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Çisem Elif Boz",
-    default: "Çisem Elif Boz | Modern Giyim ve Yaşam",
+    template: `%s | ${STORE_NAME}`,
+    default: `${STORE_NAME} | Modern Giyim ve Yaşam`,
   },
   description: "Özenle tasarlanmış giyim ve yaşam koleksiyonu. Fiyatlarımıza KDV dahildir.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
