@@ -20,7 +20,10 @@ import path from "path";
 import dotenv from "dotenv";
 import { validatePuckData, ALLOWED_PUCK_COMPONENTS } from "../apps/web/src/lib/puck/schema";
 import { isSafeHref } from "../apps/web/src/lib/safe-href";
-import { isCircularRedirect, validateRedirectEndpoints } from "../apps/web/src/lib/redirect-checker";
+import {
+  isCircularRedirect,
+  validateRedirectEndpoints,
+} from "../apps/web/src/lib/redirect-checker";
 import { isAllowedMimeType, sanitizeUploadFilename } from "../apps/web/src/lib/media-utils";
 import {
   canReadPublishedOnlyOrStaff,
@@ -127,7 +130,12 @@ async function run() {
       `Draft page HTTP 404 confirmed. Anonymous /api/pages draft count: ${restDraftsCount} (expected 0).`,
     );
   } catch (err: any) {
-    recordStep(3, "Zero Draft Leakage (Storefront & REST)", false, `Draft test error: ${err.message}`);
+    recordStep(
+      3,
+      "Zero Draft Leakage (Storefront & REST)",
+      false,
+      `Draft test error: ${err.message}`,
+    );
   }
 
   // STEP 4: Author Privacy (Zero Email Leakage)
@@ -321,12 +329,7 @@ async function run() {
       `Valid JSON-LD schemas with escaped tags. Sitemap excludes drafts. Robots.txt enforces disallow rules.`,
     );
   } catch (err: any) {
-    recordStep(
-      7,
-      "SEO, Sitemap, Robots & JSON-LD Security",
-      false,
-      `SEO error: ${err.message}`,
-    );
+    recordStep(7, "SEO, Sitemap, Robots & JSON-LD Security", false, `SEO error: ${err.message}`);
   }
 
   // STEP 8: Redirects & Loop Prevention
@@ -358,12 +361,7 @@ async function run() {
       `Self-redirects blocked. Dangerous targets blocked. 3-hop circular loop (A->B->C->A) strictly prevented.`,
     );
   } catch (err: any) {
-    recordStep(
-      8,
-      "Redirects & Circular Loop Prevention",
-      false,
-      `Redirect error: ${err.message}`,
-    );
+    recordStep(8, "Redirects & Circular Loop Prevention", false, `Redirect error: ${err.message}`);
   }
 
   // STEP 9: Role Permissions Matrix & Media Security
