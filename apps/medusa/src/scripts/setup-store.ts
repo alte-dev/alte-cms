@@ -85,26 +85,41 @@ export default async function setupStore({
     logger.info(`Region '${STORE_DEFAULTS.region.name}' already exists (ID: ${turkeyRegion.id}).`);
   }
 
-  // Link region to payment provider for checkout
-  if (providerIds.includes("pp_system_default") || providerIds.length > 0) {
-    const devPaymentProvider = providerIds.includes("pp_system_default")
-      ? "pp_system_default"
-      : providerIds[0];
-    try {
-      await remoteLink.create([
-        {
-          [Modules.REGION]: {
-            region_id: turkeyRegion.id,
+  // Link region to payment providers (PayTR, COD, and dev dummy if not prod)
+  const providersToLink = ["pp_paytr_paytr", "pp_cod_cod"];
+  if (process.env.NODE_ENV !== "production" && providerIds.includes("pp_system_default")) {
+    providersToLink.push("pp_system_default");
+  }
+
+  for (const provId of providersToLink) {
+    if (providerIds.includes(provId)) {
+      try {
+        await remoteLink.create([
+          {
+            [Modules.REGION]: {
+              region_id: turkeyRegion.id,
+            },
+            [Modules.PAYMENT]: {
+              payment_provider_id: provId,
+            },
           },
-          [Modules.PAYMENT]: {
-            payment_provider_id: devPaymentProvider,
-          },
-        },
-      ]);
-      logger.info(`Linked region to payment provider '${devPaymentProvider}'.`);
-    } catch (err: any) {
-      logger.debug(`Region payment link: ${err?.message || "ok"}`);
+        ]);
+        logger.info(`Linked region to payment provider '${provId}'.`);
+      } catch (err: any) {
+        logger.debug(`Region payment link '${provId}': ${err?.message || "ok"}`);
+      }
     }
+  }
+
+  // Initialize Payment Settings Singleton if module registered
+  try {
+    if (container.hasRegistration?.("paymentSettingsModuleService")) {
+      const paymentSettingsService = container.resolve<any>("paymentSettingsModuleService");
+      await paymentSettingsService.getOrCreateSingleton();
+      logger.info("Initialized payment settings singleton 'ps_default'.");
+    }
+  } catch (err: any) {
+    logger.debug(`Payment settings initialization: ${err?.message || "ok"}`);
   }
 
   // Price Preferences (tax-inclusive pricing)

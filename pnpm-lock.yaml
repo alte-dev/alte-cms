@@ -66,6 +66,9 @@ importers:
       '@medusajs/medusa':
         specifier: 2.22.4
         version: 2.22.4(@medusajs/admin-sdk@2.22.4)(@medusajs/cli@2.22.4(@types/node@22.10.7))(@medusajs/dashboard@2.22.4(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(ajv@8.13.0)(typescript@5.7.3))(@medusajs/framework@2.22.4(@medusajs/cli@2.22.4(@types/node@22.10.7))(@types/node@22.10.7)(ioredis@5.11.1)(vite@7.3.7(@types/node@22.10.7)(jiti@1.21.7)(sass@1.77.4)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7))(@medusajs/icons@2.22.4(react@18.3.1))(@medusajs/ui@4.2.11(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.3))(@types/node@22.10.7)(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(ajv@8.13.0)(awilix@13.0.5)(jiti@1.21.7)(picomatch@4.0.7)(posthog-node@5.63.1(@opentelemetry/api@1.10.0))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(sass@1.77.4)(tsx@4.23.15)(typescript@5.7.3)(yaml@2.9.1)
+      '@medusajs/ui':
+        specifier: 4.2.11
+        version: 4.2.11(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.3)
       dotenv:
         specifier: 16.4.7
         version: 16.4.7
@@ -85,6 +88,12 @@ importers:
       '@types/node':
         specifier: 22.10.7
         version: 22.10.7
+      '@types/react':
+        specifier: 19.0.10
+        version: 19.0.10
+      '@types/react-dom':
+        specifier: 19.0.4
+        version: 19.0.4(@types/react@19.0.10)
       rimraf:
         specifier: 6.0.1
         version: 6.0.1

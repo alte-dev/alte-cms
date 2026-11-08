@@ -21,6 +21,7 @@
     "@medusajs/framework": "2.22.4",
     "@medusajs/icons": "2.22.4",
     "@medusajs/medusa": "2.22.4",
+    "@medusajs/ui": "4.2.11",
     "dotenv": "16.4.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -29,6 +30,8 @@
   "devDependencies": {
     "@medusajs/cli": "2.22.4",
     "@types/node": "22.10.7",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
     "rimraf": "6.0.1",
     "ts-node": "10.9.2",
     "typescript": "5.7.3",
