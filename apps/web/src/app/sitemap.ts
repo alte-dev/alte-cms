@@ -2,12 +2,7 @@ import type { MetadataRoute } from "next";
 import { getProducts, getCategories } from "@/lib/medusa/products";
 import { getPayloadClient } from "@/lib/payload/content";
 
-export async function generateSitemaps() {
-  // Support for pagination (up to 50,000 URLs per sitemap chunk)
-  return [{ id: 0 }];
-}
-
-export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://cisemelifboz.com";
   const urls: MetadataRoute.Sitemap = [];
 

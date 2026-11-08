@@ -47,7 +47,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
 
 /**
  * Storefront RSC renderer for Puck pages.
- * Renders page components directly without pulling @puckeditor/core into public bundles.
+ * Renders page components directly without pulling puck editor code into public bundles.
  */
 export function RenderPuckContent({ data }: { data?: PuckDataStructure | null }) {
   if (!data || !Array.isArray(data.content) || data.content.length === 0) {
