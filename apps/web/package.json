@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
-    "create-admin": "tsx src/scripts/create-first-admin.ts"
+    "create-admin": "tsx src/scripts/create-first-admin.ts",
+    "seed:content": "tsx src/scripts/seed-content.ts"
   },
   "dependencies": {
     "@alte/shared": "workspace:*",

@@ -1,10 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { slugify } from "../lib/slugify";
-import {
-  canCreateContent,
-  canUpdateContent,
-  canDeleteContent,
-} from "../access/content";
+import { canCreateContent, canUpdateContent, canDeleteContent } from "../access/content";
 
 export const PostCategories: CollectionConfig = {
   slug: "post-categories",
@@ -45,7 +41,8 @@ export const PostCategories: CollectionConfig = {
       index: true,
       label: "Kategori Kısa Adı (Slug)",
       admin: {
-        description: "URL yolu için kullanılır (örn: rehber, ipuclari). Boş bırakılırsa başlıktan otomatik üretilir.",
+        description:
+          "URL yolu için kullanılır (örn: rehber, ipuclari). Boş bırakılırsa başlıktan otomatik üretilir.",
       },
     },
     {

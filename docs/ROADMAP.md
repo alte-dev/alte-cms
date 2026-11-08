@@ -96,6 +96,34 @@ Bu doküman, aşamalı e-ticaret platformunun geliştirme fazlarını, teslimat 
 
 ---
 
+### ✅ Faz 5: İçerik Yönetimi, Görsel Sayfa Oluşturucu (Puck), Blog, SEO ve Menü (TAMAMLANDI)
+
+- [x] Payload CMS 3 koleksiyonları: `Pages` (taslaklar, isHome tekil kontrolü, puckData, SEO), `Posts` (Lexical zengin metin, readingTime otomatik hesaplama, yazar e-posta gizleme), `PostCategories`, `Redirects` (döngüsel yönlendirme koruması).
+- [x] Payload CMS 3 globalleri: `SiteSettings` (mağaza bilgileri, iletişim, logo/favicon), `Navigation` (header/footer menüleri, https/iç bağlantı doğrulaması).
+- [x] Rol izinleri matrisi & unit test kanıtı: `super-admin`/`admin` tam yetki; `editor` oluşturma/düzenleme izinli, silme ve global ayar düzenleme KESİNLİKLE YASAK; `anonymous` yalnızca published okuyabilir, taslak sızıntısı ve yazar e-posta sızıntısı SIFIR.
+- [x] Medya güvenliği: JPEG, PNG, WebP, AVIF destekli, SVG KESİNLİKLE YASAK, 5 MB sınır, alt zorunlu, sharp 400/800/1600 boyutlandırma, güvenli dosya adı sanitization.
+- [x] Görsel Sayfa Oluşturucu (`@puckeditor/core@0.23.0`):
+  - 14 duyarlı Tailwind bileşeni (Hero, RichText, ImageBlock, Columns, Spacer, Divider, Accordion, Banner, ContactInfo, ProductGrid, FeaturedProducts, CategoryList, FreeShippingBar, LatestPosts).
+  - Güvenlik: Zod doğrulaması (max 512 KB, max 200 bileşen, max 6 derinlik, bileşen whitelist'i), safeHref kontrolü, sıfır dangerouslySetInnerHTML.
+  - Özel editör rotası `/admin/puck/[id]` (dinamik import ile vitrin bundle'ından izole; vitrine 0 bayt editör kodu sızar).
+  - Canlı önizleme rotası `/onizleme/[id]` (staff/token kontrollü, noindex).
+  - Pages panelinde "Görsel Düzenleyiciyle Aç" UI butonu.
+- [x] Vitrin rotaları:
+  - `/` (published isHome sayfası varsa Puck render, yoksa mevcut vitrine fallback).
+  - `/sayfa/[slug]` (Puck RSC render, taslaklar 404 döner, yönlendirme kontrolü).
+  - `/blog`, `/blog/[slug]`, `/blog/kategori/[slug]` (12/sayfa sayfalama, arama, Lexical render, okuma süresi, yazar adı, sıfır e-posta sızıntısı).
+  - Header & Footer: `Navigation` ve `SiteSettings`'ten dinamik besleme + erişilebilir mobil menü çekmecesi (drawer).
+- [x] SEO & Yönlendirmeler:
+  - `app/sitemap.ts` (Next.js 15 generateSitemaps sayfalama altyapısı; draft/noindex hariç, ürünler, kategoriler, sayfalar, blog).
+  - `app/robots.ts` (disallow: /admin, /api, /sepet, /odeme, /onizleme; sitemap bağlantısı).
+  - JSON-LD şemaları: WebPage, BlogPosting, Organization, WebSite (script içi `<` karakteri `\u003c` ile escape edilmiştir).
+  - Sayfa bazlı generateMetadata (title, description, canonicalUrl, noIndex, openGraph).
+- [x] İdempotent içerik seed script'i (`pnpm seed:content`): çift çalıştırmada kopya oluşturmaz, hukuki sayfalar (`mesafeli-satis-sozlesmesi`, `kvkk`) taslak modunda ve yer tutucu uyarısıyla eklenir.
+- [x] Kapsamlı doğrulama script'i (`scripts/verify-content.ts`, `pnpm verify:content`).
+- [x] Dokümantasyon: `docs/PAGE-BUILDER.md`, `docs/CONTENT-MODEL.md`, `docs/ADMIN-GUIDE.md`, `docs/PERMISSIONS.md`, güncel `docs/ROADMAP.md`.
+
+---
+
 ### 📋 Faz 7: Sipariş Yönetimi ve Bildirimler
 
 - [ ] Sipariş durum yaşam döngüsü (Beklemede -> Hazırlanıyor -> Kargolandı -> Tamamlandı)

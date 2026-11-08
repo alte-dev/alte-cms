@@ -36,7 +36,10 @@ export function normalizeRedirectPath(urlPath: string): string {
  * - 'to' must be a safe internal path or safe 'https://' URL
  * - 'from' cannot equal 'to' (self-loop prevention)
  */
-export function validateRedirectEndpoints(from: string, to: string): {
+export function validateRedirectEndpoints(
+  from: string,
+  to: string,
+): {
   valid: boolean;
   error?: string;
   normalizedFrom: string;

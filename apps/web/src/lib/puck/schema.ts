@@ -49,11 +49,7 @@ interface ValidationContext {
   violations: string[];
 }
 
-function traversePuckTree(
-  nodes: unknown,
-  depth: number,
-  ctx: ValidationContext,
-): void {
+function traversePuckTree(nodes: unknown, depth: number, ctx: ValidationContext): void {
   if (!nodes || typeof nodes !== "object") return;
 
   if (depth > ctx.maxDepthReached) {
@@ -81,9 +77,7 @@ function traversePuckTree(
         const node = item as PuckComponentNode;
         if (!node.type || typeof node.type !== "string") {
           ctx.violations.push("Bileşen tanımında 'type' alanı eksik veya geçersiz.");
-        } else if (
-          !ALLOWED_PUCK_COMPONENTS.includes(node.type as AllowedPuckComponent)
-        ) {
+        } else if (!ALLOWED_PUCK_COMPONENTS.includes(node.type as AllowedPuckComponent)) {
           ctx.violations.push(`Bilinmeyen bileşen tipi tespit edildi: '${node.type}'.`);
         }
 

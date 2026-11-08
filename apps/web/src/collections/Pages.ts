@@ -90,6 +90,16 @@ export const Pages: CollectionConfig = {
   },
   fields: [
     {
+      name: "openPuck",
+      type: "ui",
+      admin: {
+        position: "sidebar",
+        components: {
+          Field: "@/components/puck/PuckEditorButton#PuckEditorButton",
+        },
+      },
+    },
+    {
       name: "title",
       type: "text",
       required: true,
@@ -104,7 +114,8 @@ export const Pages: CollectionConfig = {
       label: "Sayfa URL Yolu (Slug)",
       admin: {
         position: "sidebar",
-        description: "Sayfa bağlantısı (örn: hakkimizda, iletisim). Ana sayfa için 'index' kullanılır.",
+        description:
+          "Sayfa bağlantısı (örn: hakkimizda, iletisim). Ana sayfa için 'index' kullanılır.",
       },
     },
     {
@@ -114,7 +125,8 @@ export const Pages: CollectionConfig = {
       label: "Ana Sayfa Olarak Kullan",
       admin: {
         position: "sidebar",
-        description: "İşaretlenirse sitenin ana sayfası (/) bu içerik ile oluşturulur. Sistemde yalnızca bir ana sayfa olabilir.",
+        description:
+          "İşaretlenirse sitenin ana sayfası (/) bu içerik ile oluşturulur. Sistemde yalnızca bir ana sayfa olabilir.",
       },
     },
     {

@@ -1,12 +1,7 @@
 import path from "path";
 import { slugify } from "./slugify";
 
-export const ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/avif",
-] as const;
+export const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
 
 export const FORBIDDEN_EXTENSIONS = [".svg", ".svgz", ".html", ".htm", ".xml", ".js", ".php"];
 
@@ -23,7 +18,9 @@ export function sanitizeUploadFilename(filename: string): string {
   const ext = parsed.ext.toLowerCase();
 
   if (FORBIDDEN_EXTENSIONS.includes(ext)) {
-    throw new Error(`Güvenlik uyarısı: ${ext} uzantılı dosya yüklenemez. SVG ve çalıştırılabilir dosyalar yasaktır.`);
+    throw new Error(
+      `Güvenlik uyarısı: ${ext} uzantılı dosya yüklenemez. SVG ve çalıştırılabilir dosyalar yasaktır.`,
+    );
   }
 
   const baseSlug = slugify(parsed.name || "media") || "media";

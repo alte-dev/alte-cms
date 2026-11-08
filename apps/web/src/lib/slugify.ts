@@ -54,10 +54,7 @@ export function slugify(text: string): string {
   if (!text || typeof text !== "string") return "";
 
   // 1. Transliterate Turkish characters first
-  let result = text.replace(
-    /[çÇğĞıIİiöÖşŞüÜ]/g,
-    (char) => TURKISH_CHAR_MAP[char] || char,
-  );
+  let result = text.replace(/[çÇğĞıIİiöÖşŞüÜ]/g, (char) => TURKISH_CHAR_MAP[char] || char);
 
   // 2. Normalize unicode diacritics and remove them
   result = result.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -77,7 +74,10 @@ export function slugify(text: string): string {
  */
 export function isReservedSlug(slug: string): boolean {
   if (!slug || typeof slug !== "string") return false;
-  const clean = slug.toLowerCase().trim().replace(/^\/+|\/+$/g, "");
+  const clean = slug
+    .toLowerCase()
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
   return RESERVED_SLUGS.includes(clean as ReservedSlug);
 }
 

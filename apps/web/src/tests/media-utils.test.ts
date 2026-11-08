@@ -8,13 +8,21 @@ describe("Media Utils & Filename Sanitization", () => {
   });
 
   it("strictly rejects SVG uploads", () => {
-    expect(() => sanitizeUploadFilename("logo.svg")).toThrow(/SVG ve çalıştırılabilir dosyalar yasaktır/);
-    expect(() => sanitizeUploadFilename("malicious.svgz")).toThrow(/SVG ve çalıştırılabilir dosyalar yasaktır/);
+    expect(() => sanitizeUploadFilename("logo.svg")).toThrow(
+      /SVG ve çalıştırılabilir dosyalar yasaktır/,
+    );
+    expect(() => sanitizeUploadFilename("malicious.svgz")).toThrow(
+      /SVG ve çalıştırılabilir dosyalar yasaktır/,
+    );
   });
 
   it("strictly rejects HTML and script uploads", () => {
-    expect(() => sanitizeUploadFilename("payload.html")).toThrow(/SVG ve çalıştırılabilir dosyalar yasaktır/);
-    expect(() => sanitizeUploadFilename("exploit.php")).toThrow(/SVG ve çalıştırılabilir dosyalar yasaktır/);
+    expect(() => sanitizeUploadFilename("payload.html")).toThrow(
+      /SVG ve çalıştırılabilir dosyalar yasaktır/,
+    );
+    expect(() => sanitizeUploadFilename("exploit.php")).toThrow(
+      /SVG ve çalıştırılabilir dosyalar yasaktır/,
+    );
   });
 
   it("validates allowed MIME types (JPEG, PNG, WebP, AVIF) and forbids SVG", () => {

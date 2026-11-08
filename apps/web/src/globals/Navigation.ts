@@ -32,7 +32,8 @@ export const Navigation: GlobalConfig = {
           label: "Bağlantı Hedefi",
           validate: validateSafeHrefField,
           admin: {
-            description: "İç yol (/blog, /sayfa/hakkimizda) veya güvenli dış bağlantı (https://...).",
+            description:
+              "İç yol (/blog, /sayfa/hakkimizda) veya güvenli dış bağlantı (https://...).",
           },
         },
         {

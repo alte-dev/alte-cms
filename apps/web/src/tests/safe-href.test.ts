@@ -51,11 +51,7 @@ describe("Safe Href Utility (Security & Protocol Validation)", () => {
     expect(validateSafeHrefField("/hakkimizda")).toBe(true);
     expect(validateSafeHrefField("https://twitter.com")).toBe(true);
     expect(validateSafeHrefField("")).toBe(true); // Optional
-    expect(validateSafeHrefField("javascript:alert(1)")).toContain(
-      "Bağlantı adresi yalnızca '/'",
-    );
-    expect(validateSafeHrefField("//evil.com")).toContain(
-      "Bağlantı adresi yalnızca '/'",
-    );
+    expect(validateSafeHrefField("javascript:alert(1)")).toContain("Bağlantı adresi yalnızca '/'");
+    expect(validateSafeHrefField("//evil.com")).toContain("Bağlantı adresi yalnızca '/'");
   });
 });
