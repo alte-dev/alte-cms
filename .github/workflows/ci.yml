@@ -80,6 +80,9 @@ jobs:
           STORE_CORS: "http://localhost:3100"
           ADMIN_CORS: "http://api.localhost:9000"
           AUTH_CORS: "http://api.localhost:9000"
+          SETTINGS_ENCRYPTION_KEY: "4e091da86e2b155c5697ee55ab2b5dd54bce76b9df9a9628546b4c3d9e9b827f"
+          API_PUBLIC_URL: "http://api.localhost:9000"
+          WEB_PUBLIC_URL: "http://localhost:3100"
 
       - name: Production Build Verification
         run: pnpm build
@@ -96,6 +99,9 @@ jobs:
           STORE_CORS: "http://localhost:3100"
           ADMIN_CORS: "http://api.localhost:9000"
           AUTH_CORS: "http://api.localhost:9000"
+          SETTINGS_ENCRYPTION_KEY: "4e091da86e2b155c5697ee55ab2b5dd54bce76b9df9a9628546b4c3d9e9b827f"
+          API_PUBLIC_URL: "http://api.localhost:9000"
+          WEB_PUBLIC_URL: "http://localhost:3100"
 
       - name: Dependency Audit
         run: pnpm audit --prod --audit-level=high
