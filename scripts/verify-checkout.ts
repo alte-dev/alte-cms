@@ -717,6 +717,7 @@ async function main() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "add", variantId, quantity: 1 }),
     });
+    const parAddData = await parAddRes.json();
     const parCookies = parseCookies(parAddRes);
 
     const parallelPayload = {
@@ -736,6 +737,7 @@ async function main() {
       shippingOptionId: validShippingOptionId,
       distanceSalesContract: true,
       kvkkConsent: true,
+      paymentMethod: "dev",
     };
 
     const [req1, req2] = await Promise.all([
@@ -803,6 +805,7 @@ async function main() {
     shippingOptionId: validShippingOptionId,
     distanceSalesContract: true,
     kvkkConsent: true,
+    paymentMethod: "dev",
   };
 
   try {
