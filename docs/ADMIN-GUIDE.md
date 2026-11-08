@@ -181,3 +181,35 @@ Bu komut `TEST10` (%10) ve `TEST50TL` (50 TL) kuponlarını otomatik oluşturur 
   ```bash
   pnpm verify:checkout
   ```
+
+---
+
+## 9. Ödeme Ayarları Yönetimi (PayTR & Kapıda Ödeme)
+
+Medusa v2 Admin panelinde sol menüde yer alan **Ödeme Ayarları (Payment Settings)** sayfası (`/app/payment-settings`) üzerinden ödeme yöntemleri sunucuyu yeniden başlatmaya gerek kalmadan dinamik olarak yönetilir.
+
+### 9.1 PayTR iFrame & Sanal POS Ayarları
+
+1. **Mağaza Bilgileri:**
+   - **Mağaza No (Merchant ID):** PayTR üye işyeri numaranız.
+   - **Mağaza Parolası (Merchant Key) & Gizli Anahtar (Merchant Salt):** Write-only güvenlik standardında saklanır. Formda yalnızca son 4 karakteri maskeli (`••••••••••••••••6789`) olarak görüntülenir.
+2. **Test Modu (Sandbox):**
+   - Canlıya almadan önce test işlemlerini gerçekleştirmek için aktif tutun. Canlı ortama geçerken işareti kaldırın.
+3. **Maksimum Taksit Sayısı:**
+   - Vitrinde müşteriye sunulacak taksit seçeneklerinin üst sınırı (1-12 taksit).
+4. **Bağlantı Testi (Test Connection):**
+   - Ayarları kaydetmeden önce "Bağlantıyı Test Et" butonuna tıklayarak PayTR API'si ile kimlik bilgilerinizin doğruluğunu 1 TL'lik sanal token isteğiyle anında test edebilirsiniz.
+
+### 9.2 Kapıda Ödeme (COD) Ayarları
+
+1. **Aktif / Pasif:** Kapıda ödeme seçeneğini anında açıp kapatabilirsiniz.
+2. **Hizmet Bedeli (Kuruş):** Kargo firmasının tahsilatlı teslimat için uyguladığı ek hizmet bedeli (örn. 10000 = 100 TL).
+3. **Maksimum Sepet Tutarı:** Yüksek tutarlı sipariş riskini yönetmek için kapıda ödemenin kabul edileceği tavan tutar (örn. 500000 = 5.000 TL). Bu tutarı aşan siparişlerde vitrinde kapıda ödeme seçeneği otomatik gizlenir.
+
+### 9.3 Uçtan Uca Ödeme Doğrulama Komutu
+
+```bash
+pnpm verify:payments
+```
+
+Bu komut 13 adımlı E2E test ile şifreleme, dinamik ayarlar, PayTR token başlatma, HMAC webhook doğrulaması, tutar uyuşmazlığı koruması ve Kapıda Ödeme akışlarını otomatik olarak doğrular.

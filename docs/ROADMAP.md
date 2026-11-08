@@ -83,12 +83,16 @@ Bu doküman, aşamalı e-ticaret platformunun geliştirme fazlarını, teslimat 
 
 ---
 
-### 📋 Faz 4: Ödeme Sağlayıcıları (PayTR & Kapıda Ödeme)
+### ✅ Faz 4: Ödeme Sağlayıcıları (PayTR & Kapıda Ödeme)
 
-- [ ] PayTR iFrame ve 3D Secure ödeme sağlayıcısı eklentisi
-- [ ] PayTR sunucu bildirim (callback/webhook) işleyicisi (HMAC, timingSafeEqual, tutar kontrolü, idempotency)
-- [ ] Kapıda Ödeme (Nakit / Kredi Kartı) sağlayıcısı ve ek hizmet bedeli mantığı
-- [ ] Başarılı ve başarısız ödeme yönlendirme sayfaları
+- [x] PayTR iFrame ve 3D Secure ödeme sağlayıcısı modülü (`pp_paytr_paytr`)
+- [x] PayTR sunucu bildirim (callback/webhook) işleyicisi (HMAC, timingSafeEqual, tutar kontrolü, idempotency, strictly plain-text `"OK"`)
+- [x] Kapıda Ödeme (Nakit / Kredi Kartı) sağlayıcısı (`pp_cod_cod`), dinamik hizmet bedeli ve tavan sepet tutarı kontrolü
+- [x] AES-256-GCM ile veritabanında şifreli ödeme ayarları (`PaymentSetting` DML modeli ve servisi)
+- [x] Medusa Admin Ödeme Ayarları UI (`/app/payment-settings`), write-only maskeleme ve 1 TL'lik bağlantı testi
+- [x] Vitrin ödeme yöntemi seçimi, PayTR iFrame entegrasyonu (`iframeResizer`), CSP kuralları, `/odeme/sonuc` polling ve hata yönetimi
+- [x] 13 adımlı E2E ödeme test paketi (`scripts/verify-payments.ts`, `pnpm verify:payments`)
+- [x] Kapsamlı ödeme mimari dokümantasyonu ([docs/PAYMENTS.md](PAYMENTS.md)) ve operasyonel kılavuz ([docs/RUNBOOK-PAYMENTS.md](RUNBOOK-PAYMENTS.md))
 
 ---
 

@@ -105,3 +105,28 @@ sequenceDiagram
 2. `/siparis-onay` sayfası:
    - `_order_confirmation` çerezini okur; çerez yoksa veya sipariş bulunamazsa doğrudan `/` ana sayfaya yönlendirir.
    - Sipariş detaylarını Medusa'dan çeker; Sipariş No (`display_id`), kalemler, birim fiyatlar, KDV (%20), kargo, indirim ve genel toplamı TL cinsinden görüntüler.
+
+---
+
+## 6. Ödeme Yöntemleri ve Çatallanma (PayTR vs COD)
+
+Müşteri checkout formunun 5. adımında ödeme yöntemini seçer:
+
+1. **PayTR (Kredi / Banka Kartı):**
+
+   - İstemci `POST /api/checkout` isteği gönderir (`paymentMethod: "paytr"`).
+   - Sunucu PayTR token'ı üretir ve vitrine döner.
+   - Vitrin iFrame bileşeni `iframeResizer.min.js` ile PayTR formunu açar.
+   - Ödeme tamamlandığında PayTR sunucumuza HMAC imzalı webhook (`POST /hooks/payment/pp_paytr_paytr`) gönderir.
+   - Sunucu webhook'ta `"OK"` döner ve sepeti siparişe dönüştürür.
+   - Tarayıcı `/odeme/sonuc?cart_id=...` sayfasına yönlendirilir ve `/api/checkout/status` üzerinden sipariş onaylanınca otomatik `/siparis-onay` sayfasına geçer.
+
+2. **Kapıda Ödeme (Nakit / Kredi Kartı):**
+
+   - İstemci `POST /api/checkout` isteği gönderir (`paymentMethod: "cod"`).
+   - Sunucu `pp_cod_cod` sağlayıcısı ile sepeti anında tamamlar (`completeCartWorkflow`).
+   - Kapıda Ödeme Hizmet Bedeli sipariş metadata'sına işlenir.
+   - Tarayıcı doğrudan `/siparis-onay` sayfasına yönlendirilir.
+
+3. **Geliştirici Sahte Ödeme (Dev Dummy):**
+   - Yalnızca `ALLOW_DEV_PAYMENT="true"` ve üretim dışı ortamda geçerlidir.
