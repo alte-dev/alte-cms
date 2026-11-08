@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { medusaEnvSchema } from "./env";
+import { medusaEnvSchema, validateMedusaEnv } from "./env";
 
 describe("Medusa Environment Schema Validation (Fail-Closed)", () => {
   const originalEnv = process.env;
@@ -52,9 +52,20 @@ describe("Medusa Environment Schema Validation (Fail-Closed)", () => {
       AUTH_CORS: "http://api.localhost:9000,http://localhost:3100",
       PORT: "9000",
       HOST: "127.0.0.1",
+      SETTINGS_ENCRYPTION_KEY: "4e091da86e2b155c5697ee55ab2b5dd54bce76b9df9a9628546b4c3d9e9b827f",
     };
 
     const result = medusaEnvSchema.safeParse(validConfig);
     expect(result.success).toBe(true);
+  });
+
+  it("should reject PAYTR_API_BASE and DEV_PAYTR_USER_IP in production", () => {
+    process.env.NODE_ENV = "production";
+    process.env.PAYTR_API_BASE = "https://mock-paytr.test";
+    expect(() => validateMedusaEnv()).toThrow(/PAYTR_API_BASE/);
+
+    delete process.env.PAYTR_API_BASE;
+    process.env.DEV_PAYTR_USER_IP = "1.2.3.4";
+    expect(() => validateMedusaEnv()).toThrow(/DEV_PAYTR_USER_IP/);
   });
 });

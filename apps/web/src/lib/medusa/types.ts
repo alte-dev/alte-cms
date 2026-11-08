@@ -27,6 +27,7 @@ export interface StoreProductVariant {
     currency_code: string;
     is_calculated_price_tax_inclusive?: boolean;
   };
+  metadata?: Record<string, any>;
 }
 
 export interface StoreProductOption {
@@ -65,6 +66,7 @@ export interface StoreProduct {
   options?: StoreProductOption[];
   variants?: StoreProductVariant[];
   created_at: string;
+  metadata?: Record<string, any>;
 }
 
 export interface StoreCartLineItem {
@@ -83,6 +85,8 @@ export interface StoreCartLineItem {
   variant_id?: string;
   variant_title?: string;
   variant?: StoreProductVariant;
+  metadata?: Record<string, any>;
+  sku?: string;
 }
 
 export interface StoreShippingOptionRule {

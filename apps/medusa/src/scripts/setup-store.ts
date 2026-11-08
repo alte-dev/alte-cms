@@ -6,6 +6,7 @@ import {
   createLocationFulfillmentSetWorkflow,
   createPricePreferencesWorkflow,
   createProductCategoriesWorkflow,
+  createProductsWorkflow,
   createRegionsWorkflow,
   createServiceZonesWorkflow,
   createShippingOptionsWorkflow,
@@ -85,26 +86,73 @@ export default async function setupStore({
     logger.info(`Region '${STORE_DEFAULTS.region.name}' already exists (ID: ${turkeyRegion.id}).`);
   }
 
-  // Link region to payment provider for checkout
-  if (providerIds.includes("pp_system_default") || providerIds.length > 0) {
-    const devPaymentProvider = providerIds.includes("pp_system_default")
-      ? "pp_system_default"
-      : providerIds[0];
+  // Link region to payment providers (PayTR, COD, and dev dummy if not prod)
+  const providersToLink = ["pp_paytr_paytr", "pp_cod_cod"];
+  if (process.env.NODE_ENV !== "production" && providerIds.includes("pp_system_default")) {
+    providersToLink.push("pp_system_default");
+  }
+
+  // In production, strictly unbind pp_system_default if present
+  if (process.env.NODE_ENV === "production") {
     try {
-      await remoteLink.create([
+      await remoteLink.dismiss([
         {
           [Modules.REGION]: {
             region_id: turkeyRegion.id,
           },
           [Modules.PAYMENT]: {
-            payment_provider_id: devPaymentProvider,
+            payment_provider_id: "pp_system_default",
           },
         },
       ]);
-      logger.info(`Linked region to payment provider '${devPaymentProvider}'.`);
-    } catch (err: any) {
-      logger.debug(`Region payment link: ${err?.message || "ok"}`);
+      logger.info("Unlinked 'pp_system_default' from region in production.");
+    } catch {
+      // ignore
     }
+
+    try {
+      const pgConn =
+        container.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
+        container.resolve("__pg_connection__");
+      if (pgConn) {
+        await pgConn("region_payment_provider")
+          .where({ region_id: turkeyRegion.id, payment_provider_id: "pp_system_default" })
+          .update({ deleted_at: new Date() });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  for (const provId of providersToLink) {
+    if (providerIds.includes(provId)) {
+      try {
+        await remoteLink.create([
+          {
+            [Modules.REGION]: {
+              region_id: turkeyRegion.id,
+            },
+            [Modules.PAYMENT]: {
+              payment_provider_id: provId,
+            },
+          },
+        ]);
+        logger.info(`Linked region to payment provider '${provId}'.`);
+      } catch (err: any) {
+        logger.debug(`Region payment link '${provId}': ${err?.message || "ok"}`);
+      }
+    }
+  }
+
+  // Initialize Payment Settings Singleton if module registered
+  try {
+    if (container.hasRegistration?.("paymentSettingsModuleService")) {
+      const paymentSettingsService = container.resolve<any>("paymentSettingsModuleService");
+      await paymentSettingsService.getOrCreateSingleton();
+      logger.info("Initialized payment settings singleton 'ps_default'.");
+    }
+  } catch (err: any) {
+    logger.debug(`Payment settings initialization: ${err?.message || "ok"}`);
   }
 
   // Price Preferences (tax-inclusive pricing)
@@ -617,6 +665,81 @@ export default async function setupStore({
     });
   } catch (err: any) {
     logger.debug(`API key sales channel link: ${err?.message || "ok"}`);
+  }
+
+  // 10. Hidden Service Product: "Kapıda Ödeme Hizmet Bedeli" (SKU: SERVICE-COD-FEE)
+  try {
+    const existingCodVariants = await productService.listProductVariants({
+      sku: "SERVICE-COD-FEE",
+    });
+    if (!existingCodVariants || existingCodVariants.length === 0) {
+      logger.info(
+        "Creating hidden service product: Kapıda Ödeme Hizmet Bedeli (SERVICE-COD-FEE)...",
+      );
+      await createProductsWorkflow(container).run({
+        input: {
+          products: [
+            {
+              title: "Kapıda Ödeme Hizmet Bedeli",
+              handle: "kapida-odeme-hizmet-bedeli",
+              description: "Kapıda ödeme tahsilat ve operasyonel hizmet bedeli",
+              status: "published",
+              shipping_profile_id: defaultProfile.id,
+              sales_channels: [{ id: defaultSalesChannel.id }],
+              metadata: {
+                is_cod_fee: true,
+                hidden: true,
+              },
+              options: [
+                {
+                  title: "Hizmet Türü",
+                  values: ["Standart"],
+                },
+              ],
+              variants: [
+                {
+                  title: "Standart Hizmet",
+                  sku: "SERVICE-COD-FEE",
+                  manage_inventory: false,
+                  options: {
+                    "Hizmet Türü": "Standart",
+                  },
+                  prices: [
+                    {
+                      currency_code: "try",
+                      amount: 100,
+                    },
+                  ],
+                  metadata: {
+                    is_cod_fee: true,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+      logger.info("Created service product 'Kapıda Ödeme Hizmet Bedeli' successfully.");
+    } else {
+      logger.info("Service product variant 'SERVICE-COD-FEE' already exists.");
+    }
+  } catch (err: any) {
+    logger.warn(`Service product creation: ${err.message}`);
+  }
+
+  // Ensure index on payment_session (data->>'merchant_oid') exists for O(1) callback lookups
+  try {
+    const pgConn =
+      container.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
+      container.resolve("__pg_connection__");
+    if (pgConn && typeof pgConn.raw === "function") {
+      await pgConn.raw(
+        "CREATE INDEX IF NOT EXISTS idx_payment_session_merchant_oid ON payment_session (((data->>'merchant_oid'))) WHERE deleted_at IS NULL;",
+      );
+      logger.info("Ensured index idx_payment_session_merchant_oid exists.");
+    }
+  } catch (err: any) {
+    logger.debug(`Index creation notice: ${err?.message || "ok"}`);
   }
 
   // Print Setup Summary and Publishable Key Token to stdout

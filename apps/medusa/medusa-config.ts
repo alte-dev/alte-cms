@@ -1,3 +1,4 @@
+import path from "path";
 import { defineConfig, Modules } from "@medusajs/framework/utils";
 import { validateMedusaEnv } from "./src/env";
 
@@ -22,8 +23,26 @@ module.exports = defineConfig({
   },
   modules: [
     {
-      resolve: "./src/modules/payment-guard",
+      resolve: path.resolve(__dirname, "src/modules/payment-settings"),
+    },
+    {
+      resolve: path.resolve(__dirname, "src/modules/payment-guard"),
       dependencies: [Modules.PAYMENT, Modules.LINK],
+    },
+    {
+      resolve: "@medusajs/medusa/payment",
+      options: {
+        providers: [
+          {
+            resolve: path.resolve(__dirname, "src/modules/payment-paytr"),
+            id: "paytr",
+          },
+          {
+            resolve: path.resolve(__dirname, "src/modules/payment-cod"),
+            id: "cod",
+          },
+        ],
+      },
     },
   ],
 });

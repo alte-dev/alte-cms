@@ -19,7 +19,11 @@ export default async function CartPage() {
     getShippingRules(),
   ]);
 
-  const subtotal = cart?.item_subtotal ?? cart?.subtotal ?? 0;
+  const productSubtotal = (cart?.items || [])
+    .filter((i) => !i.metadata?.is_cod_fee && i.variant?.sku !== "SERVICE-COD-FEE")
+    .reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
+  const subtotal =
+    productSubtotal > 0 ? productSubtotal : (cart?.item_subtotal ?? cart?.subtotal ?? 0);
   const shippingProgress = calculateFreeShippingProgress(subtotal, rules.threshold);
 
   return (

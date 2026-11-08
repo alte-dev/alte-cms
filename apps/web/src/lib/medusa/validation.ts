@@ -148,6 +148,7 @@ export const CheckoutFormSchema = z
     shippingOptionId: z
       .string({ message: "Lütfen bir kargo seçeneği belirleyiniz." })
       .min(1, "Lütfen bir kargo seçeneği belirleyiniz."),
+    paymentMethod: z.enum(["paytr", "cod", "dev"]).optional(),
     distanceSalesContract: z.literal(true, {
       message: "Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu onaylamalısınız.",
     }),

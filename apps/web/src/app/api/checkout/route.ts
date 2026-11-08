@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import {
+  addItemToCart,
   completeCart,
   getCart,
+  getPaymentOptions,
+  initiatePaytrPayment,
   isDevPaymentAllowed,
+  removeCartItem,
   setCartShippingMethod,
   updateCart,
 } from "../../../lib/medusa/cart";
@@ -82,6 +86,7 @@ export async function POST(req: Request) {
       taxOffice,
       taxNumber,
       shippingOptionId,
+      paymentMethod,
     } = parsed.data;
 
     // Build shipping address payload
@@ -112,7 +117,22 @@ export async function POST(req: Request) {
           country_code: "tr",
         };
 
-    // Metadata payload (audit timestamps, invoice details; STRICTLY NO TC Kimlik No)
+    const paymentOptions = await getPaymentOptions();
+
+    let effectivePaymentMethod = paymentMethod;
+    if (!effectivePaymentMethod) {
+      if (isDevPaymentAllowed()) {
+        effectivePaymentMethod = "dev";
+      } else if (paymentOptions.paytr.enabled) {
+        effectivePaymentMethod = "paytr";
+      } else if (paymentOptions.cod.enabled) {
+        effectivePaymentMethod = "cod";
+      } else {
+        effectivePaymentMethod = "paytr";
+      }
+    }
+
+    // Metadata payload (audit timestamps, invoice details, payment mode; STRICTLY NO TC Kimlik No)
     const metadata: Record<string, unknown> = {
       invoice_type: invoiceType,
       ...(invoiceType === "corporate"
@@ -120,6 +140,13 @@ export async function POST(req: Request) {
             company_name: companyName,
             tax_office: taxOffice,
             tax_number: taxNumber,
+          }
+        : {}),
+      payment_method: effectivePaymentMethod,
+      ...(effectivePaymentMethod === "cod"
+        ? {
+            cod_fee: paymentOptions.cod.fee,
+            cod_fee_label: paymentOptions.cod.fee_label || "Kapıda Ödeme Hizmet Bedeli",
           }
         : {}),
       distance_sales_contract_consent_at: new Date().toISOString(),
@@ -137,53 +164,157 @@ export async function POST(req: Request) {
     // 2. Assign selected shipping option
     await setCartShippingMethod(cart.id, shippingOptionId);
 
-    // 3. Security gate: check development dummy payment allowance (fail-closed in production)
-    if (!isDevPaymentAllowed()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Ödeme yöntemi henüz yapılandırılmadı.",
-        },
-        { status: 400 },
-      );
-    }
+    // Handle COD Fee Line Item addition/removal on cart
+    const existingCodFeeItem = cart.items?.find(
+      (item) =>
+        item.variant?.sku === "SERVICE-COD-FEE" ||
+        item.metadata?.is_cod_fee === true ||
+        (item as any).sku === "SERVICE-COD-FEE",
+    );
 
-    // 4. Complete order via Medusa workflow
-    const completionResult = await completeCart(cart.id);
-    if (!completionResult.success || !completionResult.order) {
-      const errMsg = completionResult.error || "";
-      const isConflict = /completed|already/i.test(errMsg);
-      if (isConflict) {
+    if (effectivePaymentMethod === "cod") {
+      if (!paymentOptions.cod.enabled) {
         return NextResponse.json(
           {
             success: false,
-            code: "CART_ALREADY_COMPLETED",
-            error: "Bu sepet için sipariş zaten oluşturuldu.",
-            orderId: existingOrderId || undefined,
-            redirectUrl: existingOrderId ? "/siparis-onay" : undefined,
+            error: "Kapıda ödeme yöntemi şu anda aktif değildir.",
           },
-          { status: 409 },
+          { status: 400 },
         );
       }
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: completionResult.error || "Sipariş tamamlanırken bir hata oluştu.",
-        },
-        { status: 400 },
-      );
+      // Validate cod_max_order_amount against PRODUCT ITEMS ONLY
+      const productItemsTotal = (cart.items || [])
+        .filter(
+          (i) =>
+            i.id !== existingCodFeeItem?.id &&
+            !i.metadata?.is_cod_fee &&
+            i.variant?.sku !== "SERVICE-COD-FEE",
+        )
+        .reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
+
+      if (
+        paymentOptions.cod.max_order_amount !== null &&
+        paymentOptions.cod.max_order_amount !== undefined &&
+        paymentOptions.cod.max_order_amount > 0 &&
+        productItemsTotal > paymentOptions.cod.max_order_amount
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Kapıda ödeme yöntemi en fazla ${paymentOptions.cod.max_order_amount} TL tutarındaki ürün siparişleri için geçerlidir. Mevcut sepet ürün tutarınız: ${productItemsTotal} TL.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      // Add COD service fee line item if not already in cart
+      if (!existingCodFeeItem && paymentOptions.cod.variant_id) {
+        await addItemToCart(cart.id, paymentOptions.cod.variant_id, 1);
+      }
+    } else {
+      // Switched away from COD: remove COD service fee line item immediately from server cart
+      if (existingCodFeeItem) {
+        await removeCartItem(cart.id, existingCodFeeItem.id);
+      }
     }
 
-    // 5. Success: store order ID in short-lived httpOnly cookie, clear active cart
-    await setOrderConfirmation(completionResult.order.id);
-    await deleteCartId();
+    // 3. Handle payment method execution
+    if (effectivePaymentMethod === "paytr") {
+      if (!paymentOptions.paytr.enabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "PayTR ile kredi kartı ödeme yöntemi şu anda aktif değildir.",
+          },
+          { status: 400 },
+        );
+      }
 
-    return NextResponse.json({
-      success: true,
-      orderId: completionResult.order.id,
-      redirectUrl: "/siparis-onay",
-    });
+      const paytrData = await initiatePaytrPayment(cart.id);
+      return NextResponse.json({
+        success: true,
+        paymentMethod: "paytr",
+        token: paytrData.token,
+        iframeUrl: paytrData.iframeUrl,
+        displayMode: paytrData.displayMode,
+        cartId: cart.id,
+      });
+    }
+
+    if (effectivePaymentMethod === "cod") {
+      if (!paymentOptions.cod.enabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Kapıda ödeme yöntemi şu anda aktif değildir.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const completionResult = await completeCart(cart.id, "pp_cod_cod");
+      if (!completionResult.success || !completionResult.order) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: completionResult.error || "Kapıda ödeme siparişi oluşturulamadı.",
+          },
+          { status: 400 },
+        );
+      }
+
+      await setOrderConfirmation(completionResult.order.id);
+      await deleteCartId();
+
+      return NextResponse.json({
+        success: true,
+        paymentMethod: "cod",
+        orderId: completionResult.order.id,
+        redirectUrl: "/siparis-onay",
+      });
+    }
+
+    if (effectivePaymentMethod === "dev") {
+      if (!isDevPaymentAllowed()) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Geliştirici sahte ödeme yöntemi üretim ortamında kullanılamaz.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const completionResult = await completeCart(cart.id, "pp_system_default");
+      if (!completionResult.success || !completionResult.order) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: completionResult.error || "Sipariş tamamlanırken bir hata oluştu.",
+          },
+          { status: 400 },
+        );
+      }
+
+      await setOrderConfirmation(completionResult.order.id);
+      await deleteCartId();
+
+      return NextResponse.json({
+        success: true,
+        paymentMethod: "dev",
+        orderId: completionResult.order.id,
+        redirectUrl: "/siparis-onay",
+      });
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Geçersiz ödeme yöntemi.",
+      },
+      { status: 400 },
+    );
   } catch (err: any) {
     const errText = err?.message || String(err);
     if (/completed|already/i.test(errText)) {

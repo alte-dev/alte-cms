@@ -49,27 +49,30 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
 
 ---
 
-## 4. Ödeme Güvenliği ve Callback Doğrulaması
+## 4. Ödeme Güvenliği, Şifreleme ve Callback Doğrulaması
 
 Ödeme akışında istemci tarafı (tarayıcı) verilerine **kesinlikle güvenilmez**:
 
 - Tutar, vergi ve sepet tutarı yalnızca Medusa sunucusunda hesaplanır ve PayTR token isteğine sunucu tarafından aktarılır.
 - Sipariş durumu, yalnızca PayTR sunucusundan gelen imzalı callback (webhook) ile `completed` durumuna geçer.
+- **AES-256-GCM ile Veri Şifreleme:** PayTR Merchant Key ve Merchant Salt bilgileri veritabanında asla açık tutulmaz; `SETTINGS_ENCRYPTION_KEY` ile AES-256-GCM (12-byte IV, 16-byte auth tag) algoritmasıyla şifrelenir.
+- **Write-Only Admin:** Admin API ve UI üzerinden hassas anahtarlar asla açık metin dönülmez (`••••••••••••••••6789`).
+- **TC Kimlik No Yasağı:** KVKK ve gizlilik standartları gereği misafir veya kayıtlı checkout akışında TC Kimlik No kesinlikle talep edilmez, kaydedilmez ve loglanmaz.
 
-### PayTR Callback Güvenlik Adımları:
+### PayTR Callback Güvenlik Adımları (`POST /hooks/payment/pp_paytr_paytr`):
 
 1. **İmza Hesaplama:**
-   PayTR tarafından gönderilen `merchant_oid`, `status` ve `total_amount` değerleri, sunucuda saklanan `merchant_salt` ve `merchant_key` ile birleştirilerek HMAC-SHA256 imzası hesaplanır:
+   PayTR tarafından gönderilen `merchant_oid`, `status` ve `total_amount` değerleri, sunucuda şifresi çözülen `merchant_salt` ve `merchant_key` ile birleştirilerek HMAC-SHA256 imzası hesaplanır:
    $$\text{hash\_str} = \text{merchant\_oid} + \text{merchant\_salt} + \text{status} + \text{total\_amount}$$
    $$\text{expected\_hash} = \text{base64}(\text{hmac\_sha256}(\text{hash\_str}, \text{merchant\_key}))$$
 2. **Sabit Zamanlı Karşılaştırma (Timing Attack Prevention):**
    Gelen `hash` ile hesaplanan imza `crypto.timingSafeEqual()` fonksiyonu ile sabit sürede karşılaştırılır.
 3. **Tutar Bütünlüğü:**
-   PayTR'den dönen `total_amount` (kuruş cinsinden), Medusa sepetindeki beklenen tutarla kuruşu kuruşuna eşleşmek zorundadır.
+   PayTR'den dönen `total_amount` (kuruş cinsinden), Medusa sepetindeki beklenen tutara eşit veya büyük olmak zorundadır. Eksik tutar durumunda sepet kapatılmaz.
 4. **Idempotency (Mükerrer İstek Koruması):**
    Aynı `merchant_oid` için mükerrer bir callback gelirse, sipariş yeniden işleme alınmaz; doğrudan PayTR'a `"OK"` yanıtı dönülür.
 5. **PayTR Yanıt Protokolü:**
-   Başarılı doğrulamada yanıt gövdesi yalnızca yalın `"OK"` metni olmalıdır (boşluk, HTML veya JSON PayTR tarafından hata kabul edilir).
+   Başarılı veya durumu loglanan bildirimlerde yanıt gövdesi yalnızca ve kesinlikle yalın `"OK"` metni olmalıdır (boşluk, HTML veya JSON PayTR tarafından hata kabul edilir).
 
 ---
 
@@ -77,7 +80,7 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
 
 Üretim sunucusunda OpenLiteSpeed / ModSecurity veya Cloudflare WAF kullanıldığında PayTR bildirimlerinin engellenmemesi için aşağıdaki kurallar zorunludur:
 
-- [ ] **Callback Rota İstisnası:** `/api/payment/paytr/callback` rotası için POST gövdesi denetim kuralları (`SecRuleEngine DetectionOnly` veya whitelist) uygulanmalıdır.
+- [ ] **Callback Rota İstisnası:** `/hooks/payment/pp_paytr_paytr` rotası için POST gövdesi denetim kuralları (`SecRuleEngine DetectionOnly` veya whitelist) uygulanmalıdır.
 - [ ] **User-Agent Kontrolü:** ModSecurity varsayılan kuralları (OWASP CRS), boş veya standart dışı `User-Agent` içeren istekleri (örneğin PayTR botunu) engelleyebilir. Callback rotasında User-Agent kuralı bypass edilmelidir.
 - [ ] **IP Whitelist Kontrolü (Doğrulanması gereken):** PayTR teknik destek tarafından paylaşılan resmi bildirim IP blokları güvenlik duvarında beyaz listeye alınmalıdır.
 - [ ] **Hız Sınırlaması İstisnası:** Callback rotası genel müşteri rate limit kurallarından muaf tutulmalı, yalnızca PayTR sunucu IP'lerine açık olmalıdır.

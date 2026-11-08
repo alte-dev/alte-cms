@@ -1,7 +1,9 @@
 import { z } from "zod";
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const weakSecretPatterns = ["secret", "changeme", "123456", "password", "default", "admin"];
 
@@ -39,11 +41,39 @@ export const medusaEnvSchema = z.object({
   PORT: z.string().optional().default("9000"),
   HOST: z.string().optional().default("127.0.0.1"),
   MEDUSA_WORKER_MODE: z.enum(["shared", "server", "worker"]).optional().default("shared"),
+
+  // Payment settings & Encryption (Faz 4)
+  SETTINGS_ENCRYPTION_KEY: z
+    .string()
+    .min(32, "SETTINGS_ENCRYPTION_KEY en az 32 bayt (64 hex veya 32 karakter) olmalıdır."),
+  API_PUBLIC_URL: z.string().url().optional(),
+  WEB_PUBLIC_URL: z.string().url().optional(),
+
+  // Dev-only overrides (Production'da reddedilir)
+  DEV_PAYTR_USER_IP: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  PAYTR_API_BASE: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
 });
 
 export type MedusaEnv = z.infer<typeof medusaEnvSchema>;
 
 export function validateMedusaEnv(): MedusaEnv {
+  // Production guard for dev-only overrides
+  if (process.env.NODE_ENV === "production") {
+    if (process.env.PAYTR_API_BASE) {
+      throw new Error(
+        "[Security] PAYTR_API_BASE yalnızca geliştirme ortamında kullanılabilir. Production modunda tanımlanamaz.",
+      );
+    }
+    if (process.env.DEV_PAYTR_USER_IP) {
+      throw new Error(
+        "[Security] DEV_PAYTR_USER_IP yalnızca geliştirme ortamında kullanılabilir. Production modunda tanımlanamaz.",
+      );
+    }
+  }
+
   const result = medusaEnvSchema.safeParse(process.env);
   if (!result.success) {
     const formatted = result.error.format();

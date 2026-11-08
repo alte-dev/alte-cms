@@ -164,29 +164,35 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
               </div>
 
               {/* Quantity Controls */}
-              <div className="flex items-center border border-stone-300 rounded-md bg-white">
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                  className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
-                  aria-label="Adet Azalt"
-                >
-                  -
-                </button>
-                <span className="px-3 py-1 text-xs font-semibold text-stone-900 select-none min-w-[2rem] text-center">
-                  {item.quantity}
-                </span>
-                <button
-                  type="button"
-                  disabled={isPending || item.quantity >= 99}
-                  onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                  className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
-                  aria-label="Adet Artır"
-                >
-                  +
-                </button>
-              </div>
+              {item.metadata?.is_cod_fee || item.variant?.sku === "SERVICE-COD-FEE" ? (
+                <div className="px-2.5 py-1 text-xs font-medium text-stone-500 bg-stone-100 rounded">
+                  1 Adet
+                </div>
+              ) : (
+                <div className="flex items-center border border-stone-300 rounded-md bg-white">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                    className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
+                    aria-label="Adet Azalt"
+                  >
+                    -
+                  </button>
+                  <span className="px-3 py-1 text-xs font-semibold text-stone-900 select-none min-w-[2rem] text-center">
+                    {item.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={isPending || item.quantity >= 99}
+                    onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                    className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
+                    aria-label="Adet Artır"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
 
               {/* Line Total */}
               <div className="text-right min-w-[5rem]">

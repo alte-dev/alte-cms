@@ -172,6 +172,125 @@ function cookieHeader(cookieMap: Record<string, string>): string {
     .join("; ");
 }
 
+/**
+ * Dinamik olarak her verify:checkout çalıştırmasında taze ve 50 stoklu benzersiz bir test ürünü hazırlar.
+ * Böylece sabit 'test-urun-sabit-1' stoğuna bağımlı kalmadan arka arkaya sınırsız kez çalıştırılabilir.
+ */
+async function ensureDedicatedTestProduct(): Promise<{
+  variantId: string;
+  secondVariantId: string;
+  targetSku: string;
+}> {
+  try {
+    const adminToken = await getAdminToken();
+    const headers = { Authorization: `Bearer ${adminToken}` };
+
+    const [scRes, spRes, slRes] = await Promise.all([
+      fetch(`${MEDUSA_URL}/admin/sales-channels`, { headers }),
+      fetch(`${MEDUSA_URL}/admin/shipping-profiles`, { headers }),
+      fetch(`${MEDUSA_URL}/admin/stock-locations`, { headers }),
+    ]);
+
+    const scData = await scRes.json();
+    const spData = await spRes.json();
+    const slData = await slRes.json();
+
+    const scId = scData.sales_channels?.[0]?.id;
+    const spId = spData.shipping_profiles?.[0]?.id;
+    const slId = slData.stock_locations?.[0]?.id;
+
+    if (scId && spId && slId) {
+      const runId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      const sku1 = `SKU-CHK-${runId}-1`;
+      const sku2 = `SKU-CHK-${runId}-2`;
+
+      const createRes = await fetch(`${MEDUSA_URL}/admin/products`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          title: `Dinamik Checkout Test Ürünü ${runId}`,
+          handle: `test-checkout-${runId}`,
+          status: "published",
+          shipping_profile_id: spId,
+          sales_channels: [{ id: scId }],
+          options: [{ title: "Beden", values: ["Standart", "Büyük"] }],
+          variants: [
+            {
+              title: "Standart",
+              sku: sku1,
+              manage_inventory: true,
+              allow_backorder: false,
+              options: { Beden: "Standart" },
+              prices: [{ currency_code: "try", amount: 140 }],
+            },
+            {
+              title: "Büyük",
+              sku: sku2,
+              manage_inventory: true,
+              allow_backorder: false,
+              options: { Beden: "Büyük" },
+              prices: [{ currency_code: "try", amount: 160 }],
+            },
+          ],
+        }),
+      });
+
+      if (createRes.ok) {
+        const prodData = await createRes.json();
+        const v1 = prodData.product?.variants?.find((v: any) => v.sku === sku1);
+        const v2 = prodData.product?.variants?.find((v: any) => v.sku === sku2);
+
+        for (const v of [v1, v2]) {
+          if (!v) continue;
+          const invRes = await fetch(
+            `${MEDUSA_URL}/admin/inventory-items?sku=${encodeURIComponent(v.sku)}`,
+            { headers },
+          );
+          if (invRes.ok) {
+            const invData = await invRes.json();
+            const invItem = invData.inventory_items?.[0];
+            if (invItem) {
+              await fetch(`${MEDUSA_URL}/admin/inventory-items/${invItem.id}/location-levels`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...headers },
+                body: JSON.stringify({
+                  location_id: slId,
+                  stocked_quantity: 50,
+                }),
+              });
+            }
+          }
+        }
+
+        if (v1 && v2) {
+          return {
+            variantId: v1.id,
+            secondVariantId: v2.id,
+            targetSku: sku1,
+          };
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Uyarı] Dinamik test ürünü oluşturulamadı, mevcut ürün aranıyor:", err.message);
+  }
+
+  // Fallback: mevcut ürünler
+  const prodRes = await fetch(`${MEDUSA_URL}/store/products?fields=*variants`, {
+    headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+  });
+  const prodData = await prodRes.json();
+  const products = prodData.products || [];
+  const fixedProduct = products.find((p: any) => p.handle === "test-urun-sabit-1") || products[0];
+  const secondProduct = products.find((p: any) => p.id !== fixedProduct?.id) || products[1];
+
+  return {
+    variantId: fixedProduct?.variants?.[0]?.id || "",
+    secondVariantId: secondProduct?.variants?.[0]?.id || "",
+    targetSku: fixedProduct?.variants?.[0]?.sku || "SKU-SABIT-1-STD",
+  };
+}
+
 async function main() {
   console.log("================================================================================");
   console.log("🚀 ALTE CMS FAZ 3 & 3.1: CHECKOUT, KUPON & SİPARİŞ ONAYI E2E DOĞRULAMASI");
@@ -237,25 +356,14 @@ async function main() {
   let targetSku = "SKU-SABIT-1-STD";
   let inventoryItemId = "";
   try {
-    const prodRes = await fetch(`${MEDUSA_URL}/store/products?fields=*variants`, {
-      headers: {
-        "x-publishable-api-key": PUBLISHABLE_KEY,
-      },
-    });
-    const prodData = await prodRes.json();
-    const fixedProduct =
-      prodData.products?.find((p: any) => p.handle === "test-urun-sabit-1") ||
-      prodData.products?.[0];
-    const secondProduct =
-      prodData.products?.find((p: any) => p.handle !== "test-urun-sabit-1") ||
-      prodData.products?.[1];
+    const dedicated = await ensureDedicatedTestProduct();
+    variantId = dedicated.variantId;
+    secondVariantId = dedicated.secondVariantId;
+    targetSku = dedicated.targetSku;
 
-    if (!fixedProduct || !fixedProduct.variants?.[0]?.id) {
-      throw new Error("test-urun-sabit-1 varyantı bulunamadı.");
+    if (!variantId) {
+      throw new Error("Test varyantı bulunamadı veya oluşturulamadı.");
     }
-    variantId = fixedProduct.variants[0].id;
-    targetSku = fixedProduct.variants[0].sku || "SKU-SABIT-1-STD";
-    secondVariantId = secondProduct?.variants?.[0]?.id || "";
 
     // Storefront API üzerinden sepete ekle
     const addRes = await fetch(`${STOREFRONT_URL}/api/cart`, {
@@ -279,7 +387,7 @@ async function main() {
       2,
       "Sepete ürün ekleme & cart_id cookie",
       Boolean(passed),
-      `Status: ${addRes.status}, Body: ${JSON.stringify(addData)}, Cart ID: ${sessionCookies["cart_id"]}, Sepet kalem sayısı: ${addData.cart?.items?.length}`,
+      `Status: ${addRes.status}, Cart ID: ${sessionCookies["cart_id"]}, Sepet kalem sayısı: ${addData.cart?.items?.length}`,
     );
   } catch (err: any) {
     recordStep(2, "Sepete ürün ekleme", false, err.message);
@@ -388,7 +496,7 @@ async function main() {
       4,
       "Geçerli kupon (TEST10) uygulama",
       passed,
-      `Status: ${couponRes.status}, Promosyon bulundu: ${hasPromoCode}, İndirim tutarı: ${couponData.cart?.discount_total} cent`,
+      `Status: ${couponRes.status}, Promosyon bulundu: ${hasPromoCode}, İndirim tutarı: ${couponData.cart?.discount_total} TL`,
     );
   } catch (err: any) {
     recordStep(4, "Kupon uygulama", false, err.message);
@@ -609,6 +717,7 @@ async function main() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "add", variantId, quantity: 1 }),
     });
+    const parAddData = await parAddRes.json();
     const parCookies = parseCookies(parAddRes);
 
     const parallelPayload = {
@@ -628,6 +737,7 @@ async function main() {
       shippingOptionId: validShippingOptionId,
       distanceSalesContract: true,
       kvkkConsent: true,
+      paymentMethod: "dev",
     };
 
     const [req1, req2] = await Promise.all([
@@ -695,6 +805,7 @@ async function main() {
     shippingOptionId: validShippingOptionId,
     distanceSalesContract: true,
     kvkkConsent: true,
+    paymentMethod: "dev",
   };
 
   try {
@@ -761,7 +872,7 @@ async function main() {
       13,
       "Sipariş toplamı sepet toplamıyla eşleşiyor (KDV Dahil)",
       totalsMatch,
-      `Sepet Toplamı: ${cartTotalBeforeOrder} cent, Sipariş Toplamı: ${orderTotal} cent (KDV Dahil: ${order?.tax_total} cent vergi)`,
+      `Sepet Toplamı: ${cartTotalBeforeOrder} TL, Sipariş Toplamı: ${orderTotal} TL (KDV Dahil: ${order?.tax_total} TL vergi)`,
     );
   } catch (err: any) {
     recordStep(13, "Sipariş toplamı kontrolü", false, err.message);
