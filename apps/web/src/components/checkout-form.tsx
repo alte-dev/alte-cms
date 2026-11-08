@@ -176,6 +176,11 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
 
       const data = await res.json();
 
+      if (res.status === 409 && data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+
       if (!res.ok || !data.success) {
         setErrorMsg(data.error || "Sipariş işlenirken bir hata oluştu.");
         setIsSubmitting(false);

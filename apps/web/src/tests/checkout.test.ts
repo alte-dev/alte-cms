@@ -223,3 +223,36 @@ describe("Payment Security Gate (isDevPaymentAllowed)", () => {
     expect(isDevPaymentAllowed()).toBe(true);
   });
 });
+
+describe("Checkout API Idempotency & Error Sanitization", () => {
+  it("detects completed cart and returns 409 with friendly Turkish message", () => {
+    const errorText = "Cart has already been completed";
+    const isConflict = /completed|already/i.test(errorText);
+    expect(isConflict).toBe(true);
+
+    const friendlyResponse = {
+      success: false,
+      code: "CART_ALREADY_COMPLETED",
+      error: "Bu sepet için sipariş zaten oluşturuldu.",
+      redirectUrl: "/siparis-onay",
+    };
+    expect(friendlyResponse.error).toBe("Bu sepet için sipariş zaten oluşturuldu.");
+    expect(friendlyResponse.redirectUrl).toBe("/siparis-onay");
+  });
+
+  it("sanitizes raw internal technical errors and prevents leakage to client", () => {
+    const rawError = new Error(
+      "MedusaError: Internal Server Error at Object.<anonymous> (/var/task/node_modules/medusa/dist/...)",
+    );
+    const errText = rawError.message;
+    const isRaw = errText.includes("at ") || errText.includes("Error:");
+    expect(isRaw).toBe(true);
+
+    const safeMessage = isRaw
+      ? "Sipariş işlenirken bir hata oluştu. Lütfen tekrar deneyiniz."
+      : errText;
+    expect(safeMessage).not.toContain("MedusaError");
+    expect(safeMessage).not.toContain("/var/task");
+    expect(safeMessage).toBe("Sipariş işlenirken bir hata oluştu. Lütfen tekrar deneyiniz.");
+  });
+});

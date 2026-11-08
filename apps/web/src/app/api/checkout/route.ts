@@ -6,17 +6,28 @@ import {
   setCartShippingMethod,
   updateCart,
 } from "../../../lib/medusa/cart";
-import { deleteCartId, getCartId, setOrderConfirmation } from "../../../lib/medusa/cookies";
+import {
+  deleteCartId,
+  getCartId,
+  getOrderConfirmation,
+  setOrderConfirmation,
+} from "../../../lib/medusa/cookies";
 import { mapMedusaError } from "../../../lib/medusa/format";
 import { StoreAddress } from "../../../lib/medusa/types";
 import { CheckoutFormSchema } from "../../../lib/medusa/validation";
 
 export async function POST(req: Request) {
   try {
+    const existingOrderId = await getOrderConfirmation();
+
     const cartId = await getCartId();
     if (!cartId) {
       return NextResponse.json(
-        { error: "Sepetiniz bulunamadı. Lütfen alışverişe baştan başlayınız." },
+        {
+          success: false,
+          error: "Sepetiniz bulunamadı. Lütfen alışverişe baştan başlayınız.",
+          redirectUrl: existingOrderId ? "/siparis-onay" : "/sepet",
+        },
         { status: 400 },
       );
     }
@@ -24,8 +35,26 @@ export async function POST(req: Request) {
     const cart = await getCart(cartId);
     if (!cart || !cart.items || cart.items.length === 0) {
       return NextResponse.json(
-        { error: "Sepetiniz boş. Lütfen sepetinize ürün ekleyiniz." },
+        {
+          success: false,
+          error: "Sepetiniz boş. Lütfen sepetinize ürün ekleyiniz.",
+          redirectUrl: "/sepet",
+        },
         { status: 400 },
+      );
+    }
+
+    // Check if cart was already completed (idempotency / double-submit guard)
+    if (cart.completed_at) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "CART_ALREADY_COMPLETED",
+          error: "Bu sepet için sipariş zaten oluşturuldu.",
+          orderId: existingOrderId || undefined,
+          redirectUrl: existingOrderId ? "/siparis-onay" : undefined,
+        },
+        { status: 409 },
       );
     }
 
@@ -34,6 +63,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         {
+          success: false,
           error: parsed.error.issues[0]?.message || "Lütfen form alanlarını kontrol ediniz.",
           issues: parsed.error.issues,
         },
@@ -107,12 +137,8 @@ export async function POST(req: Request) {
     // 2. Assign selected shipping option
     await setCartShippingMethod(cart.id, shippingOptionId);
 
-    // 3. Security gate: check development dummy payment allowance
-    const simulateNoDevPayment =
-      process.env.NODE_ENV !== "production" &&
-      req.headers.get("x-simulate-no-dev-payment") === "true";
-
-    if (!isDevPaymentAllowed() || simulateNoDevPayment) {
+    // 3. Security gate: check development dummy payment allowance (fail-closed in production)
+    if (!isDevPaymentAllowed()) {
       return NextResponse.json(
         {
           success: false,
@@ -125,6 +151,21 @@ export async function POST(req: Request) {
     // 4. Complete order via Medusa workflow
     const completionResult = await completeCart(cart.id);
     if (!completionResult.success || !completionResult.order) {
+      const errMsg = completionResult.error || "";
+      const isConflict = /completed|already/i.test(errMsg);
+      if (isConflict) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "CART_ALREADY_COMPLETED",
+            error: "Bu sepet için sipariş zaten oluşturuldu.",
+            orderId: existingOrderId || undefined,
+            redirectUrl: existingOrderId ? "/siparis-onay" : undefined,
+          },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
@@ -144,7 +185,32 @@ export async function POST(req: Request) {
       redirectUrl: "/siparis-onay",
     });
   } catch (err: any) {
-    const message = mapMedusaError(err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const errText = err?.message || String(err);
+    if (/completed|already/i.test(errText)) {
+      const existingOrderId = await getOrderConfirmation().catch(() => null);
+      return NextResponse.json(
+        {
+          success: false,
+          code: "CART_ALREADY_COMPLETED",
+          error: "Bu sepet için sipariş zaten oluşturuldu.",
+          orderId: existingOrderId || undefined,
+          redirectUrl: existingOrderId ? "/siparis-onay" : undefined,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Never leak raw technical/stack errors to client
+    const mapped = mapMedusaError(err);
+    const isRaw =
+      !mapped ||
+      mapped.includes("at ") ||
+      mapped.includes("Error:") ||
+      mapped.includes("fetch failed");
+    const userFriendly = isRaw
+      ? "Sipariş işlenirken bir hata oluştu. Lütfen tekrar deneyiniz."
+      : mapped;
+
+    return NextResponse.json({ success: false, error: userFriendly }, { status: 400 });
   }
 }
