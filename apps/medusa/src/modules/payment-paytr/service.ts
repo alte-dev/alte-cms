@@ -280,7 +280,8 @@ export class PaytrPaymentService extends AbstractPaymentProvider {
 
   async authorizePayment(input: AuthorizePaymentInput): Promise<AuthorizePaymentOutput> {
     const data = input.data as unknown as PaytrSessionData;
-    const isSuccess = data?.status === "success" || data?.status === "captured";
+    const isSuccess =
+      data?.status === "authorized" || data?.status === "success" || data?.status === "captured";
 
     return {
       status: isSuccess ? "authorized" : "pending",
