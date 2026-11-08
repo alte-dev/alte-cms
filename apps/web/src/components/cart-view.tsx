@@ -2,8 +2,13 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { Trash2, ShoppingBag, ArrowRight, Truck } from "lucide-react";
-import { removeCartItemAction, updateCartItemAction } from "../app/(store)/actions";
+import { Trash2, ShoppingBag, ArrowRight, Truck, Tag, X } from "lucide-react";
+import {
+  applyCouponAction,
+  removeCartItemAction,
+  removeCouponAction,
+  updateCartItemAction,
+} from "../app/(store)/actions";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { StoreCart } from "../lib/medusa/types";
 import { PlaceholderImage } from "./placeholder-image";
@@ -15,6 +20,8 @@ interface CartViewProps {
 
 export function CartView({ initialCart, shippingProgress }: CartViewProps) {
   const [cart, setCart] = useState<StoreCart | null>(initialCart);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -48,6 +55,33 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
     });
   };
 
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponCode.trim()) return;
+    setCouponError(null);
+    startTransition(async () => {
+      const result = await applyCouponAction(couponCode.trim());
+      if (result.success && result.data) {
+        setCart(result.data);
+        setCouponCode("");
+      } else if (result.error) {
+        setCouponError(result.error);
+      }
+    });
+  };
+
+  const handleRemoveCoupon = (code: string) => {
+    setCouponError(null);
+    startTransition(async () => {
+      const result = await removeCouponAction(code);
+      if (result.success && result.data) {
+        setCart(result.data);
+      } else if (result.error) {
+        setCouponError(result.error);
+      }
+    });
+  };
+
   if (!cart || items.length === 0) {
     return (
       <div className="py-16 text-center">
@@ -72,7 +106,9 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
   const subtotal = cart.item_subtotal ?? cart.subtotal ?? 0;
   const taxTotal = cart.tax_total ?? 0;
   const shippingTotal = cart.shipping_total ?? 0;
+  const discountTotal = cart.discount_total ?? 0;
   const total = cart.total ?? subtotal;
+  const promotions = cart.promotions || [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -175,12 +211,62 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
       </div>
 
       {/* Summary Sidebar (Col 4) */}
-      <div className="lg:col-span-4 bg-white border border-stone-200 rounded-lg p-6 space-y-4 sticky top-24">
+      <div className="lg:col-span-4 bg-white border border-stone-200 rounded-lg p-6 space-y-5 sticky top-24">
         <h3 className="text-base font-bold text-stone-900 pb-3 border-b border-stone-100">
           Sipariş Özeti ({itemCount} Ürün)
         </h3>
 
-        <div className="space-y-2.5 text-sm">
+        {/* Coupon Input Form */}
+        <div className="space-y-2">
+          <form onSubmit={handleApplyCoupon} className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="İndirim Kodu"
+                disabled={isPending}
+                className="w-full px-3 py-2 text-sm uppercase font-mono tracking-wider border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isPending || !couponCode.trim()}
+              className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 transition flex items-center gap-1.5"
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>Uygula</span>
+            </button>
+          </form>
+
+          {couponError && <p className="text-xs text-red-600 mt-1">{couponError}</p>}
+
+          {/* Active Promotions Badge */}
+          {promotions.length > 0 && (
+            <div className="pt-2 flex flex-wrap gap-2">
+              {promotions.map((p) => (
+                <div
+                  key={p.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-medium rounded-full border border-emerald-200"
+                >
+                  <Tag className="w-3 h-3" />
+                  <span>{p.code}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCoupon(p.code)}
+                    disabled={isPending}
+                    className="ml-1 text-emerald-600 hover:text-emerald-900"
+                    title="Kuponu Kaldır"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2.5 text-sm pt-2 border-t border-stone-100">
           {/* Subtotal */}
           <div className="flex justify-between text-stone-600">
             <span>Ara Toplam (KDV Hariç)</span>
@@ -195,11 +281,19 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
             <span className="font-medium text-stone-900">{formatTRY(taxTotal)}</span>
           </div>
 
+          {/* Discount */}
+          {discountTotal > 0 && (
+            <div className="flex justify-between text-emerald-700 font-medium">
+              <span>İndirim Tutarı</span>
+              <span>-{formatTRY(discountTotal)}</span>
+            </div>
+          )}
+
           {/* Shipping */}
           <div className="flex justify-between text-stone-600">
             <span>Kargo Tutarı</span>
             <span className="font-medium text-stone-900">
-              {shippingTotal > 0 ? formatTRY(shippingTotal) : "Hesaplanacak (Sepette)"}
+              {shippingTotal > 0 ? formatTRY(shippingTotal) : "Hesaplanacak (Ödeme Adımında)"}
             </span>
           </div>
 
@@ -213,20 +307,14 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
           </div>
         </div>
 
-        {/* Checkout Button (Informed scope) */}
-        <button
-          type="button"
-          disabled
-          className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-stone-300 text-stone-600 font-medium rounded-md cursor-not-allowed"
-          title="Ödeme adımı Faz 4 kapsamında entegre edilecektir."
+        {/* Checkout Link */}
+        <Link
+          href="/odeme"
+          className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
         >
-          <span>Ödemeye Geç (Faz 4)</span>
+          <span>Ödemeye Geç</span>
           <ArrowRight className="w-4 h-4" />
-        </button>
-
-        <p className="text-xs text-stone-400 text-center">
-          Ödeme ve kargo entegrasyonu sonraki aşamada aktifleşecektir.
-        </p>
+        </Link>
       </div>
     </div>
   );

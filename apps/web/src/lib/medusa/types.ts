@@ -100,6 +100,33 @@ export interface StoreShippingOption {
   rules?: StoreShippingOptionRule[];
 }
 
+export interface StoreAddress {
+  id?: string;
+  first_name: string;
+  last_name: string;
+  address_1: string;
+  address_2?: string | null;
+  city: string;
+  country_code: string;
+  province?: string | null;
+  postal_code?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  metadata?: Record<string, any> | null;
+}
+
+export interface StorePromotion {
+  id: string;
+  code: string;
+  type?: string;
+  is_automatic?: boolean;
+  application_method?: {
+    type: "percentage" | "fixed";
+    value: number;
+    currency_code?: string;
+  };
+}
+
 export interface StoreCart {
   id: string;
   currency_code: string;
@@ -114,7 +141,49 @@ export interface StoreCart {
   shipping_total: number;
   tax_total: number;
   total: number;
+  shipping_address?: StoreAddress | null;
+  billing_address?: StoreAddress | null;
+  shipping_methods?: Array<{
+    id: string;
+    shipping_option_id: string;
+    amount: number;
+    name?: string;
+    shipping_option?: StoreShippingOption;
+  }>;
+  promotions?: StorePromotion[];
+  metadata?: Record<string, any> | null;
   shipping_options?: StoreShippingOption[];
+}
+
+export interface StoreOrder {
+  id: string;
+  display_id?: number | string;
+  status: string;
+  currency_code: string;
+  email: string;
+  created_at: string;
+  items: StoreCartLineItem[];
+  shipping_address?: StoreAddress | null;
+  billing_address?: StoreAddress | null;
+  subtotal: number;
+  item_subtotal?: number;
+  shipping_total: number;
+  tax_total: number;
+  discount_total?: number;
+  total: number;
+  metadata?: {
+    invoice_type?: "individual" | "corporate";
+    company_name?: string;
+    tax_office?: string;
+    tax_number?: string;
+    distance_sales_contract_consent_at?: string;
+    kvkk_consent_at?: string;
+    [key: string]: any;
+  } | null;
+}
+
+export interface StoreOrderResponse {
+  order: StoreOrder;
 }
 
 export interface StoreRegion {

@@ -151,7 +151,6 @@ export function getProcessTreeRssMb(port: number): ProcessMetrics {
     let rootPid: number | null = null;
 
     if (isWindows) {
-      // Exact port match: ":PORT " followed strictly by whitespace, then any characters, then LISTENING, then PID
       const netstat = execSync(`netstat -ano -p tcp`, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
@@ -170,7 +169,6 @@ export function getProcessTreeRssMb(port: number): ProcessMetrics {
         }
       }
     } else {
-      // Linux: first attempt lsof, fallback to ss if lsof is not installed
       try {
         const pidStr = execSync(`lsof -ti :${port} -sTCP:LISTEN`, {
           encoding: "utf8",
@@ -181,7 +179,6 @@ export function getProcessTreeRssMb(port: number): ProcessMetrics {
           rootPid = parsed;
         }
       } catch {
-        // Fallback: ss -ltnp sport = :port
         try {
           const ssOut = execSync(`ss -ltnp sport = :${port}`, {
             encoding: "utf8",
@@ -248,6 +245,88 @@ export function getProcessTreeRssMb(port: number): ProcessMetrics {
     };
   } catch (err: any) {
     throw new Error(`Port ${port} bellek ölçümü başarısız: ${err.message || String(err)}`);
+  }
+}
+
+/**
+ * Detects whether the process tree on `port` is running Next.js in development mode (next dev).
+ */
+export function detectWebDevMode(port: number): boolean {
+  const isWindows = process.platform === "win32";
+  try {
+    let rootPid: number | null = null;
+    if (isWindows) {
+      const netstat = execSync(`netstat -ano -p tcp`, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 5000,
+      }).trim();
+      const portRegex = new RegExp(`:${port}\\s+.*LISTENING\\s+(\\d+)`, "i");
+      for (const line of netstat.split(/\r?\n/)) {
+        const match = line.trim().match(portRegex);
+        if (match) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            rootPid = parsed;
+            break;
+          }
+        }
+      }
+    } else {
+      try {
+        const pidStr = execSync(`lsof -ti :${port} -sTCP:LISTEN`, {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        const parsed = parseInt(pidStr.split(/\s+/)[0], 10);
+        if (!isNaN(parsed) && parsed > 0) rootPid = parsed;
+      } catch {
+        const ssOut = execSync(`ss -ltnp '( sport = :${port} )'`, {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        const match = ssOut.match(/pid=(\d+)/);
+        if (match) rootPid = parseInt(match[1], 10);
+      }
+    }
+
+    if (!rootPid) return false;
+
+    const allPids = [rootPid, ...getChildPids(rootPid)];
+    for (const pid of allPids) {
+      let cmdLine = "";
+      if (isWindows) {
+        try {
+          cmdLine = execSync(
+            `powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}').CommandLine"`,
+            { encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"] },
+          ).trim();
+        } catch {
+          // ignore
+        }
+      } else {
+        try {
+          cmdLine = execSync(`ps -p ${pid} -o args=`, {
+            encoding: "utf8",
+            timeout: 3000,
+            stdio: ["ignore", "pipe", "ignore"],
+          }).trim();
+        } catch {
+          // ignore
+        }
+      }
+
+      if (
+        cmdLine.includes("next dev") ||
+        cmdLine.includes("next-dev") ||
+        cmdLine.includes("apps/web dev")
+      ) {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return false;
   }
 }
 
@@ -394,8 +473,6 @@ export function writeUnmeasuredReport(reason: string) {
 3. **Storefront & Payload CMS:**
    - Adres: \`http://localhost:3100\`
    - Heap Sınırı: \`NODE_OPTIONS=--max-old-space-size=384\`
-
-Servisler ayağa kaldırıldıktan sonra \`pnpm measure:memory\` çalıştırıldığında gerçek RSS ve Docker bellek değerleri 2 saniyelik periyotlarla örneklenip bu tabloya yazılacaktır.
 `;
   fs.writeFileSync(reportPath, content, "utf8");
   console.log(`\n📄 docs/MEMORY-BASELINE.md güncellendi (ÖLÇÜLMEDİ olarak işaretlendi).`);
@@ -544,6 +621,15 @@ async function main() {
 
   console.log("\n🚀 Tüm servisler hazır. Gerçek ölçüm senaryoları başlatılıyor...\n");
 
+  const isWebDevMode = detectWebDevMode(WEB_PORT);
+  if (isWebDevMode) {
+    console.warn(
+      "\n⚠️ UYARI: Web süreci 'next dev' modunda tespit edildi! Geliştirme sunucusunun bellek tüketimi bütçe değerlendirmesi için geçersizdir.\n",
+    );
+  } else {
+    console.log("   ✔️ Web süreci Production modunda (next start / standalone) çalışıyor.\n");
+  }
+
   const allSamples: SystemSample[] = [];
   const summaries: ScenarioSummary[] = [];
 
@@ -566,7 +652,15 @@ async function main() {
       );
     }
   }
-  summaries.push(calculateSummary("Boşta (Idle 60s)", idleSamples, 0, true));
+  summaries.push(
+    calculateSummary(
+      "Boşta (Idle 60s)",
+      idleSamples,
+      0,
+      !isWebDevMode,
+      isWebDevMode ? "dev modunda ölçüldü, bütçe karşılaştırması geçersiz" : undefined,
+    ),
+  );
   await cooldown(5, "Senaryo A sonrası soğuma");
 
   // Scenario B: 20 Page navigations
@@ -584,7 +678,15 @@ async function main() {
     navSamples.push(sample);
     allSamples.push(sample);
   }
-  summaries.push(calculateSummary("20 Sayfa Gezme", navSamples, 0, true));
+  summaries.push(
+    calculateSummary(
+      "20 Sayfa Gezme",
+      navSamples,
+      0,
+      !isWebDevMode,
+      isWebDevMode ? "dev modunda ölçüldü, bütçe karşılaştırması geçersiz" : undefined,
+    ),
+  );
   await cooldown(5, "Senaryo B sonrası soğuma");
 
   // Scenario C: 60s Light Load (concurrency = 10, sampled every 2s, exactly 30 samples)
@@ -608,15 +710,31 @@ async function main() {
       console.log(`   Örnek ${i}/30: Toplam ${sample.totalMb} MB`);
     }
   }
-  summaries.push(calculateSummary("Hafif Yük (10 Eşzamanlı)", loadSamples, 0, true));
+  summaries.push(
+    calculateSummary(
+      "Hafif Yük (10 Eşzamanlı)",
+      loadSamples,
+      0,
+      !isWebDevMode,
+      isWebDevMode ? "dev modunda ölçüldü, bütçe karşılaştırması geçersiz" : undefined,
+    ),
+  );
   await cooldown(5, "Senaryo C sonrası soğuma");
 
   // Scenario D: Seed 100 Products
   const seed100Summary = await runSeedScenario("Seed 100 Ürün", 100, allSamples, 15);
+  if (isWebDevMode) {
+    seed100Summary.isValid = false;
+    seed100Summary.invalidReason = "dev modunda ölçüldü, bütçe karşılaştırması geçersiz";
+  }
   summaries.push(seed100Summary);
 
   // Scenario E: Seed 1000 Products
   const seed1000Summary = await runSeedScenario("Seed 1000 Ürün", 1000, allSamples, 15);
+  if (isWebDevMode) {
+    seed1000Summary.isValid = false;
+    seed1000Summary.invalidReason = "dev modunda ölçüldü, bütçe karşılaştırması geçersiz";
+  }
   summaries.push(seed1000Summary);
 
   // Save CSV with one row per sample
@@ -639,9 +757,39 @@ async function main() {
   const peakTotal = Math.max(...summaries.map((s) => s.totalPeakMb));
   const hasInvalid = summaries.some((s) => !s.isValid);
 
-  const mdContent = `# Bellek Tüketim Raporu ve Temel Çizgi (MEMORY-BASELINE.md)
+  let mdContent = "";
+  if (isWebDevMode) {
+    mdContent = `# Bellek Tüketim Raporu ve Temel Çizgi (MEMORY-BASELINE.md)
 
-> **Durum:** ${hasInvalid ? "⚠️ **BAZI SENARYOLAR GEÇERSİZ**" : "✅ **GERÇEK ÖLÇÜM TAMAMLANDI**"}  
+> **Durum:** ⚠️ **GEÇERSİZ (dev modunda ölçüldü, bütçe karşılaştırması geçersiz)**  
+> **Tarih:** ${new Date().toISOString()}  
+> **Açıklama:** Web süreci \`next dev\` modunda çalışırken ölçüldü. Geliştirme modu derleme ve TypeScript bellek yükü nedeniyle yüksek bellek tüketir; bu nedenle bütçe karşılaştırması geçersizdir ve bütçe durumu basılmamıştır.  
+> **Hedef Kaynak Bütçesi:** Toplam yeni yük en fazla **~1.1 GB RAM (1100 MB)**  
+> **Tepe RAM Tüketimi (Geliştirme Modu):** **${peakTotal} MB**  
+> **Ölçüm Yöntemi:** Process Tree Working Set (Windows 11) / RSS (Linux) + Docker Stats API. Her senaryoda başlangıç tabanı, işlem sırası ve tohumlama sonrası en az 15 örnek ile 2 saniyelik periyotlarla ham örnekleme.
+
+---
+
+## 1. Özet Bellek Tüketim Tablosu (Geliştirme Modu - Bütçe Karşılaştırması Geçersiz)
+
+| Senaryo | Medusa v2 (Ort / Tepe) | Next.js + Payload (Ort / Tepe) | PostgreSQL (Ort / Tepe) | Redis (Ort / Tepe) | Toplam RAM (Ortalama) | Toplam RAM (Tepe) | Başarısız POST | Not |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+${summaries
+  .map(
+    (s) =>
+      `| **${s.scenario}** | ${s.medusaAvgMb} / ${s.medusaPeakMb} MB | ${s.webAvgMb} / ${s.webPeakMb} MB | ${s.postgresAvgMb} / ${s.postgresPeakMb} MB | ${s.redisAvgMb} / ${s.redisPeakMb} MB | **${s.totalAvgMb} MB** | **${s.totalPeakMb} MB** | **${s.failedPostCount}** | dev modunda ölçüldü, bütçe karşılaştırması geçersiz |`,
+  )
+  .join("\n")}
+
+---
+
+## 2. Ham Ölçüm Dosyası
+Detaylı saniye bazlı örnekler: \`${path.basename(csvFile)}\`
+`;
+  } else {
+    mdContent = `# Bellek Tüketim Raporu ve Temel Çizgi (MEMORY-BASELINE.md)
+
+> **Durum:** ${hasInvalid ? "⚠️ **BAZI SENARYOLAR GEÇERSİZ**" : "✅ **GERÇEK ÖLÇÜM TAMAMLANDI (Production Modu)**"}  
 > **Tarih:** ${new Date().toISOString()}  
 > **Hedef Kaynak Bütçesi:** Toplam yeni yük en fazla **~1.1 GB RAM (1100 MB)**  
 > **Tepe RAM Tüketimi:** **${peakTotal} MB** (${peakTotal <= TOTAL_BUDGET_MB ? `Bütçe dahilinde: +${TOTAL_BUDGET_MB - peakTotal} MB rezerv` : `Bütçe aşıldı: -${peakTotal - TOTAL_BUDGET_MB} MB`})  
@@ -649,10 +797,10 @@ async function main() {
 
 ---
 
-## 1. Özet Bellek Tüketim Tablosu
+## 1. Özet Bellek Tüketim Tablosu (Production Modu)
 
 | Senaryo | Medusa v2 (Ort / Tepe) | Next.js + Payload (Ort / Tepe) | PostgreSQL (Ort / Tepe) | Redis (Ort / Tepe) | Toplam RAM (Ortalama) | Toplam RAM (Tepe) | Başarısız POST | Bütçe Durumu (~1.1 GB) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 ${summaries
   .map(
     (s) =>
@@ -671,6 +819,7 @@ ${summaries
 ## 2. Ham Ölçüm Dosyası
 Detaylı saniye bazlı örnekler: \`${path.basename(csvFile)}\`
 `;
+  }
 
   fs.writeFileSync(path.resolve(process.cwd(), "docs/MEMORY-BASELINE.md"), mdContent, "utf8");
   console.log(`\n📄 docs/MEMORY-BASELINE.md başarıyla üretildi.`);

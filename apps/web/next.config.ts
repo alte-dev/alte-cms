@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   // Ensure standalone build support for memory optimization and lightweight deployment
   output: process.env.NEXT_OUTPUT_STANDALONE === "true" ? "standalone" : undefined,
   // Transpile shared monorepo packages

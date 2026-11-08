@@ -1,89 +1,107 @@
-# Ödeme ve Sipariş Akışı (CHECKOUT_FLOW.md)
+# Misafir Checkout, Promosyon ve Sipariş Onay Akışı (CHECKOUT_FLOW.md)
 
-Bu doküman, müşterinin sepet oluşturmasından başlayıp PayTR üzerinden 3D Secure doğrulaması ve sunucu callback'i ile siparişin tamamlanmasına kadar geçen tüm yaşam döngüsünü açıklar.
+Bu doküman, Alte platformunda kullanıcının sepet oluşturmasından başlayıp misafir checkout (`/odeme`), kupon uygulama, yasal onaylar, geliştirme ortamı ödeme güvenlik kapısı ve sipariş onayı (`/siparis-onay`) adımlarına kadar uçtan uca mimarisini açıklar.
 
 ---
 
-## 1. Uçtan Uca Mermaid Sıra Diyagramı
+## 1. Uçtan Uca Mermaid Sıra Diyagramı (Faz 3 & Faz 4 Entegre)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor M as Müşteri (Tarayıcı)
-    participant W as Next.js Storefront
-    participant S as Medusa v2 API
+    actor M as Müşteri (Misafir)
+    participant W as Next.js Vitrin (/odeme)
+    participant API as Web API (/api/checkout)
+    participant S as Medusa v2 Commerce Engine
     participant DB as PostgreSQL
-    participant P as PayTR Sunucuları
+    participant P as PayTR (Faz 4)
 
-    Note over M,W: 1. Sepet ve Teslimat Bilgileri
-    M->>W: Teslimat ve Fatura Adresini Gir
-    W->>S: POST /store/carts/{id} (Adres Ekle)
-    S->>DB: Sepet Adresini Kaydet
-    S-->>W: 200 OK (Kargo Seçenekleri)
-
-    M->>W: Kargo Yöntemini Seç
-    W->>S: POST /store/carts/{id}/shipping-methods
-    S->>DB: Kargo Bedelini Sepete Ekle
-    S-->>W: 200 OK (Güncellenmiş Tutar)
-
-    Note over M,P: 2. Ödeme Oturumu ve PayTR Token
-    M->>W: "Ödemeye Geç" Butonuna Tıkla (PayTR)
-    W->>S: POST /store/carts/{id}/payment-sessions (provider_id: paytr)
-    S->>S: Sunucuda Sepet Tutarını Kuruşa Çevir (100 ile çarp)
-    S->>P: POST https://www.paytr.com/odeme/api/get-token (HMAC İmzalı İstek)
-    P-->>S: 200 OK (iframe_token)
-    S-->>W: 200 OK (iframe_token)
-    W-->>M: PayTR iFrame'ini Güvenli Olarak Yükle
-
-    Note over M,P: 3. 3D Secure Doğrulaması
-    M->>P: Kart Bilgilerini ve SMS Kodunu Gir (3D Secure)
-    P->>P: Banka Onayı Alındı
-
-    Note over P,S: 4. Sunucu Tarafı Callback ve Doğrulama
-    P->>S: POST /api/payment/paytr/callback (merchant_oid, status, total_amount, hash)
-    activate S
-    S->>S: 1. HMAC-SHA256 İmzası Hesapla
-    S->>S: 2. crypto.timingSafeEqual ile İmzayı Doğrula
-
-    alt İmza Geçersiz
-        S-->>P: HTTP 400 Bad Request
-    else İmza Geçerli
-        S->>DB: Sipariş / Sepet Durumunu Sorgula
-        alt Idempotency: Sipariş Zaten Ödendi mi?
-            S-->>P: "OK" (Mükerrer işlem engellendi)
-        else İlk Kez İşleniyor
-            S->>S: 3. Tutar Doğrulama (total_amount == cart.total)
-            alt Tutar Eşleşmedi
-                S->>DB: Güvenlik İhlali / Sahtekarlık Uyarısı Kaydet
-                S-->>P: HTTP 400 Bad Request
-            else Tutar Eşleşti
-                S->>DB: Siparişi Oluştur ve "completed" Olarak İşaretle
-                S->>DB: Stokları Düş ve Müşteri E-Postası Gönder
-                S-->>P: "OK" (Yalın metin)
-            end
-        end
+    Note over M,W: 1. Misafir Formu ve Kupon Girişi
+    M->>W: İletişim, Teslimat (81 İl), Fatura (Bireysel/Kurumsal) ve Yasal Onayları Gir
+    opt Kupon Kodu Uygulama
+        M->>W: Kupon Kodunu Gir ("TEST10")
+        W->>S: POST /store/carts/:id/promotions
+        S-->>W: 200 OK (Kupon İndirimi Hesaplandı)
     end
-    deactivate S
 
-    Note over M,W: 5. Kullanıcı Yönlendirme
-    P-->>M: Başarılı Yönlendirme URL'ine Gönder
-    M->>W: GET /siparis-onay/{id}
-    W->>S: GET /store/orders/{id}
-    S-->>W: 200 OK (Sipariş Detayı)
-    W-->>M: "Siparişiniz Başarıyla Alındı" Ekranı
+    Note over M,API: 2. Checkout Gönderimi ve Doğrulama
+    M->>API: POST /api/checkout (Payload)
+    API->>API: Zod CheckoutFormSchema Doğrulaması (Telefon +905, 10 Haneli VN, Onaylar)
+    API->>S: POST /store/carts/:id (E-posta, Adresler, Metadata)
+    API->>S: POST /store/carts/:id/shipping-methods (Kargo Seçimi)
+
+    Note over API,S: 3. Ödeme Güvenlik Kapısı (Fail-Closed)
+    API->>API: isDevPaymentAllowed() Kontrolü
+    alt Üretim Ortamı (NODE_ENV=production) VEYA ALLOW_DEV_PAYMENT !== 'true'
+        API-->>M: HTTP 400 "Ödeme yöntemi henüz yapılandırılmadı."
+    else Geliştirme Ortamı (dev + ALLOW_DEV_PAYMENT=true)
+        API->>S: POST /store/payment-collections (cart_id)
+        API->>S: POST /store/payment-collections/:id/payment-sessions (pp_system_default)
+        API->>S: POST /store/carts/:id/complete
+        S->>DB: Siparişi Oluştur ve Kaydet
+        S-->>API: 200 OK (Order Nesnesi)
+        API->>API: _order_confirmation Cookie'si Yaz (maxAge: 3600), cart_id Temizle
+        API-->>M: HTTP 200 { success: true, redirectUrl: "/siparis-onay" }
+        M->>W: GET /siparis-onay
+        W->>S: GET /store/orders/:id
+        W-->>M: "Siparişiniz Başarıyla Alındı" Ekranı
+    end
 ```
 
 ---
 
-## 2. Kritik Güvenlik ve Bütünlük Kontrolleri
+## 2. Form Mimarisi ve Türkiye Mevzuatı Kuralları
 
-1. **HMAC-SHA256 Bütünlük Doğrulaması:**
-   Callback isteğindeki `hash`, sunucu tarafındaki gizli anahtarlar ile doğrulanmadan hiçbir sipariş durumu değiştirilemez.
-2. **Sabit Zamanlı Karşılaştırma (`timingSafeEqual`):**
-   Karakter bazlı erken sonlanan dizi karşılaştırmaları, saldırganın milisaniyelik gecikmeleri ölçerek geçerli imzayı tahmin etmesine (timing attack) olanak tanır. Bu nedenle Node.js `crypto.timingSafeEqual()` fonksiyonu kullanılır.
-3. **Kuruş Seviyesinde Tutar Karşılaştırması:**
-   PayTR'nin ilettiği `total_amount` (örn: `15990` = 159.90 TL), Medusa veritabanında saklanan sepet tutarı ile kuruşu kuruşuna eşit olmak zorundadır.
-4. **Idempotency (Tekrarlayan İstek Yönetimi):**
-   Ağ kesintilerinde PayTR bildirimleri yeniden gönderilebilir. Callback işleyicisi `merchant_oid` ile eşleşen siparişin daha önce onaylanıp onaylanmadığını kontrol eder; zaten onaylanmışsa stokları tekrar düşmez, yalnızca `"OK"` cevabı verir.
-5. **Kesin `"OK"` Yanıtı:**
-   PayTR protokolüne göre sunucudan dönen metin tam olarak `"OK"` olmalıdır. HTML etiketleri veya JSON dönülürse PayTR ödemeyi başarısız sayarak saatlerce webhook göndermeye devam eder.
+1. **İletişim & Telefon Normalizasyonu (`normalizeTurkishPhone`):**
+
+   - Türkiye mobil cep numaraları E.164 standardına (`+905XXXXXXXXX`) dönüştürülür.
+   - 05XX, 5XX, +905XX, 00905XX formatları kabul edilir; sabit hatlar (0212, 0312 vb.) ve yabancı formatlar reddedilir.
+
+2. **81 İl Seçim Listesi (`TURKISH_CITIES`):**
+
+   - Türkiye Cumhuriyeti'nin resmi 81 ili alfabetik sıralı ve benzersiz olarak sunulur. Serbest metin il girişine izin verilmez.
+
+3. **Fatura Türü ve Bilgileri (Bireysel / Kurumsal):**
+
+   - **Bireysel Fatura:** Teslimat adresiyle aynı seçeneği (varsayılan) veya ayrı fatura adresi.
+   - **Kurumsal Fatura:** Şirket Resmi Unvanı, Vergi Dairesi ve tam 10 haneli Vergi Numarası (`CorporateTaxNumberSchema`) zorunludur.
+   - **ÖNEMLİ (KVKK / Veri Minimizasyonu):** Bireysel ve kurumsal hiçbir faturada **TC Kimlik Numarası toplanmaz ve talep edilmez.**
+
+4. **Yasal Onaylar ve Audit Zaman Damgaları:**
+
+   - Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formu (`/sayfa/mesafeli-satis-sozlesmesi` linkli).
+   - KVKK Aydınlatma Metni (`/sayfa/kvkk` linkli).
+   - Sipariş onayında her iki onay zorunludur ve Medusa cart metadata alanında ISO-8601 zaman damgasıyla saklanır:
+     `distance_sales_contract_consent_at`, `kvkk_consent_at`.
+
+5. **Çift Gönderim Koruması (Double-Submit Protection):**
+   - Form gönderimi sırasında buton devre dışı kalır (`disabled`), spinner animasyonu gösterilir ve mükerrer istek gönderilmesi engellenir.
+
+---
+
+## 3. Promosyon ve Kupon Sistemi (Medusa v2)
+
+- **Endpoint:** `POST /store/carts/:id/promotions` ve `DELETE /store/carts/:id/promotions`
+- **Kupon Kodları (Idempotent Seed):**
+  - `TEST10`: Yüzde 10 indirim
+  - `TEST50TL`: 50 TL sabit tutar indirimi
+- **Hata Yönetimi:** Geçersiz veya süresi dolmuş kuponlarda kullanıcıya dostça Türkçe mesaj döndürülür: `"Geçersiz veya süresi dolmuş kupon kodu."`
+
+---
+
+## 4. Ödeme Güvenlik Kapısı (Production Payment Guard)
+
+- `isDevPaymentAllowed()`:
+  - `process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_PAYMENT === "true"`
+- **Fail-Closed:** Üretimde sahte ödeme (`pp_system_default`) ile sipariş oluşturulması hem Medusa uygulama seviyesinde (Payment Guard loader) hem de Next.js vitrin checkout API'sinde engellenmiştir.
+
+---
+
+## 5. Sipariş Tamamlama ve Çerez Yaşam Döngüsü
+
+1. Sipariş başarıyla oluşturulduğunda:
+   - `cart_id` çerezi silinir.
+   - `_order_confirmation` adında 1 saatlik (maxAge 3600) güvenli `httpOnly`, `sameSite: "lax"` çerez yazılır.
+2. `/siparis-onay` sayfası:
+   - `_order_confirmation` çerezini okur; çerez yoksa veya sipariş bulunamazsa doğrudan `/` ana sayfaya yönlendirir.
+   - Sipariş detaylarını Medusa'dan çeker; Sipariş No (`display_id`), kalemler, birim fiyatlar, KDV (%20), kargo, indirim ve genel toplamı TL cinsinden görüntüler.

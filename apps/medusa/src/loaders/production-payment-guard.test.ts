@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   assertProductionPaymentSecurity,
-  productionPaymentGuardLoader,
+  executePaymentSecurityCheck,
 } from "./production-payment-guard";
 
 describe("productionPaymentGuard", () => {
@@ -19,7 +19,7 @@ describe("productionPaymentGuard", () => {
     it("allows certified payment provider in production", () => {
       expect(() => {
         assertProductionPaymentSecurity(
-          ["pp_paytr", "pp_iyzico"],
+          ["pp_paytr", "pp_cod"],
           [{ regionId: "reg_123", providerId: "pp_paytr" }],
           "production",
         );
@@ -49,11 +49,12 @@ describe("productionPaymentGuard", () => {
     });
   });
 
-  describe("productionPaymentGuardLoader execution", () => {
-    it("logs warning in development when pp_system_default is detected", async () => {
+  describe("executePaymentSecurityCheck execution", () => {
+    it("logs discovered payment providers and warning in development when pp_system_default is detected", async () => {
       const mockLogger = {
         warn: vi.fn(),
         info: vi.fn(),
+        error: vi.fn(),
       };
 
       const mockContainer = {
@@ -68,17 +69,23 @@ describe("productionPaymentGuard", () => {
         }),
       };
 
-      await productionPaymentGuardLoader(mockContainer, mockLogger, "development");
+      await executePaymentSecurityCheck(mockContainer, mockLogger, "development");
 
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '[Payment Guard] Bulunan ödeme sağlayıcıları: ["pp_system_default"]',
+        ),
+      );
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining("Medusa is operating with dummy 'pp_system_default'"),
       );
     });
 
-    it("fails closed and throws in production when container has pp_system_default", async () => {
+    it("fails closed in production when container has dummy provider", async () => {
       const mockLogger = {
         warn: vi.fn(),
         info: vi.fn(),
+        error: vi.fn(),
       };
 
       const mockContainer = {
@@ -93,9 +100,48 @@ describe("productionPaymentGuard", () => {
         }),
       };
 
-      await expect(
-        productionPaymentGuardLoader(mockContainer, mockLogger, "production"),
-      ).rejects.toThrow(/FAIL-CLOSED/);
+      const originalExit = process.exit;
+      const exitMock = vi.fn() as any;
+      process.exit = exitMock;
+
+      try {
+        await executePaymentSecurityCheck(mockContainer, mockLogger, "production");
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.stringContaining("Production Payment Guard violation"),
+        );
+        expect(exitMock).toHaveBeenCalledWith(1);
+      } finally {
+        process.exit = originalExit;
+      }
+    });
+
+    it("fails closed in production when payment providers cannot be queried", async () => {
+      const mockLogger = {
+        warn: vi.fn(),
+        info: vi.fn(),
+        error: vi.fn(),
+      };
+
+      const mockContainer = {
+        hasRegistration: vi.fn(() => false),
+        resolve: vi.fn(),
+      };
+
+      const originalExit = process.exit;
+      const exitMock = vi.fn() as any;
+      process.exit = exitMock;
+
+      try {
+        await executePaymentSecurityCheck(mockContainer, mockLogger, "production");
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "Fail-closed: Exiting process due to payment provider query error",
+          ),
+        );
+        expect(exitMock).toHaveBeenCalledWith(1);
+      } finally {
+        process.exit = originalExit;
+      }
     });
   });
 });

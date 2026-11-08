@@ -1,4 +1,4 @@
-import { defineConfig } from "@medusajs/framework/utils";
+import { defineConfig, Modules } from "@medusajs/framework/utils";
 import { validateMedusaEnv } from "./src/env";
 
 const env = validateMedusaEnv();
@@ -23,6 +23,7 @@ module.exports = defineConfig({
   modules: [
     {
       resolve: "./src/modules/payment-guard",
+      dependencies: [Modules.PAYMENT, Modules.LINK],
     },
   ],
 });

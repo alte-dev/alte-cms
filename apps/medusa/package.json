@@ -12,6 +12,7 @@
     "lint": "eslint src/",
     "test": "vitest run",
     "setup:store": "medusa exec ./src/scripts/setup-store.ts",
+    "seed:promotions": "medusa exec ./src/scripts/seed-promotions.ts",
     "clean": "rimraf .medusa dist"
   },
   "dependencies": {
