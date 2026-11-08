@@ -151,6 +151,15 @@ export default async function OrderConfirmationPage() {
           </div>
         )}
 
+        {Boolean(order.metadata?.cod_fee) && (
+          <div className="flex justify-between text-sm text-stone-600">
+            <span>{String(order.metadata?.cod_fee_label || "Kapıda Ödeme Hizmet Bedeli")}</span>
+            <span className="font-medium text-stone-900">
+              +{formatTRY(Number(order.metadata?.cod_fee) / 100)}
+            </span>
+          </div>
+        )}
+
         <div className="flex justify-between text-sm text-stone-600">
           <span>Kargo Tutarı</span>
           <span className="font-medium text-stone-900">

@@ -267,45 +267,144 @@ export interface CompleteCartResult {
   error?: string;
 }
 
+export interface PaymentOptionsResult {
+  paytr: {
+    enabled: boolean;
+    display_mode: "iframe" | "redirect";
+  };
+  cod: {
+    enabled: boolean;
+    fee: number;
+    fee_label: string;
+    max_order_amount: number | null;
+  };
+  dev: {
+    enabled: boolean;
+  };
+}
+
+/**
+ * Retrieves public store payment configuration without exposing any secrets.
+ */
+export async function getPaymentOptions(): Promise<PaymentOptionsResult> {
+  try {
+    const data = await medusaFetch<PaymentOptionsResult>("/store/payment-options", {
+      cache: "no-store",
+    });
+    return data;
+  } catch {
+    return {
+      paytr: { enabled: false, display_mode: "iframe" },
+      cod: {
+        enabled: true,
+        fee: 10000,
+        fee_label: "Kapıda Ödeme Hizmet Bedeli",
+        max_order_amount: null,
+      },
+      dev: { enabled: isDevPaymentAllowed() },
+    };
+  }
+}
+
+/**
+ * Retrieves or initializes payment collection for a cart.
+ */
+export async function getOrCreatePaymentCollection(cartId: string): Promise<string> {
+  const collectionData = await medusaFetch<{ payment_collection: { id: string } }>(
+    "/store/payment-collections",
+    {
+      method: "POST",
+      body: JSON.stringify({ cart_id: cartId }),
+      cache: "no-store",
+    },
+  );
+
+  const paymentCollectionId = collectionData?.payment_collection?.id;
+  if (!paymentCollectionId) {
+    throw new Error("Ödeme oturumu başlatılamadı.");
+  }
+  return paymentCollectionId;
+}
+
+/**
+ * Creates or refreshes a payment session for given provider on a cart.
+ */
+export async function createPaymentSession(
+  cartId: string,
+  providerId: "pp_paytr_paytr" | "pp_cod_cod" | "pp_system_default",
+) {
+  const collectionId = await getOrCreatePaymentCollection(cartId);
+  const res = await medusaFetch<{
+    payment_collection: {
+      id: string;
+      payment_sessions: Array<{
+        id: string;
+        provider_id: string;
+        data?: Record<string, any>;
+      }>;
+    };
+  }>(`/store/payment-collections/${collectionId}/payment-sessions`, {
+    method: "POST",
+    body: JSON.stringify({
+      provider_id: providerId,
+      data: { cart_id: cartId },
+    }),
+    cache: "no-store",
+  });
+
+  const session = res?.payment_collection?.payment_sessions?.find(
+    (s) => s.provider_id === providerId,
+  );
+  return { collectionId, session };
+}
+
+/**
+ * Initiates PayTR payment session and returns token and iframe/redirect url.
+ */
+export async function initiatePaytrPayment(cartId: string) {
+  const { session } = await createPaymentSession(cartId, "pp_paytr_paytr");
+  if (!session || !session.data) {
+    throw new Error("PayTR ödeme oturumu başlatılamadı.");
+  }
+
+  const token = session.data.token as string | undefined;
+  const iframe_url = session.data.iframe_url as string | undefined;
+  const display_mode = (session.data.display_mode as "iframe" | "redirect") || "iframe";
+
+  if (!token) {
+    const errorReason =
+      (session.data.error as string) ||
+      "PayTR token alınamadı. Lütfen ödeme ayarlarını ve internet bağlantınızı kontrol ediniz.";
+    throw new Error(errorReason);
+  }
+
+  return {
+    token,
+    iframeUrl: iframe_url || `https://www.paytr.com/odeme/guvenli/${token}`,
+    displayMode: display_mode,
+  };
+}
+
 /**
  * Completes a cart to create an order.
- * Strictly gated by isDevPaymentAllowed() to prevent dummy payment bypass in production.
+ * Strictly checks environment when using dev dummy provider.
  */
-export async function completeCart(cartId: string): Promise<CompleteCartResult> {
-  if (!isDevPaymentAllowed()) {
+export async function completeCart(
+  cartId: string,
+  providerId: "pp_paytr_paytr" | "pp_cod_cod" | "pp_system_default" = "pp_system_default",
+): Promise<CompleteCartResult> {
+  if (providerId === "pp_system_default" && !isDevPaymentAllowed()) {
     return {
       success: false,
-      error: "Ödeme yöntemi henüz yapılandırılmadı.",
+      error: "Geliştirici sahte ödeme yöntemi üretim ortamında kullanılamaz.",
     };
   }
 
   try {
-    // 1. Create or retrieve payment collection
-    const collectionData = await medusaFetch<{ payment_collection: { id: string } }>(
-      "/store/payment-collections",
-      {
-        method: "POST",
-        body: JSON.stringify({ cart_id: cartId }),
-        cache: "no-store",
-      },
-    );
+    // 1. Initialize payment session with selected provider
+    await createPaymentSession(cartId, providerId);
 
-    const paymentCollectionId = collectionData?.payment_collection?.id;
-    if (!paymentCollectionId) {
-      return {
-        success: false,
-        error: "Ödeme oturumu başlatılamadı.",
-      };
-    }
-
-    // 2. Initialize payment session with pp_system_default (dev only)
-    await medusaFetch(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
-      method: "POST",
-      body: JSON.stringify({ provider_id: "pp_system_default" }),
-      cache: "no-store",
-    });
-
-    // 3. Complete cart
+    // 2. Complete cart
     const completeRes = await medusaFetch<{
       type: "order" | "cart";
       order?: StoreOrder;

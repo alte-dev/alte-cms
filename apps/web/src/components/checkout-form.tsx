@@ -5,18 +5,42 @@ import Link from "next/link";
 import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreShippingOption } from "../lib/medusa/types";
-import { Tag, X, Check, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { PaymentOptionsResult } from "../lib/medusa/cart";
+import {
+  Tag,
+  X,
+  Check,
+  AlertCircle,
+  Loader2,
+  ShieldCheck,
+  CreditCard,
+  Banknote,
+  ShieldAlert,
+} from "lucide-react";
 import { applyCouponAction, removeCouponAction } from "../app/(store)/actions";
 
 interface CheckoutFormProps {
   initialCart: StoreCart;
   shippingOptions: StoreShippingOption[];
+  paymentOptions?: PaymentOptionsResult;
 }
 
-export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps) {
+export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: CheckoutFormProps) {
   const [cart, setCart] = useState<StoreCart>(initialCart);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Payment Method Selection
+  const initialPaymentMethod = paymentOptions?.paytr?.enabled
+    ? "paytr"
+    : paymentOptions?.cod?.enabled
+      ? "cod"
+      : paymentOptions?.dev?.enabled
+        ? "dev"
+        : "paytr";
+
+  const [paymentMethod, setPaymentMethod] = useState<"paytr" | "cod" | "dev">(initialPaymentMethod);
+  const [paytrIframeUrl, setPaytrIframeUrl] = useState<string | null>(null);
 
   // Form Fields
   const [email, setEmail] = useState(cart.email || "");
@@ -63,12 +87,15 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isCouponPending, setIsCouponPending] = useState(false);
 
+  const codFeeKurus = paymentOptions?.cod?.fee ?? 10000;
+  const codFeeAmount = paymentMethod === "cod" ? codFeeKurus / 100 : 0;
+
   const subtotal = cart.item_subtotal ?? cart.subtotal ?? 0;
   const taxTotal = cart.tax_total ?? 0;
   const discountTotal = cart.discount_total ?? 0;
   const selectedOption = shippingOptions.find((o) => o.id === selectedShippingOptionId);
   const shippingCost = selectedOption?.amount ?? cart.shipping_total ?? 0;
-  const total = Math.max(0, subtotal - discountTotal + shippingCost);
+  const total = Math.max(0, subtotal - discountTotal + shippingCost + codFeeAmount);
   const promotions = cart.promotions || [];
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -164,6 +191,7 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
             }
           : {}),
         shippingOptionId: selectedShippingOptionId,
+        paymentMethod,
         distanceSalesContract: true,
         kvkkConsent: true,
       };
@@ -187,6 +215,35 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
         return;
       }
 
+      if (data.paymentMethod === "paytr" && data.iframeUrl) {
+        if (data.displayMode === "redirect") {
+          window.location.href = data.iframeUrl;
+          return;
+        }
+
+        // iFrame mode
+        setPaytrIframeUrl(data.iframeUrl);
+        setIsSubmitting(false);
+
+        const existingScript = document.getElementById("paytr-resizer-script");
+        if (!existingScript) {
+          const script = document.createElement("script");
+          script.id = "paytr-resizer-script";
+          script.src = "https://www.paytr.com/js/iframeResizer.min.js";
+          script.onload = () => {
+            setTimeout(() => {
+              (window as any).iFrameResize?.({}, "#paytriframe");
+            }, 300);
+          };
+          document.body.appendChild(script);
+        } else {
+          setTimeout(() => {
+            (window as any).iFrameResize?.({}, "#paytriframe");
+          }, 300);
+        }
+        return;
+      }
+
       // Success: redirect to confirmation page
       window.location.href = data.redirectUrl || "/siparis-onay";
     } catch {
@@ -194,6 +251,42 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
       setIsSubmitting(false);
     }
   };
+
+  if (paytrIframeUrl) {
+    return (
+      <div className="bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6 max-w-4xl mx-auto shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-4 gap-2">
+          <div>
+            <h2 className="text-xl font-bold text-stone-900">PayTR Güvenli Ödeme Ekranı</h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Kart bilgilerinizi girip 3D Secure onayını tamamlayınız.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPaytrIframeUrl(null)}
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 underline text-left sm:text-right"
+          >
+            ← Ödeme Yöntemini Değiştir
+          </button>
+        </div>
+
+        <div className="w-full flex justify-center bg-stone-50 p-2 rounded border border-stone-100">
+          <iframe
+            src={paytrIframeUrl}
+            id="paytriframe"
+            frameBorder="0"
+            scrolling="no"
+            style={{ width: "100%", minHeight: "650px", border: "none" }}
+          />
+        </div>
+
+        <div className="text-center text-xs text-stone-400 border-t border-stone-100 pt-3">
+          Ödeme oturumunuz 256-Bit SSL şifreleme ve BDDK lisanslı PayTR altyapısı ile korunmaktadır.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -632,11 +725,133 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
           </div>
         </section>
 
-        {/* Step 5: Legal Consents */}
-        <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-3">
+        {/* Step 5: Payment Method Selection */}
+        <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
             <span className="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center font-bold">
               5
+            </span>
+            <h2 className="text-base font-bold text-stone-900">Ödeme Yöntemi</h2>
+          </div>
+
+          <div className="space-y-3">
+            {/* PayTR Option */}
+            <label
+              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                paymentMethod === "paytr"
+                  ? "border-stone-900 bg-stone-50"
+                  : "border-stone-200 hover:border-stone-300 bg-white"
+              } ${!paymentOptions?.paytr?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="paytr"
+                  disabled={!paymentOptions?.paytr?.enabled}
+                  checked={paymentMethod === "paytr"}
+                  onChange={() => setPaymentMethod("paytr")}
+                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-stone-700" />
+                    <span className="text-sm font-semibold text-stone-900">
+                      Kredi / Banka Kartı (PayTR)
+                    </span>
+                    {!paymentOptions?.paytr?.enabled && (
+                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
+                        Şu anda kullanılamıyor
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Tüm kredi ve banka kartları ile tek çekim veya taksitli 3D Secure güvenli ödeme.
+                  </p>
+                </div>
+              </div>
+            </label>
+
+            {/* COD Option */}
+            <label
+              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                paymentMethod === "cod"
+                  ? "border-stone-900 bg-stone-50"
+                  : "border-stone-200 hover:border-stone-300 bg-white"
+              } ${!paymentOptions?.cod?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cod"
+                  disabled={!paymentOptions?.cod?.enabled}
+                  checked={paymentMethod === "cod"}
+                  onChange={() => setPaymentMethod("cod")}
+                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Banknote className="w-4 h-4 text-stone-700" />
+                    <span className="text-sm font-semibold text-stone-900">
+                      Kapıda Ödeme (Nakit veya Kart)
+                    </span>
+                    {!paymentOptions?.cod?.enabled && (
+                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
+                        Şu anda kullanılamıyor
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Siparişinizi teslim alırken kargo görevlisine nakit veya kartla ödeyebilirsiniz.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
+                +{formatTRY(codFeeKurus / 100)} Hizmet Bedeli
+              </span>
+            </label>
+
+            {/* Dev Dummy Option */}
+            {paymentOptions?.dev?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "dev"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="dev"
+                    checked={paymentMethod === "dev"}
+                    onChange={() => setPaymentMethod("dev")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-semibold text-amber-900">
+                        Geliştirici Sahte Ödeme (Dev)
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      Yalnızca yerel test amaçlı sahte ödeme. Üretimde kesinlikle engellenir.
+                    </p>
+                  </div>
+                </div>
+              </label>
+            )}
+          </div>
+        </section>
+
+        {/* Step 6: Legal Consents */}
+        <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-3">
+          <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
+            <span className="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center font-bold">
+              6
             </span>
             <h2 className="text-base font-bold text-stone-900">Sözleşme ve Yasal Onaylar</h2>
           </div>
@@ -701,7 +916,12 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
             ) : (
               <>
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <span>Siparişi Onayla ve Tamamla ({formatTRY(total)})</span>
+                <span>
+                  {paymentMethod === "paytr"
+                    ? "PayTR Güvenli Ödemeye Geç"
+                    : "Siparişi Onayla ve Tamamla"}{" "}
+                  ({formatTRY(total)})
+                </span>
               </>
             )}
           </button>
@@ -807,6 +1027,13 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
             </span>
           </div>
 
+          {paymentMethod === "cod" && (
+            <div className="flex justify-between text-stone-600">
+              <span>{paymentOptions?.cod?.fee_label || "Kapıda Ödeme Hizmet Bedeli"}</span>
+              <span className="font-medium text-stone-900">+{formatTRY(codFeeKurus / 100)}</span>
+            </div>
+          )}
+
           <div className="pt-3 border-t border-stone-200 flex justify-between items-baseline">
             <span className="text-sm font-bold text-stone-900">Ödenecek Tutar</span>
             <span className="text-lg font-extrabold text-stone-900">{formatTRY(total)}</span>
@@ -829,7 +1056,11 @@ export function CheckoutForm({ initialCart, shippingOptions }: CheckoutFormProps
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Siparişi Onayla ve Tamamla</span>
+                <span>
+                  {paymentMethod === "paytr"
+                    ? "PayTR Güvenli Ödemeye Geç"
+                    : "Siparişi Onayla ve Tamamla"}
+                </span>
               </>
             )}
           </button>

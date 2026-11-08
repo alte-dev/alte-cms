@@ -1,7 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCart, getCartShippingOptions } from "@/lib/medusa/cart";
+import { getCart, getCartShippingOptions, getPaymentOptions } from "@/lib/medusa/cart";
 import { getCartId } from "@/lib/medusa/cookies";
 import { CheckoutForm } from "@/components/checkout-form";
 import { STORE_NAME } from "@/lib/constants/store-config";
@@ -25,6 +25,7 @@ export default async function CheckoutPage() {
   }
 
   const shippingOptions = await getCartShippingOptions(cart.id);
+  const paymentOptions = await getPaymentOptions();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -35,7 +36,11 @@ export default async function CheckoutPage() {
         </p>
       </div>
 
-      <CheckoutForm initialCart={cart} shippingOptions={shippingOptions} />
+      <CheckoutForm
+        initialCart={cart}
+        shippingOptions={shippingOptions}
+        paymentOptions={paymentOptions}
+      />
     </div>
   );
 }

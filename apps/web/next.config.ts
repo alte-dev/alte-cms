@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
             key: "X-Frame-Options",
             value: "SAMEORIGIN",
           },
+          {
+            key: "Content-Security-Policy",
+            value:
+              "frame-src 'self' https://www.paytr.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paytr.com; connect-src 'self' https://www.paytr.com http://localhost:* http://127.0.0.1:* ws: wss:; form-action 'self' https://www.paytr.com;",
+          },
         ],
       },
     ];
