@@ -55,6 +55,9 @@ export default function PaymentSettingsPage() {
   const [successUrl, setSuccessUrl] = useState("");
   const [failUrl, setFailUrl] = useState("");
 
+  // Manual Refunds State
+  const [manualRefunds, setManualRefunds] = useState<any[]>([]);
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
@@ -88,6 +91,17 @@ export default function PaymentSettingsPage() {
       setCallbackUrl(s.callback_url || "");
       setSuccessUrl(s.success_url || "");
       setFailUrl(s.fail_url || "");
+
+      // Fetch manual refunds
+      try {
+        const refundRes = await fetch("/admin/payment-settings/manual-refunds");
+        if (refundRes.ok) {
+          const refundData = await refundRes.json();
+          setManualRefunds(refundData.refunds || []);
+        }
+      } catch {
+        // ignore
+      }
     } catch (err: any) {
       setSaveStatus({ success: false, message: err.message });
     } finally {
@@ -218,6 +232,59 @@ export default function PaymentSettingsPage() {
       {saveStatus && (
         <Alert variant={saveStatus.success ? "success" : "error"}>{saveStatus.message}</Alert>
       )}
+
+      {/* MANUAL REFUNDS MONITOR */}
+      <div className="border border-ui-border-base rounded-lg p-5 bg-ui-bg-subtle space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Heading level="h2">Elle İade Bekleyenler</Heading>
+            {manualRefunds.length > 0 ? (
+              <Badge color="red">{manualRefunds.length} işlem bekliyor</Badge>
+            ) : (
+              <Badge color="green">0</Badge>
+            )}
+          </div>
+        </div>
+
+        {manualRefunds.length === 0 ? (
+          <Text className="text-ui-fg-subtle text-xs">Bekleyen elle iade yok</Text>
+        ) : (
+          <div className="space-y-2">
+            <Alert variant="error">
+              PayTR tarafından tahsilatı onaylanmış ancak stok yetersizliği nedeniyle mağaza sahibi
+              tarafından manuel iadesi gereken {manualRefunds.length} işlem bulunmaktadır.
+            </Alert>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-ui-border-base rounded bg-ui-bg-base">
+                <thead>
+                  <tr className="border-b border-ui-border-base bg-ui-bg-subtle font-medium text-ui-fg-subtle">
+                    <th className="p-2">Oturum ID</th>
+                    <th className="p-2">Sepet ID</th>
+                    <th className="p-2">Tutar</th>
+                    <th className="p-2">Neden</th>
+                    <th className="p-2">Tarih</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {manualRefunds.map((ref: any) => (
+                    <tr key={ref.id} className="border-b border-ui-border-base last:border-b-0">
+                      <td className="p-2 font-mono text-[11px]">{ref.id}</td>
+                      <td className="p-2 font-mono text-[11px]">{ref.cart_id || "-"}</td>
+                      <td className="p-2 font-bold">
+                        {ref.amount} {ref.currency}
+                      </td>
+                      <td className="p-2 text-ui-fg-error">{ref.reason}</td>
+                      <td className="p-2 text-ui-fg-subtle">
+                        {new Date(ref.created_at).toLocaleString("tr-TR")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       <form onSubmit={handleSave} className="space-y-8">
         {/* PAYTR SECTION */}
@@ -445,7 +512,7 @@ export default function PaymentSettingsPage() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Hizmet Bedeli (TL, KDV Dahil)</Label>
+              <Label>Kapıda ödeme bedeli (TL, KDV dahil)</Label>
               <Input
                 type="number"
                 min={0}

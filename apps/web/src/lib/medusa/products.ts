@@ -163,6 +163,14 @@ export async function getProducts(params: GetProductsParams = {}): Promise<{
 
     let products = data.products || [];
 
+    // Exclude hidden service products (e.g. Kapıda Ödeme Hizmet Bedeli)
+    products = products.filter(
+      (p) =>
+        p.metadata?.is_cod_fee !== true &&
+        p.handle !== "kapida-odeme-hizmet-bedeli" &&
+        !p.variants?.some((v) => v.sku === "SERVICE-COD-FEE"),
+    );
+
     // Client-side sorting for calculated price if requested
     if (params.sort === "price_asc") {
       products = [...products].sort((a, b) => {

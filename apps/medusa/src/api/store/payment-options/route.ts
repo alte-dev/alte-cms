@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+import { Modules } from "@medusajs/framework/utils";
 import { PaymentSettingsRegistry } from "../../../modules/payment-settings/service";
 
 /**
@@ -18,6 +19,18 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     }
   }
 
+  // Lookup variant ID for SERVICE-COD-FEE
+  let codVariantId: string | null = null;
+  try {
+    const productService = req.scope.resolve(Modules.PRODUCT);
+    const variants = await productService.listProductVariants({ sku: "SERVICE-COD-FEE" });
+    if (variants && variants.length > 0) {
+      codVariantId = variants[0].id;
+    }
+  } catch {
+    // handled gracefully
+  }
+
   const isDevAllowed =
     process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_PAYMENT === "true";
 
@@ -27,10 +40,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
       display_mode: settings?.paytr_display_mode || "iframe",
     },
     cod: {
-      enabled: settings ? settings.cod_enabled : true,
-      fee: settings?.cod_fee ?? 10000, // 100 TL in kuruş
+      enabled: settings ? settings.cod_enabled : false, // Fail-closed default: false
+      fee: settings?.cod_fee ?? 100, // Standard TL currency unit
       fee_label: settings?.cod_fee_label || "Kapıda Ödeme Hizmet Bedeli",
       max_order_amount: settings?.cod_max_order_amount ?? null,
+      variant_id: codVariantId,
     },
     dev: {
       enabled: isDevAllowed,

@@ -30,8 +30,11 @@ export async function GET() {
 
     const cart = await getCart(cartId);
     const shippingRules = await getShippingRules();
+    const productSubtotal = (cart?.items || [])
+      .filter((i) => !i.metadata?.is_cod_fee && i.variant?.sku !== "SERVICE-COD-FEE")
+      .reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
     const freeShippingProgress = calculateFreeShippingProgress(
-      cart?.item_subtotal || cart?.subtotal || 0,
+      productSubtotal > 0 ? productSubtotal : cart?.item_subtotal || cart?.subtotal || 0,
       shippingRules.threshold,
     );
 

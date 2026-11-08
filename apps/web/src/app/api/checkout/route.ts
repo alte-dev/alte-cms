@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import {
+  addItemToCart,
   completeCart,
   getCart,
   getPaymentOptions,
   initiatePaytrPayment,
   isDevPaymentAllowed,
+  removeCartItem,
   setCartShippingMethod,
   updateCart,
 } from "../../../lib/medusa/cart";
@@ -161,6 +163,61 @@ export async function POST(req: Request) {
 
     // 2. Assign selected shipping option
     await setCartShippingMethod(cart.id, shippingOptionId);
+
+    // Handle COD Fee Line Item addition/removal on cart
+    const existingCodFeeItem = cart.items?.find(
+      (item) =>
+        item.variant?.sku === "SERVICE-COD-FEE" ||
+        item.metadata?.is_cod_fee === true ||
+        (item as any).sku === "SERVICE-COD-FEE",
+    );
+
+    if (effectivePaymentMethod === "cod") {
+      if (!paymentOptions.cod.enabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Kapıda ödeme yöntemi şu anda aktif değildir.",
+          },
+          { status: 400 },
+        );
+      }
+
+      // Validate cod_max_order_amount against PRODUCT ITEMS ONLY
+      const productItemsTotal = (cart.items || [])
+        .filter(
+          (i) =>
+            i.id !== existingCodFeeItem?.id &&
+            !i.metadata?.is_cod_fee &&
+            i.variant?.sku !== "SERVICE-COD-FEE",
+        )
+        .reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
+
+      if (
+        paymentOptions.cod.max_order_amount !== null &&
+        paymentOptions.cod.max_order_amount !== undefined &&
+        paymentOptions.cod.max_order_amount > 0 &&
+        productItemsTotal > paymentOptions.cod.max_order_amount
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Kapıda ödeme yöntemi en fazla ${paymentOptions.cod.max_order_amount} TL tutarındaki ürün siparişleri için geçerlidir. Mevcut sepet ürün tutarınız: ${productItemsTotal} TL.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      // Add COD service fee line item if not already in cart
+      if (!existingCodFeeItem && paymentOptions.cod.variant_id) {
+        await addItemToCart(cart.id, paymentOptions.cod.variant_id, 1);
+      }
+    } else {
+      // Switched away from COD: remove COD service fee line item immediately from server cart
+      if (existingCodFeeItem) {
+        await removeCartItem(cart.id, existingCodFeeItem.id);
+      }
+    }
 
     // 3. Handle payment method execution
     if (effectivePaymentMethod === "paytr") {

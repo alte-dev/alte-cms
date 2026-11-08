@@ -87,8 +87,9 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isCouponPending, setIsCouponPending] = useState(false);
 
-  const codFeeKurus = paymentOptions?.cod?.fee ?? 10000;
-  const codFeeAmount = paymentMethod === "cod" ? codFeeKurus / 100 : 0;
+  const rawCodFee = paymentOptions?.cod?.fee ?? 100;
+  const codFee = rawCodFee > 500 ? rawCodFee / 100 : rawCodFee;
+  const codFeeAmount = paymentMethod === "cod" ? codFee : 0;
 
   const subtotal = cart.item_subtotal ?? cart.subtotal ?? 0;
   const taxTotal = cart.tax_total ?? 0;
@@ -808,7 +809,7 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
                 </div>
               </div>
               <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
-                +{formatTRY(codFeeKurus / 100)} Hizmet Bedeli
+                +{formatTRY(codFee)} Hizmet Bedeli
               </span>
             </label>
 
@@ -1030,7 +1031,7 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
           {paymentMethod === "cod" && (
             <div className="flex justify-between text-stone-600">
               <span>{paymentOptions?.cod?.fee_label || "Kapıda Ödeme Hizmet Bedeli"}</span>
-              <span className="font-medium text-stone-900">+{formatTRY(codFeeKurus / 100)}</span>
+              <span className="font-medium text-stone-900">+{formatTRY(codFee)}</span>
             </div>
           )}
 

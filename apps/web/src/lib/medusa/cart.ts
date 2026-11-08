@@ -277,6 +277,7 @@ export interface PaymentOptionsResult {
     fee: number;
     fee_label: string;
     max_order_amount: number | null;
+    variant_id?: string | null;
   };
   dev: {
     enabled: boolean;
@@ -296,10 +297,11 @@ export async function getPaymentOptions(): Promise<PaymentOptionsResult> {
     return {
       paytr: { enabled: false, display_mode: "iframe" },
       cod: {
-        enabled: true,
-        fee: 10000,
+        enabled: false,
+        fee: 100,
         fee_label: "Kapıda Ödeme Hizmet Bedeli",
         max_order_amount: null,
+        variant_id: null,
       },
       dev: { enabled: isDevPaymentAllowed() },
     };
