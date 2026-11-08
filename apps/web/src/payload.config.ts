@@ -5,6 +5,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Users } from "./collections/Users";
 import { Media } from "./collections/Media";
+import { Pages } from "./collections/Pages";
+import { Posts } from "./collections/Posts";
+import { PostCategories } from "./collections/PostCategories";
+import { Redirects } from "./collections/Redirects";
+import { SiteSettings } from "./globals/SiteSettings";
+import { Navigation } from "./globals/Navigation";
 import { validateWebEnv } from "./env";
 
 const filename = fileURLToPath(import.meta.url);
@@ -19,7 +25,8 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media],
+  collections: [Users, Media, Pages, Posts, PostCategories, Redirects],
+  globals: [SiteSettings, Navigation],
   editor: lexicalEditor(),
   secret: env.PAYLOAD_SECRET,
   typescript: {

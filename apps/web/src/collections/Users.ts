@@ -1,9 +1,10 @@
 import type { CollectionConfig, Access, FieldAccess, Where } from "payload";
 import { USER_ROLES, type UserRole } from "@alte/shared";
+import { canReadUserEmail } from "../access/content";
 
 // Access Control: Read Users
-// Only authenticated staff members can read the Users collection.
-// Anonymous visitors and external customers have ZERO access.
+// Only authenticated staff members can read the Users collection directly.
+// Anonymous visitors and external customers have ZERO access to browse users.
 export const canReadUsers: Access = ({ req: { user } }) => {
   if (!user) {
     return false; // Default closed: anonymous blocked!
@@ -111,6 +112,15 @@ export const Users: CollectionConfig = {
     admin: ({ req: { user } }) => Boolean(user), // All users in Users collection are staff
   },
   fields: [
+    {
+      name: "email",
+      type: "email",
+      required: true,
+      unique: true,
+      access: {
+        read: canReadUserEmail,
+      },
+    },
     {
       name: "name",
       type: "text",
