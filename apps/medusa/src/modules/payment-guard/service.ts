@@ -1,44 +1,135 @@
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 
 export interface PaymentGuardOptions {
   nodeEnv?: string;
   allowDummyInDev?: boolean;
 }
 
+export const CERTIFIED_PAYMENT_PROVIDERS = ["pp_paytr_paytr", "pp_cod_cod"];
+
 /**
- * Validates configured payment providers against environment.
- * Throws FAIL-CLOSED error if dummy provider is configured in production.
+ * Asserts that prohibited development-only environment variables are NOT defined in production.
+ */
+export function assertUndefinedInProduction(
+  nodeEnv: string = process.env.NODE_ENV || "development",
+): void {
+  if (nodeEnv !== "production") {
+    return;
+  }
+
+  if (process.env.PAYTR_API_BASE && process.env.PAYTR_API_BASE.trim() !== "") {
+    throw new Error(
+      "FAIL-CLOSED: PAYTR_API_BASE environment variable is strictly prohibited in production.",
+    );
+  }
+
+  if (process.env.DEV_PAYTR_USER_IP && process.env.DEV_PAYTR_USER_IP.trim() !== "") {
+    throw new Error(
+      "FAIL-CLOSED: DEV_PAYTR_USER_IP environment variable is strictly prohibited in production.",
+    );
+  }
+}
+
+/**
+ * Reads region-payment provider linkages directly from 'region_payment_provider' table.
+ * Fail-closed if database connection or query is unavailable.
+ */
+export async function getLinkedRegionProviders(
+  containerOrCradle: any,
+): Promise<Array<{ regionId: string; providerId: string }>> {
+  let pgConnection: any = null;
+
+  if (containerOrCradle) {
+    // 1. Try container.resolve (wrapped in try/catch in case containerOrCradle is an Awilix cradle proxy)
+    try {
+      if (typeof containerOrCradle.resolve === "function") {
+        try {
+          pgConnection =
+            containerOrCradle.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
+            containerOrCradle.resolve("__pg_connection__");
+        } catch {
+          // resolution key fallback
+        }
+      }
+    } catch {
+      // Accessing .resolve on an Awilix cradle proxy throws 'Could not resolve resolve'
+    }
+
+    // 2. Try direct property access on cradle or mock
+    if (!pgConnection) {
+      try {
+        pgConnection =
+          containerOrCradle.__pg_connection__ ||
+          containerOrCradle[ContainerRegistrationKeys.PG_CONNECTION] ||
+          containerOrCradle.pgConnection;
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  if (pgConnection) {
+    const rows = await pgConnection("region_payment_provider")
+      .select("region_id", "payment_provider_id")
+      .whereNull("deleted_at");
+
+    return rows.map((r: any) => ({
+      regionId: r.region_id,
+      providerId: r.payment_provider_id,
+    }));
+  }
+
+  throw new Error("Could not resolve database connection to query 'region_payment_provider'.");
+}
+
+/**
+ * Validates configured payment providers bound to regions in production.
+ * Throws FAIL-CLOSED error if dummy provider is configured or no certified provider is linked.
  */
 export function assertProductionPaymentSecurity(
-  providers: string[],
-  linkedRegionProviders: Array<{ regionId: string; providerId: string }> = [],
+  linkedRegionProviders: Array<{ regionId: string; providerId: string }>,
   nodeEnv: string = process.env.NODE_ENV || "development",
 ): void {
   const isProduction = nodeEnv === "production";
-
   if (!isProduction) {
     return;
   }
 
-  // 1. Fail-closed: No payment providers configured or provider list empty
-  if (!providers || providers.length === 0) {
+  // 1. Verify environment variables are clean in production
+  assertUndefinedInProduction(nodeEnv);
+
+  // 2. Fail-closed: No providers linked to any region
+  if (!linkedRegionProviders || linkedRegionProviders.length === 0) {
     throw new Error(
-      "FAIL-CLOSED: No payment providers configured for production environment. A certified payment provider (e.g. PayTR, Kapıda Ödeme / pp_paytr, pp_cod) must be registered.",
+      "FAIL-CLOSED: No payment providers are linked to any region in production (region_payment_provider is empty).",
     );
   }
 
-  // 2. Fail-closed: System dummy provider is enabled in payment module
-  if (providers.includes("pp_system_default")) {
+  // 3. Rule (a): Any region linked to pp_system_default -> fail-closed
+  const dummyLink = linkedRegionProviders.find((l) => l.providerId === "pp_system_default");
+  if (dummyLink) {
     throw new Error(
-      "FAIL-CLOSED: 'pp_system_default' dummy payment provider is strictly prohibited in production. A certified payment provider must be configured.",
+      `FAIL-CLOSED: Region '${dummyLink.regionId}' is linked to forbidden dummy payment provider 'pp_system_default' in production.`,
     );
   }
 
-  // 3. Fail-closed: Any region linked to dummy payment provider
-  const invalidLink = linkedRegionProviders.find((l) => l.providerId === "pp_system_default");
-  if (invalidLink) {
+  // 4. Rule (b): No certified real provider linked to any region -> fail-closed
+  const hasRealProvider = linkedRegionProviders.some((l) =>
+    CERTIFIED_PAYMENT_PROVIDERS.includes(l.providerId),
+  );
+  if (!hasRealProvider) {
     throw new Error(
-      `FAIL-CLOSED: Region '${invalidLink.regionId}' is linked to forbidden dummy payment provider 'pp_system_default' in production.`,
+      "FAIL-CLOSED: No certified real payment provider ('pp_paytr_paytr' or 'pp_cod_cod') is linked to any region in production.",
+    );
+  }
+
+  // 5. Rule (c): Ensure only certified providers are linked
+  const invalidLinks = linkedRegionProviders.filter(
+    (l) => !CERTIFIED_PAYMENT_PROVIDERS.includes(l.providerId),
+  );
+  if (invalidLinks.length > 0) {
+    throw new Error(
+      `FAIL-CLOSED: Unauthorized payment provider(s) linked in production: ${invalidLinks.map((l) => l.providerId).join(", ")}.`,
     );
   }
 }
@@ -53,93 +144,61 @@ export async function executePaymentSecurityCheck(
   overrideEnv?: string,
 ): Promise<void> {
   const nodeEnv = overrideEnv || process.env.NODE_ENV || "development";
-
-  let paymentService: any = null;
-  let linkService: any = null;
   let log: any = logger;
 
   try {
-    if (containerOrCradle) {
-      const isContainer = Object.prototype.hasOwnProperty.call(containerOrCradle, "resolve");
-
-      if (isContainer) {
-        if (containerOrCradle.hasRegistration?.(Modules.PAYMENT)) {
-          paymentService = containerOrCradle.resolve(Modules.PAYMENT);
-        }
-        if (containerOrCradle.hasRegistration?.(Modules.LINK)) {
-          linkService = containerOrCradle.resolve(Modules.LINK);
-        }
-        if (!log && containerOrCradle.hasRegistration?.(ContainerRegistrationKeys.LOGGER)) {
-          log = containerOrCradle.resolve(ContainerRegistrationKeys.LOGGER);
-        }
-      } else {
-        paymentService = containerOrCradle.payment;
-        linkService = containerOrCradle.link_modules;
-        if (!log) log = containerOrCradle.logger;
+    if (containerOrCradle && "cradle" in containerOrCradle && !log) {
+      if (containerOrCradle.hasRegistration?.(ContainerRegistrationKeys.LOGGER)) {
+        log = containerOrCradle.resolve(ContainerRegistrationKeys.LOGGER);
       }
     }
   } catch {
-    // resolution lookup error handled below
+    // resolution error handled below
   }
 
   log = log || console;
 
-  let providerIds: string[] = [];
-  const linkedRegionProviders: Array<{ regionId: string; providerId: string }> = [];
+  let linkedRegionProviders: Array<{ regionId: string; providerId: string }> = [];
 
   try {
-    if (paymentService && typeof paymentService.listPaymentProviders === "function") {
-      const providers = await paymentService.listPaymentProviders({});
-      providerIds = providers.map((p: any) => p.id);
-    } else {
-      if (nodeEnv === "production") {
-        throw new Error("Payment module is not registered or accessible.");
-      }
-    }
+    linkedRegionProviders = await getLinkedRegionProviders(containerOrCradle);
+    log.info?.(
+      `[Payment Guard] Bulunan bölge-sağlayıcı bağlantıları: ${JSON.stringify(linkedRegionProviders)}`,
+    );
+    console.log(
+      `[Payment Guard] Bulunan bölge-sağlayıcı bağlantıları: ${JSON.stringify(linkedRegionProviders)}`,
+    );
   } catch (err: any) {
-    log.error?.(`[Payment Guard] Could not query payment providers: ${err.message}`);
+    log.error?.(`[Payment Guard] Could not query region payment providers: ${err.message}`);
+    console.error(`[Payment Guard] Could not query region payment providers: ${err.message}`);
     if (nodeEnv === "production") {
       log.error?.(
-        "❌ [FATAL] Fail-closed: Exiting process due to payment provider query error in production.",
+        "❌ [FATAL] Fail-closed: Exiting process due to failure reading region_payment_provider in production.",
+      );
+      console.error(
+        "❌ [FATAL] Fail-closed: Exiting process due to failure reading region_payment_provider in production.",
       );
       process.exit(1);
     }
   }
 
-  // Always log discovered providers for auditing
-  console.log(`[Payment Guard] Bulunan ödeme sağlayıcıları: ${JSON.stringify(providerIds)}`);
-  log.info?.(`[Payment Guard] Bulunan ödeme sağlayıcıları: ${JSON.stringify(providerIds)}`);
-
-  try {
-    if (linkService && typeof linkService.list === "function") {
-      const links = await linkService.list({
-        [Modules.PAYMENT]: { payment_provider_id: "pp_system_default" },
-      });
-      if (Array.isArray(links)) {
-        for (const link of links) {
-          const regId = link[Modules.REGION]?.region_id || link.region_id || "unknown";
-          linkedRegionProviders.push({ regionId: regId, providerId: "pp_system_default" });
-        }
-      }
-    }
-  } catch {
-    // Link service query in dev can be soft-ignored if not initialized
-  }
-
   // If in production, enforce strict fail-closed security
   if (nodeEnv === "production") {
     try {
-      assertProductionPaymentSecurity(providerIds, linkedRegionProviders, nodeEnv);
-      log.info?.("✅ [Payment Guard] Production payment security check PASSED.");
+      assertProductionPaymentSecurity(linkedRegionProviders, nodeEnv);
+      log.info?.("✅ [Payment Guard] Production payment security check PASSED (guard PASSED).");
+      console.log("✅ [Payment Guard] Production payment security check PASSED (guard PASSED).");
     } catch (err: any) {
       log.error?.(`❌ [FATAL] Production Payment Guard violation: ${err.message}`);
+      console.error(`❌ [FATAL] Production Payment Guard violation: ${err.message}`);
       process.exit(1);
     }
   } else {
     // Development notice
-    if (providerIds.includes("pp_system_default") || linkedRegionProviders.length > 0) {
+    const hasDummy = linkedRegionProviders.some((l) => l.providerId === "pp_system_default");
+    if (hasDummy) {
       log.warn?.(
-        "⚠️ [SECURITY NOTICE] Medusa is operating with dummy 'pp_system_default' payment provider. This configuration is permitted ONLY in development and will fail-closed in production.",
+        "⚠️ [SECURITY NOTICE] Medusa is operating with dummy 'pp_system_default' payment provider linked to region. Permitted in dev, strictly prohibited in production.",
       );
     }
   }

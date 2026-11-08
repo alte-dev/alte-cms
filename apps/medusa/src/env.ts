@@ -50,8 +50,11 @@ export const medusaEnvSchema = z.object({
   WEB_PUBLIC_URL: z.string().url().optional(),
 
   // Dev-only overrides (Production'da reddedilir)
-  DEV_PAYTR_USER_IP: z.string().optional(),
-  PAYTR_API_BASE: z.string().url().optional(),
+  DEV_PAYTR_USER_IP: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  PAYTR_API_BASE: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
 });
 
 export type MedusaEnv = z.infer<typeof medusaEnvSchema>;
