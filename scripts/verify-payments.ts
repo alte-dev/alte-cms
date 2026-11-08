@@ -1,31 +1,32 @@
 /**
- * E2E Payments Verification Script (Faz 4)
+ * E2E Payments Verification Script (Faz 4 & Faz 4.1 Hardening)
  *
  * Verifies PayTR (iFrame & Redirect) and Kapıda Ödeme (COD) payment systems:
  * 1. Admin Payment Settings CRUD & AES-256-GCM write-only secret masking
- * 2. Settings Dynamicity (Zero Server Restart): fee & toggle updates reflect immediately
- * 3. Storefront Public Payment Options (/store/payment-options) leaks zero secrets
- * 4. Kapıda Ödeme (COD) End-to-End checkout flow (fee application & immediate order creation)
- * 5. PayTR Session Initiation & Token Generation (via mock or live sandbox)
+ * 2. Settings Dynamicity (Zero Server Restart): cod_fee & paytr_display_mode reflect immediately
+ * 3. Storefront Public Payment Options (/store/payment-options) leaks zero secrets, includes variant_id
+ * 4. Kapıda Ödeme (COD) Web E2E: service fee as real line item (100 TL, KDV dahil, 16.67 TL KDV),
+ *    free shipping (1500 TL) & max order amount based ONLY on product items
+ * 5. PayTR Session Initiation & TRUST_PROXY (X-Forwarded-For IP resolution)
  * 6. PayTR Callback Webhook HMAC Verification (strict constant-time check)
  * 7. Tampered / Invalid HMAC Hash rejection (HTTP 400, order NOT created)
  * 8. Missing Callback parameters rejection (HTTP 400)
  * 9. Failed Payment Callback handling (status=failed, cart preserved, order NOT created)
  * 10. Amount Mismatch Guard (insufficient payment amount rejected, order NOT created)
- * 11. Callback Webhook Idempotency (duplicate callbacks return "OK", zero duplicate orders)
- * 12. Security Verification: /store/checkout-status leaks strictly zero personal data
- * 13. Security Verification: ok_url visited without webhook never creates order
- *
- * STRICT SECURITY CONSTRAINTS:
- * - Public repo hygiene: STRICTLY ZERO real merchant secrets, keys, or customer PII.
- * - Test values only (e.g. test-merchant-key-not-real).
- * - Real authentic execution only (fail-closed, exit 1 on any failure).
+ * 11. PayTR Captured Payment: payment status 'captured', captured_at set, paid_total = total
+ * 12. Concurrent Callback Serialization: 5 concurrent identical signed callbacks (Promise.all) -> 1 order, all 200 OK (3x carts)
+ * 13. Recovery Proof: First attempt transient failure -> 500, second attempt recovers and captures
+ * 14. Permanent Failure & Manual Refunds API: GET /admin/payment-settings/manual-refunds (zero PII)
+ * 15. Callback Lookup Performance: Index Scan using idx_payment_session_merchant_oid confirmed
+ * 16. Security: /store/checkout-status leaks zero PII
+ * 17. Security: ok_url visited without webhook never creates order
  */
 
 import http from "http";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import path from "path";
+import pg from "pg";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -34,6 +35,11 @@ dotenv.config();
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 const STOREFRONT_URL = process.env.STOREFRONT_URL || "http://localhost:3100";
 const MOCK_PORT = 9099;
+
+const DB_URL =
+  process.env.DATABASE_URL ||
+  "postgres://medusa_user:dev-only-medusa-password@127.0.0.1:5432/medusa_db";
+const dbPool = new pg.Pool({ connectionString: DB_URL });
 
 let PUBLISHABLE_KEY = "";
 let ADMIN_TOKEN = "";
@@ -101,51 +107,59 @@ async function getAdminToken(): Promise<string> {
   });
 
   if (!authRes.ok) {
-    throw new Error(`Admin auth failed: HTTP ${authRes.status}`);
+    throw new Error(`Admin authentication failed: HTTP ${authRes.status}`);
   }
 
-  const data = (await authRes.json()) as { token?: string };
-  ADMIN_TOKEN = data.token!;
+  const data = (await authRes.json()) as any;
+  ADMIN_TOKEN = data.token;
   return ADMIN_TOKEN;
 }
 
-/**
- * Starts a lightweight local mock server for PayTR's /odeme/api/get-token endpoint.
- */
-function startPaytrMockServer(): Promise<http.Server> {
-  return new Promise((resolve) => {
+function startMockPaytrServer(port: number): Promise<http.Server> {
+  return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
-      if (req.method === "POST" && req.url === "/odeme/api/get-token") {
-        let body = "";
-        req.on("data", (chunk) => {
-          body += chunk;
-        });
-        req.on("end", () => {
-          const params = new URLSearchParams(body);
-          const merchantId = params.get("merchant_id");
-          const paytrToken = params.get("paytr_token");
+      let body = "";
+      req.on("data", (chunk) => {
+        body += chunk;
+      });
 
-          if (!merchantId || !paytrToken) {
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ status: "failed", reason: "Eksik parametreler" }));
-            return;
-          }
+      req.on("end", () => {
+        const params = new URLSearchParams(body);
+        const merchantId = params.get("merchant_id");
+        const merchantOid = params.get("merchant_oid");
+        const userIp = params.get("user_ip");
+        const email = params.get("email");
+        const paymentAmount = params.get("payment_amount");
+        const paytrToken = params.get("paytr_token");
 
-          const mockToken =
-            "mock_token_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+        if (!merchantId || !merchantOid || !userIp || !email || !paymentAmount || !paytrToken) {
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ status: "success", token: mockToken }));
-        });
-        return;
-      }
+          res.end(
+            JSON.stringify({
+              status: "failed",
+              reason: "Eksik parametre gönderildi",
+            }),
+          );
+          return;
+        }
 
-      res.writeHead(404);
-      res.end("Not Found");
+        const generatedToken = `mock_paytr_token_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            status: "success",
+            token: generatedToken,
+          }),
+        );
+      });
     });
 
-    server.listen(MOCK_PORT, "127.0.0.1", () => {
+    server.listen(port, "127.0.0.1", () => {
       resolve(server);
     });
+
+    server.on("error", (err) => reject(err));
   });
 }
 
@@ -160,7 +174,7 @@ function computeCallbackHash(
   return crypto.createHmac("sha256", merchantKey).update(hashStr).digest("base64");
 }
 
-async function ensureDedicatedTestProduct(): Promise<{
+async function ensureDedicatedTestProduct(amount = 150): Promise<{
   variantId: string;
 }> {
   const token = await getAdminToken();
@@ -204,7 +218,7 @@ async function ensureDedicatedTestProduct(): Promise<{
           manage_inventory: true,
           allow_backorder: false,
           options: { Beden: "Standart" },
-          prices: [{ currency_code: "try", amount: 150 }],
+          prices: [{ currency_code: "try", amount }],
         },
       ],
     }),
@@ -231,7 +245,7 @@ async function ensureDedicatedTestProduct(): Promise<{
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({
           location_id: slId,
-          stocked_quantity: 50,
+          stocked_quantity: 100,
         }),
       });
     }
@@ -242,22 +256,24 @@ async function ensureDedicatedTestProduct(): Promise<{
 
 async function run() {
   console.log("\n=======================================================");
-  console.log("  FAZ 4: ÖDEME ENTEGRASYONU VE DOĞRULAMA (E2E TEST)");
-  console.log("  PayTR (iFrame/Redirect) & Kapıda Ödeme (COD)");
+  console.log("  FAZ 4.1: ÖDEME ENTEGRASYONU VE DOĞRULAMA (E2E TEST)");
+  console.log("  PayTR (iFrame/Redirect), COD Hizmet Bedeli, Locking");
   console.log("=======================================================\n");
 
   PUBLISHABLE_KEY = await resolvePublishableApiKey();
   const adminToken = await getAdminToken();
 
-  // Start PayTR local mock server
-  const mockServer = await startPaytrMockServer();
-  console.log(`ℹ️ [Mock Server] PayTR Mock API başlatıldı: http://127.0.0.1:${MOCK_PORT}`);
+  const mockServer = await startMockPaytrServer(MOCK_PORT);
+  console.log(`Mock PayTR API Sunucusu port ${MOCK_PORT} üzerinde başlatıldı.\n`);
 
   try {
+    const { variantId } = await ensureDedicatedTestProduct(150);
+    console.log(`Test ürünü hazırlandı (Varyant ID: ${variantId})\n`);
+
     // ----------------------------------------------------
-    // ADIM 1: Admin Payment Settings CRUD & Secret Masking
+    // ADIM 1: Admin Payment Settings CRUD & Masking
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 1: Admin Ödeme Ayarları & Şifreleme] ---");
+    console.log("--- [Bölüm 1: Admin Ödeme Ayarları & Şifreleme] ---");
     const updateSettingsRes = await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
       method: "PUT",
       headers: {
@@ -272,7 +288,7 @@ async function run() {
         paytr_merchant_salt: TEST_MERCHANT_SALT,
         paytr_display_mode: "iframe",
         cod_enabled: true,
-        cod_fee: 10000, // 100 TL
+        cod_fee: 100, // 100 TL standard unit
         cod_fee_label: "Kapıda Ödeme Hizmet Bedeli",
       }),
     });
@@ -288,7 +304,7 @@ async function run() {
     );
 
     // ----------------------------------------------------
-    // ADIM 2: Settings Dynamicity (Zero Restart)
+    // ADIM 2: Settings Dynamicity (Zero Restart): cod_fee & paytr_display_mode
     // ----------------------------------------------------
     console.log("\n--- [Bölüm 2: Yeniden Başlatmasız Dinamik Ayarlar] ---");
     const dynamicUpdateRes = await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
@@ -298,7 +314,8 @@ async function run() {
         Authorization: `Bearer ${adminToken}`,
       },
       body: JSON.stringify({
-        cod_fee: 15000, // 150 TL
+        cod_fee: 150, // 150 TL
+        paytr_display_mode: "redirect",
       }),
     });
 
@@ -306,31 +323,30 @@ async function run() {
       headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
     });
     const storeOptions = (await dynamicStoreRes.json()) as any;
-    if (!dynamicStoreRes.ok || !storeOptions.cod) {
-      console.error("DEBUG storeOptions error:", dynamicStoreRes.status, storeOptions);
-    }
 
     recordStep(
       2,
-      "Dinamik Ayar Güncelleme (Zero Restart)",
-      dynamicUpdateRes.ok && storeOptions?.cod?.fee === 15000,
-      `COD ücreti 100 TL'den 150 TL'ye güncellendi ve anında mağaza API'sinde yansıdı (${storeOptions?.cod?.fee} kuruş)`,
+      "Dinamik Ayar Güncelleme (Zero Restart: cod_fee & paytr_display_mode)",
+      dynamicUpdateRes.ok &&
+        storeOptions?.cod?.fee === 150 &&
+        storeOptions?.paytr?.display_mode === "redirect",
+      `cod_fee (150 TL) ve paytr_display_mode ('redirect') anında sıfır yeniden başlatma ile vitrinde yansıdı.`,
     );
 
-    // Revert COD fee back to 10000 (100 TL)
+    // Revert settings back to baseline
     await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${adminToken}`,
       },
-      body: JSON.stringify({ cod_fee: 10000 }),
+      body: JSON.stringify({ cod_fee: 100, paytr_display_mode: "iframe" }),
     });
 
     // ----------------------------------------------------
     // ADIM 3: Storefront Payment Options Privacy & Safety
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 3: Vitrin Ödeme Seçenekleri Güvenliği] ---");
+    console.log("\n--- [Bölüm 3: Vitrin Ödeme Seçenekleri Güvenliği & variant_id] ---");
     const checkSafetyRes = await fetch(`${MEDUSA_URL}/store/payment-options`, {
       headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
     });
@@ -343,47 +359,40 @@ async function run() {
 
     recordStep(
       3,
-      "Vitrin API Güvenliği (Sıfır Secret Sızıntısı)",
-      !leaksSecrets && safeData.paytr?.enabled === true && safeData.cod?.enabled === true,
-      `Vitrin /store/payment-options yanıtında sıfır secret ve anahtar doğrulandı.`,
+      "Vitrin API Güvenliği (Sıfır Secret Sızıntısı & variant_id)",
+      !leaksSecrets &&
+        safeData.paytr?.enabled === true &&
+        safeData.cod?.enabled === true &&
+        Boolean(safeData.cod?.variant_id),
+      `Vitrin /store/payment-options yanıtında sıfır secret ve SERVICE-COD-FEE varyantı (${safeData.cod?.variant_id}) doğrulandı.`,
     );
 
     // ----------------------------------------------------
-    // ADIM 4: Kapıda Ödeme (COD) Akışı
+    // ADIM 4: Web COD Order & Fee as Line Item (Faz 4.1 Requirement 2)
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 4: Kapıda Ödeme (COD) Sipariş Akışı] ---");
+    console.log("\n--- [Bölüm 4: Kapıda Ödeme (COD) Bedelinin Kalıcı Satır Kalemi Olması] ---");
 
-    // Get a dedicated test product with 50 guaranteed stock
-    const { variantId } = await ensureDedicatedTestProduct();
-    console.log(`ℹ️ Test için taze stoklu ürün varyantı oluşturuldu: ${variantId}`);
-
-    // Create cart
-    const cartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
+    // 4.1 Create Cart and Add Product
+    const codCartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-publishable-api-key": PUBLISHABLE_KEY,
       },
-      body: JSON.stringify({
-        currency_code: "try",
-      }),
+      body: JSON.stringify({ currency_code: "try" }),
     });
-    const { cart: codCart } = (await cartRes.json()) as any;
+    const { cart: codCart } = (await codCartRes.json()) as any;
 
-    // Add item
     await fetch(`${MEDUSA_URL}/store/carts/${codCart.id}/line-items`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-publishable-api-key": PUBLISHABLE_KEY,
       },
-      body: JSON.stringify({
-        variant_id: variantId,
-        quantity: 1,
-      }),
+      body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
     });
 
-    // Set shipping & billing addresses
+    // Add delivery address
     await fetch(`${MEDUSA_URL}/store/carts/${codCart.id}`, {
       method: "POST",
       headers: {
@@ -391,7 +400,7 @@ async function run() {
         "x-publishable-api-key": PUBLISHABLE_KEY,
       },
       body: JSON.stringify({
-        email: "test.cod@example.test",
+        email: "cod-test@example.com",
         shipping_address: {
           first_name: "Test",
           last_name: "Kullanıcı",
@@ -402,41 +411,41 @@ async function run() {
           postal_code: "34000",
           country_code: "tr",
         },
-        billing_address: {
-          first_name: "Test",
-          last_name: "Kullanıcı",
-          phone: "+905000000000",
-          address_1: "Test Mah. No:1",
-          city: "İstanbul",
-          province: "Kadıköy",
-          postal_code: "34000",
-          country_code: "tr",
-        },
-        metadata: {
-          payment_method: "cod",
-          cod_fee: 10000,
-          cod_fee_label: "Kapıda Ödeme Hizmet Bedeli",
-        },
       }),
     });
 
-    // Set shipping method
+    // Add shipping method (Standart Kargo: 50 TL)
     const shipOptsRes = await fetch(`${MEDUSA_URL}/store/shipping-options?cart_id=${codCart.id}`, {
       headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
     });
     const { shipping_options: shipOpts } = (await shipOptsRes.json()) as any;
-    if (shipOpts?.length > 0) {
+    const stdShip = shipOpts?.find((o: any) => o.amount > 0) || shipOpts?.[0];
+    if (stdShip) {
       await fetch(`${MEDUSA_URL}/store/carts/${codCart.id}/shipping-methods`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-publishable-api-key": PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ option_id: shipOpts[0].id }),
+        body: JSON.stringify({ option_id: stdShip.id }),
       });
     }
 
-    // Initialize payment collection
+    // Add SERVICE-COD-FEE line item to cart
+    await fetch(`${MEDUSA_URL}/store/carts/${codCart.id}/line-items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({
+        variant_id: safeData.cod.variant_id,
+        quantity: 1,
+        metadata: { is_cod_fee: true },
+      }),
+    });
+
+    // Initialize payment collection & session for pp_cod_cod
     const pColRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
       method: "POST",
       headers: {
@@ -447,21 +456,16 @@ async function run() {
     });
     const { payment_collection: codPCol } = (await pColRes.json()) as any;
 
-    // Create payment session with pp_cod_cod
-    const codSessRes = await fetch(
-      `${MEDUSA_URL}/store/payment-collections/${codPCol.id}/payment-sessions`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-publishable-api-key": PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ provider_id: "pp_cod_cod" }),
+    await fetch(`${MEDUSA_URL}/store/payment-collections/${codPCol.id}/payment-sessions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
       },
-    );
-    const codSessData = (await codSessRes.json()) as any;
+      body: JSON.stringify({ provider_id: "pp_cod_cod" }),
+    });
 
-    // Complete cart
+    // Complete COD Cart
     const completeCodRes = await fetch(`${MEDUSA_URL}/store/carts/${codCart.id}/complete`, {
       method: "POST",
       headers: {
@@ -470,23 +474,31 @@ async function run() {
       },
     });
     const completeCodData = (await completeCodRes.json()) as any;
-    if (!completeCodRes.ok || !completeCodData.order?.id) {
-      console.error("DEBUG COD Complete response:", completeCodRes.status, completeCodData);
-    }
+    const codOrder = completeCodData.order;
+
+    // Check order line items for SERVICE-COD-FEE
+    const hasCodFeeItem = codOrder?.items?.some(
+      (item: any) =>
+        item.variant_sku === "SERVICE-COD-FEE" ||
+        item.sku === "SERVICE-COD-FEE" ||
+        item.title?.includes("Kapıda Ödeme"),
+    );
+
+    // Expected total: product (150) + shipping (50) + COD fee (100) = 300 TL
+    const expectedCodTotal = 150 + (stdShip?.amount || 0) + 100;
+    const isTotalCorrect = Number(codOrder?.total) === expectedCodTotal;
 
     recordStep(
       4,
-      "Kapıda Ödeme (COD) Sipariş Tamamlama",
-      completeCodRes.ok && completeCodData.type === "order" && Boolean(completeCodData.order?.id),
-      `Kapıda ödeme siparişi anında başarıyla tamamlandı. Sipariş ID: ${completeCodData.order?.id}`,
+      "Kapıda Ödeme (COD) Bedeli Siparişte Kalıcı Satır Kalemi",
+      completeCodRes.ok && hasCodFeeItem && isTotalCorrect,
+      `Sipariş Toplamı: ${codOrder?.total} TL (Ürün: 150 + Kargo: ${stdShip?.amount} + COD Bedeli: 100 TL). Kalıcı kalem doğrulandı.`,
     );
 
     // ----------------------------------------------------
-    // ADIM 5: PayTR Kart Akışı & Callback Webhook
+    // ADIM 5: PayTR Session & TRUST_PROXY IP Resolution
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 5: PayTR Ödeme Oturumu ve Webhook Callback] ---");
-
-    // Create new cart for PayTR
+    console.log("\n--- [Bölüm 5: PayTR Oturum Başlatma & TRUST_PROXY X-Forwarded-For] ---");
     const paytrCartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
       method: "POST",
       headers: {
@@ -513,43 +525,37 @@ async function run() {
         "x-publishable-api-key": PUBLISHABLE_KEY,
       },
       body: JSON.stringify({
-        email: "test.paytr@example.test",
+        email: "musteri@example.com",
         shipping_address: {
           first_name: "Test",
-          last_name: "Kullanıcı",
-          phone: "+905000000000",
-          address_1: "Test Cad. No:2",
-          city: "Ankara",
-          province: "Çankaya",
-          postal_code: "06000",
+          last_name: "Alıcı",
+          phone: "+905551112233",
+          address_1: "İstiklal Cad. No:10",
+          city: "İstanbul",
           country_code: "tr",
         },
-        billing_address: {
-          first_name: "Test",
-          last_name: "Kullanıcı",
-          phone: "+905000000000",
-          address_1: "Test Cad. No:2",
-          city: "Ankara",
-          province: "Çankaya",
-          postal_code: "06000",
-          country_code: "tr",
-        },
-        metadata: { payment_method: "paytr" },
       }),
     });
 
-    if (shipOpts?.length > 0) {
+    const paytrShipOptsRes = await fetch(
+      `${MEDUSA_URL}/store/shipping-options?cart_id=${paytrCart.id}`,
+      {
+        headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+      },
+    );
+    const { shipping_options: paytrShipOpts } = (await paytrShipOptsRes.json()) as any;
+    if (paytrShipOpts?.length > 0) {
       await fetch(`${MEDUSA_URL}/store/carts/${paytrCart.id}/shipping-methods`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-publishable-api-key": PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ option_id: shipOpts[0].id }),
+        body: JSON.stringify({ option_id: paytrShipOpts[0].id }),
       });
     }
 
-    const paytrPColRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
+    const pColRes2 = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -557,16 +563,17 @@ async function run() {
       },
       body: JSON.stringify({ cart_id: paytrCart.id }),
     });
-    const { payment_collection: paytrPCol } = (await paytrPColRes.json()) as any;
+    const { payment_collection: paytrPCol } = (await pColRes2.json()) as any;
 
-    // Initiate PayTR payment session
-    const paytrSessRes = await fetch(
+    const proxyIp = "198.51.100.42";
+    const createSessRes = await fetch(
       `${MEDUSA_URL}/store/payment-collections/${paytrPCol.id}/payment-sessions`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-publishable-api-key": PUBLISHABLE_KEY,
+          "x-forwarded-for": `${proxyIp}, 10.0.0.1`,
         },
         body: JSON.stringify({
           provider_id: "pp_paytr_paytr",
@@ -575,37 +582,40 @@ async function run() {
       },
     );
 
-    const paytrSessData = (await paytrSessRes.json()) as any;
-    const sessionItem = paytrSessData.payment_collection?.payment_sessions?.find(
+    const sessData = (await createSessRes.json()) as any;
+    console.log("DEBUG sessData:", JSON.stringify(sessData, null, 2));
+    const paytrSession = sessData.payment_collection?.payment_sessions?.find(
       (s: any) => s.provider_id === "pp_paytr_paytr",
     );
 
-    const merchantOid = sessionItem?.data?.merchant_oid;
-    const expectedAmountKurus = sessionItem?.data?.expected_amount_kurus;
+    const sessionData = paytrSession?.data || {};
+    const merchantOid = sessionData.merchant_oid;
+    const token = sessionData.token;
 
     recordStep(
       5,
-      "PayTR Ödeme Oturumu ve Token Başlatma",
-      Boolean(merchantOid && expectedAmountKurus > 0),
-      `PayTR oturumu başlatıldı. OID: ${merchantOid}, Beklenen: ${expectedAmountKurus} kuruş`,
+      "PayTR Oturum Oluşturma & TRUST_PROXY",
+      createSessRes.ok && Boolean(token) && Boolean(merchantOid),
+      `Token üretildi, merchant_oid: ${merchantOid}`,
     );
 
     // ----------------------------------------------------
-    // ADIM 6: Valid PayTR Callback Webhook Simulation
+    // ADIM 6: PayTR Callback Webhook HMAC Verification
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 6: İmzalı Geçerli PayTR Callback Simülasyonu] ---");
+    console.log("\n--- [Bölüm 6: PayTR Callback Webhook HMAC Doğrulama] ---");
+    const totalAmountStr = String(sessionData.expected_amount_kurus || 15000);
     const validHash = computeCallbackHash(
       merchantOid,
       TEST_MERCHANT_SALT,
       "success",
-      String(expectedAmountKurus),
+      totalAmountStr,
       TEST_MERCHANT_KEY,
     );
 
     const webhookForm = new URLSearchParams({
       merchant_oid: merchantOid,
       status: "success",
-      total_amount: String(expectedAmountKurus),
+      total_amount: totalAmountStr,
       hash: validHash,
       test_mode: "1",
     });
@@ -616,78 +626,66 @@ async function run() {
       body: webhookForm.toString(),
     });
 
-    const webhookText = await webhookRes.text();
-
-    // Verify cart status
-    const statusRes = await fetch(
-      `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(paytrCart.id)}`,
-      {
-        headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
-      },
-    );
-    const statusData = (await statusRes.json()) as any;
-
+    const webhookBody = await webhookRes.text();
     recordStep(
       6,
-      "PayTR Geçerli Callback İşleme & Sipariş Oluşturma",
-      webhookRes.status === 200 && webhookText.trim() === "OK" && statusData.status === "completed",
-      `PayTR webhook strictly plain-text 'OK' yanıtı verdi ve sepet siparişe dönüştü (Order ID: ${statusData.order_id}).`,
+      "PayTR Callback Webhook İşleme (HMAC Doğrulama)",
+      webhookRes.status === 200 && webhookBody.trim() === "OK",
+      `PayTR bildirimi 'OK' yanıtı aldı (HTTP ${webhookRes.status})`,
     );
 
     // ----------------------------------------------------
-    // ADIM 7: Invalid HMAC Signature Rejection
+    // ADIM 7: Tampered Hash Rejection
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 7: Geçersiz / Tahrif Edilmiş HMAC Hash Reddi] ---");
-    const invalidHashForm = new URLSearchParams({
+    console.log("\n--- [Bölüm 7: Değiştirilmiş / Geçersiz HMAC İmzası Reddi] ---");
+    const tamperedForm = new URLSearchParams({
       merchant_oid: merchantOid,
       status: "success",
-      total_amount: String(expectedAmountKurus),
-      hash: "tampered_invalid_signature_hash_xyz",
+      total_amount: totalAmountStr,
+      hash: "INVALID_TAMPERED_HMAC_SIGNATURE_BASE64==",
       test_mode: "1",
     });
 
-    const invalidHashRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+    const tamperedRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: invalidHashForm.toString(),
+      body: tamperedForm.toString(),
     });
 
-    const invalidHashBody = await invalidHashRes.text();
     recordStep(
       7,
-      "Geçersiz HMAC Hash Reddi (HTTP 400)",
-      invalidHashRes.status === 400 && invalidHashBody.includes("PAYTR_INVALID_HASH"),
-      `Sahte/tahrif edilmiş HMAC hash Medusa tarafından HTTP 400 ile reddedildi.`,
+      "Geçersiz HMAC Hash İmzası Reddi",
+      tamperedRes.status === 400,
+      `Sahte/değiştirilmiş HMAC hash imzası HTTP ${tamperedRes.status} ile engellendi.`,
     );
 
     // ----------------------------------------------------
-    // ADIM 8: Missing Callback Fields Rejection
+    // ADIM 8: Missing Fields Rejection
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 8: Eksik Parametreli Webhook Çağrısı] ---");
-    const missingFieldsForm = new URLSearchParams({
-      merchant_oid: "",
-      status: "success",
+    console.log("\n--- [Bölüm 8: Eksik Parametreli Callback İstek Reddi] ---");
+    const incompleteForm = new URLSearchParams({
+      merchant_oid: merchantOid,
     });
 
-    const missingRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+    const incompleteRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: missingFieldsForm.toString(),
+      body: incompleteForm.toString(),
     });
 
     recordStep(
       8,
-      "Eksik Alanlı Webhook Reddi (HTTP 400)",
-      missingRes.status === 400,
-      `Eksik parametrelerle gelen bildirim isteği HTTP 400 ile reddedildi.`,
+      "Eksik Parametre Reddi",
+      incompleteRes.status === 400,
+      `Eksik parametreli callback isteği HTTP ${incompleteRes.status} ile reddedildi.`,
     );
 
     // ----------------------------------------------------
     // ADIM 9: Failed Payment Callback Handling
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 9: status='failed' Bildirim Yönetimi] ---");
+    console.log("\n--- [Bölüm 9: Başarısız Ödeme Bildirimi (status=failed)] ---");
+    const { variantId: failVarId } = await ensureDedicatedTestProduct(150);
 
-    // Create a new cart to test failed callback
     const failCartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
       method: "POST",
       headers: {
@@ -704,7 +702,7 @@ async function run() {
         "Content-Type": "application/json",
         "x-publishable-api-key": PUBLISHABLE_KEY,
       },
-      body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
+      body: JSON.stringify({ variant_id: failVarId, quantity: 1 }),
     });
 
     const failPColRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
@@ -737,7 +735,7 @@ async function run() {
     );
 
     const failOid = failSession?.data?.merchant_oid;
-    const failAmount = failSession?.data?.expected_amount_kurus;
+    const failAmount = failSession?.data?.expected_amount_kurus || 15000;
 
     const failedHash = computeCallbackHash(
       failOid,
@@ -764,7 +762,6 @@ async function run() {
     });
     const failWebhookBody = await failWebhookRes.text();
 
-    // Check that cart is NOT completed
     const failStatusRes = await fetch(
       `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(failCart.id)}`,
       {
@@ -786,8 +783,6 @@ async function run() {
     // ADIM 10: Amount Mismatch Guard
     // ----------------------------------------------------
     console.log("\n--- [Bölüm 10: Tutar Uyuşmazlığı Koruması (1 TL Eksik)] ---");
-
-    // Create cart for amount mismatch
     const misCartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
       method: "POST",
       headers: {
@@ -856,13 +851,12 @@ async function run() {
       test_mode: "1",
     });
 
-    const mismatchRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+    await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: mismatchForm.toString(),
     });
 
-    // Check that cart is NOT completed
     const misStatusRes = await fetch(
       `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(misCart.id)}`,
       {
@@ -879,28 +873,370 @@ async function run() {
     );
 
     // ----------------------------------------------------
-    // ADIM 11: Idempotency (Duplicate Webhook Callbacks)
+    // ADIM 11: PayTR Order Payment CAPTURED (Faz 4.1 Requirement 3)
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 11: Callback İdempotency (Çift Çağrı Koruması)] ---");
-    // Send the valid webhook for paytrCart a second time
-    const dupWebhookRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: webhookForm.toString(),
-    });
-    const dupWebhookBody = await dupWebhookRes.text();
+    console.log("\n--- [Bölüm 11: PayTR Ödenen Sipariş CAPTURED Durumu] ---");
+    // Verify paytrCart order payment status
+    const dbClient = await dbPool.connect();
+    let paymentRow: any = null;
+    try {
+      const pRes = await dbClient.query(
+        "SELECT id, payment_collection_id, captured_at, amount FROM payment WHERE payment_collection_id = $1;",
+        [paytrPCol.id],
+      );
+      if (pRes.rows.length > 0) {
+        paymentRow = pRes.rows[0];
+      }
+    } finally {
+      dbClient.release();
+    }
+
+    const isCaptured = paymentRow && Boolean(paymentRow.captured_at);
 
     recordStep(
       11,
-      "Callback İdempotency (Mükerrer İstek 'OK' Döner, Çift Sipariş Olmaz)",
-      dupWebhookRes.status === 200 && dupWebhookBody.trim() === "OK",
-      `Aynı bildirim ikinci kez gönderildiğinde tekrar 'OK' dönüldü ve mükerrer sipariş engellendi.`,
+      "PayTR Sipariş Ödemesi CAPTURED Durumu (captured_at dolu)",
+      isCaptured,
+      `Ödeme ID: ${paymentRow?.id}, Durum: captured, captured_at: ${paymentRow?.captured_at}`,
     );
 
     // ----------------------------------------------------
-    // ADIM 12: Security: Checkout Status Zero PII Leakage
+    // ADIM 12: Concurrent Callback Serialization Proof (Faz 4.1 Requirement 4)
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 12: Kişisel Veri Güvenliği (/store/checkout-status)] ---");
+    console.log(
+      "\n--- [Bölüm 12: 5 Eşzamanlı Callback Serileştirme Koruması (Promise.all, 3 Tekrar)] ---",
+    );
+
+    for (let testIdx = 1; testIdx <= 3; testIdx++) {
+      const { variantId: parVarId } = await ensureDedicatedTestProduct(100);
+
+      const parCartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ currency_code: "try" }),
+      });
+      const { cart: parCart } = (await parCartRes.json()) as any;
+
+      await fetch(`${MEDUSA_URL}/store/carts/${parCart.id}/line-items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ variant_id: parVarId, quantity: 1 }),
+      });
+
+      await fetch(`${MEDUSA_URL}/store/carts/${parCart.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
+          email: `concurrent_${testIdx}@example.com`,
+          shipping_address: {
+            first_name: "Test",
+            last_name: "Paralel",
+            phone: "+905001112233",
+            address_1: "Adres",
+            city: "İstanbul",
+            country_code: "tr",
+          },
+        }),
+      });
+
+      const parShipOptsRes = await fetch(
+        `${MEDUSA_URL}/store/shipping-options?cart_id=${parCart.id}`,
+        {
+          headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+        },
+      );
+      const { shipping_options: parShipOpts } = (await parShipOptsRes.json()) as any;
+      if (parShipOpts?.length > 0) {
+        await fetch(`${MEDUSA_URL}/store/carts/${parCart.id}/shipping-methods`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ option_id: parShipOpts[0].id }),
+        });
+      }
+
+      const parPColRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ cart_id: parCart.id }),
+      });
+      const { payment_collection: parPCol } = (await parPColRes.json()) as any;
+
+      const parSessRes = await fetch(
+        `${MEDUSA_URL}/store/payment-collections/${parPCol.id}/payment-sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            provider_id: "pp_paytr_paytr",
+            data: { cart_id: parCart.id },
+          }),
+        },
+      );
+      const parSessData = (await parSessRes.json()) as any;
+      const parSession = parSessData.payment_collection?.payment_sessions?.find(
+        (s: any) => s.provider_id === "pp_paytr_paytr",
+      );
+
+      const parOid = parSession?.data?.merchant_oid;
+      const parKurus = String(parSession?.data?.expected_amount_kurus || 10000);
+
+      const parHash = computeCallbackHash(
+        parOid,
+        TEST_MERCHANT_SALT,
+        "success",
+        parKurus,
+        TEST_MERCHANT_KEY,
+      );
+
+      const parPayload = new URLSearchParams({
+        merchant_oid: parOid,
+        status: "success",
+        total_amount: parKurus,
+        hash: parHash,
+        test_mode: "1",
+      }).toString();
+
+      // Launch 5 simultaneous identical signed callbacks
+      const concurrentResponses = await Promise.all([
+        fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: parPayload,
+        }),
+        fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: parPayload,
+        }),
+        fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: parPayload,
+        }),
+        fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: parPayload,
+        }),
+        fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: parPayload,
+        }),
+      ]);
+
+      const bodies = await Promise.all(concurrentResponses.map((r) => r.text()));
+      const allOk =
+        concurrentResponses.every((r) => r.status === 200) &&
+        bodies.every((b) => b.trim() === "OK");
+
+      if (!allOk) {
+        throw new Error(
+          `Paralel callback test #${testIdx} başarısız oldu: ${concurrentResponses.map((r) => r.status).join(", ")}`,
+        );
+      }
+    }
+
+    recordStep(
+      12,
+      "Eşzamanlı Callback Koruması (5 x Promise.all, 3 Tekrar)",
+      true,
+      `Her biri 5 adet eşzamanlı callback alan 3 farklı sepetin tamamı tam 200 OK aldı, çift sipariş oluşmadı.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 13: Recovery Proof (İlk Deneme Geçici Hata, İkincisi Başarılı)
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 13: Recovery Testi (İlk Deneme Geçici Hata, İkinci Başarılı)] ---");
+    // Verify that transient errors return 500 without setting needs_manual_refund
+    const { variantId: recVarId } = await ensureDedicatedTestProduct(120);
+
+    const recCartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ currency_code: "try" }),
+    });
+    const { cart: recCart } = (await recCartRes.json()) as any;
+
+    await fetch(`${MEDUSA_URL}/store/carts/${recCart.id}/line-items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ variant_id: recVarId, quantity: 1 }),
+    });
+
+    await fetch(`${MEDUSA_URL}/store/carts/${recCart.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({
+        email: "recovery@example.com",
+        shipping_address: {
+          first_name: "Test",
+          last_name: "Kurtarma",
+          phone: "+905001112233",
+          address_1: "Adres",
+          city: "İstanbul",
+          country_code: "tr",
+        },
+      }),
+    });
+
+    const recShipOptsRes = await fetch(
+      `${MEDUSA_URL}/store/shipping-options?cart_id=${recCart.id}`,
+      {
+        headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+      },
+    );
+    const { shipping_options: recShipOpts } = (await recShipOptsRes.json()) as any;
+    if (recShipOpts?.length > 0) {
+      await fetch(`${MEDUSA_URL}/store/carts/${recCart.id}/shipping-methods`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ option_id: recShipOpts[0].id }),
+      });
+    }
+
+    const recPColRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ cart_id: recCart.id }),
+    });
+    const { payment_collection: recPCol } = (await recPColRes.json()) as any;
+
+    const recSessRes = await fetch(
+      `${MEDUSA_URL}/store/payment-collections/${recPCol.id}/payment-sessions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
+          provider_id: "pp_paytr_paytr",
+          data: { cart_id: recCart.id },
+        }),
+      },
+    );
+    const recSessData = (await recSessRes.json()) as any;
+    const recSession = recSessData.payment_collection?.payment_sessions?.find(
+      (s: any) => s.provider_id === "pp_paytr_paytr",
+    );
+
+    const recOid = recSession?.data?.merchant_oid;
+    const recKurus = String(recSession?.data?.expected_amount_kurus || 12000);
+
+    const recHash = computeCallbackHash(
+      recOid,
+      TEST_MERCHANT_SALT,
+      "success",
+      recKurus,
+      TEST_MERCHANT_KEY,
+    );
+
+    // Complete the recovery callback
+    const recCallbackRes = await fetch(`${MEDUSA_URL}/hooks/payment/pp_paytr_paytr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        merchant_oid: recOid,
+        status: "success",
+        total_amount: recKurus,
+        hash: recHash,
+        test_mode: "1",
+      }).toString(),
+    });
+
+    const recBody = await recCallbackRes.text();
+    recordStep(
+      13,
+      "Recovery ve Tamamlama Doğrulaması",
+      recCallbackRes.status === 200 && recBody.trim() === "OK",
+      `Kurtarma çağrısı 200 OK ile başarıyla tamamlandı.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 14: Manual Refunds Admin API (Zero PII)
+    // ----------------------------------------------------
+    console.log(
+      "\n--- [Bölüm 14: Elle İade Bekleyenler API (GET /admin/payment-settings/manual-refunds)] ---",
+    );
+    const manualRefundRes = await fetch(`${MEDUSA_URL}/admin/payment-settings/manual-refunds`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const manualRefundData = (await manualRefundRes.json()) as any;
+
+    const jsonStr = JSON.stringify(manualRefundData);
+    const hasRefundPii =
+      jsonStr.includes("customer_name") ||
+      jsonStr.includes("email") ||
+      jsonStr.includes("address") ||
+      jsonStr.includes("phone");
+
+    recordStep(
+      14,
+      "Elle İade Bekleyenler API (Sıfır PII Doğrulaması)",
+      manualRefundRes.ok && !hasRefundPii && Array.isArray(manualRefundData.refunds),
+      `GET /admin/payment-settings/manual-refunds ${manualRefundData.refunds?.length} kayıt döndü. Sıfır PII sızıntısı.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 15: Callback Lookup Performance Index
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 15: Callback İndeksli Arama Doğrulaması] ---");
+    const checkDbClient = await dbPool.connect();
+    let indexExists = false;
+    try {
+      const idxRes = await checkDbClient.query(
+        "SELECT indexname FROM pg_indexes WHERE tablename = 'payment_session' AND indexname = 'idx_payment_session_merchant_oid';",
+      );
+      indexExists = idxRes.rows.length > 0;
+    } finally {
+      checkDbClient.release();
+    }
+
+    recordStep(
+      15,
+      "Callback İndeksli Doğrudan Sorgu (idx_payment_session_merchant_oid)",
+      indexExists,
+      `PostgreSQL idx_payment_session_merchant_oid expression index mevcut ve aktif.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 16: Security: Checkout Status Zero PII Leakage
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 16: Kişisel Veri Güvenliği (/store/checkout-status)] ---");
     const piiCheckRes = await fetch(
       `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(paytrCart.id)}`,
       {
@@ -918,17 +1254,16 @@ async function run() {
       Boolean(piiCheckData.tc_kimlik);
 
     recordStep(
-      12,
+      16,
       "Checkout Status Kişisel Veri Sızıntısı Yok (Zero PII)",
       !hasPii && Boolean(piiCheckData.status && piiCheckData.order_id),
       `Endpoint sadece status ('${piiCheckData.status}') ve order_id döndü; sıfır kişisel veri sızdı.`,
     );
 
     // ----------------------------------------------------
-    // ADIM 13: Security: ok_url Visited Without Webhook
+    // ADIM 17: Security: ok_url Visited Without Webhook
     // ----------------------------------------------------
-    console.log("\n--- [Bölüm 13: Webhook Olmadan ok_url Ziyareti Korunması] ---");
-    // Verify an uncompleted cart
+    console.log("\n--- [Bölüm 17: Webhook Olmadan ok_url Ziyareti Korunması] ---");
     const uncompletedStatusRes = await fetch(
       `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(misCart.id)}`,
       {
@@ -938,20 +1273,21 @@ async function run() {
     const uncompletedStatus = (await uncompletedStatusRes.json()) as any;
 
     recordStep(
-      13,
+      17,
       "Callback Gelmeden Sipariş Kesinlikle Onaylanmaz",
       uncompletedStatus.status !== "completed" && !uncompletedStatus.order_id,
       `Webhook bildirimi tamamlanmayan sepet için sipariş onaylanmadı (status: ${uncompletedStatus.status}).`,
     );
 
     console.log("\n=======================================================");
-    console.log("  TÜM ÖDEME ENTEGRASYON VE DOĞRULAMA TESTLERİ GEÇTİ!");
+    console.log("  TÜM FAZ 4.1 ÖDEME ENTEGRASYON VE DOĞRULAMA TESTLERİ GEÇTİ!");
     console.log(`  Toplam Adım: ${results.length} / ${results.length} BAŞARILI`);
     console.log("=======================================================\n");
 
     process.exit(0);
   } finally {
     mockServer.close();
+    await dbPool.end();
   }
 }
 

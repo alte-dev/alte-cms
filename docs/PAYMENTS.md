@@ -1,6 +1,6 @@
 # Alte E-Ticaret Ödeme Mimarisi (PayTR & Kapıda Ödeme)
 
-Bu doküman, Alte CMS e-ticaret platformunda yer alan ödeme sağlayıcılarının mimarisini, veri akışlarını, şifreleme mekanizmalarını ve güvenlik kontrollerini açıklar.
+Bu doküman, Alte CMS e-ticaret platformunda yer alan ödeme sağlayıcılarının mimarisini, veri akışlarını, şifreleme mekanizmalarını, eşzamanlılık kontrolünü ve güvenlik korumalarını açıklar.
 
 ---
 
@@ -14,16 +14,19 @@ Sistem, Medusa v2'nin modüler Payment Provider mimarisi üzerine kuruludur. İk
    - **Akış:** İki adımlı güvenli ödeme (Step 1: Sunucu taraflı Token alma, Step 2: PayTR Webhook Callback).
    - **Destek:** Peşin ve Taksitli ödeme (admin panelinden taksit üst sınırı ayarlanabilir).
    - **Çevre:** Sandbox (Test) ve Canlı (Production) modları admin panelinden dinamik olarak yönetilir.
+   - **Tahsilat (Capture):** Başarılı webhook bildiriminde ödeme derhal `capturePaymentWorkflow` ile tahsil edilir (`captured_at` dolar, `paid_total = total`).
 
 2. **Kapıda Ödeme Sağlayıcısı (`pp_cod_cod`):**
 
    - **Tip:** Teslimatta Nakit / Kredi Kartı ile Ödeme (Cash on Delivery).
-   - **Hizmet Bedeli:** Dinamik olarak yönetilen hizmet bedeli (varsayılan 100 TL / 10.000 kuruş).
+   - **Kalıcı Satır Kalemi:** Özel hizmet ürünü ("Kapıda Ödeme Hizmet Bedeli", SKU: `SERVICE-COD-FEE`, metadata: `{ is_cod_fee: true, hidden: true }`) sepete sunucu tarafında eklenir; başka ödeme yöntemine geçildiğinde derhal kaldırılır.
+   - **Vergi & Birim:** Fiyatlar KDV dahil (%20) ve standart TL birimi (decimal/float) cinsindendir.
+   - **Eşik Hesaplamaları:** 1500 TL ücretsiz kargo eşiği ve `cod_max_order_amount` üst sınırı YALNIZCA asıl ürün satırları toplamı üzerinden hesaplanır; hizmet bedeli eşik hesaplamalarına dahil edilmez.
    - **Üst Limit:** Risk yönetimi amacıyla maksimum sepet tutarı sınırı (örn. 5.000 TL).
 
 3. **Geliştirici Sahte Ödeme (`pp_system_default`):**
    - **Kısıtlama:** Yalnızca `NODE_ENV !== "production"` ve `ALLOW_DEV_PAYMENT="true"` iken vitrinde aktifleşebilir.
-   - **Güvenlik Kapısı:** Medusa açılışında `productionPaymentGuard` loader'ı tarafından üretim ortamında fail-closed kuralıyla engellenir.
+   - **Üretim Başlatma Koruması (Startup Guard):** Medusa açılışında `productionPaymentGuard` loader'ı tarafından `region_payment_provider` tablosu taranarak kontrol edilir. Üretimde herhangi bir bölgeye `pp_system_default` bağlıysa veya hiçbir bölgeye gerçek sağlayıcı (`pp_paytr_paytr`, `pp_cod_cod`) bağlı değilse sunucu fail-closed olarak `exit 1` ile kapanır.
 
 ---
 
@@ -35,6 +38,7 @@ sequenceDiagram
     actor Musteri as Müşteri (Tarayıcı)
     participant Vitrin as Next.js Vitrin (apps/web)
     participant Medusa as Medusa v2 Engine (apps/medusa)
+    participant Lock as Medusa Locking / Mutex
     participant PayTR as PayTR API / iFrame Gateway
     participant DB as PostgreSQL Veritabanı
 
@@ -50,8 +54,12 @@ sequenceDiagram
 
     Musteri->>PayTR: Kart Bilgileri & 3D Secure Doğrulama
     PayTR->>Medusa: POST /hooks/payment/pp_paytr_paytr (HMAC İmzalı Callback)
-    Note over Medusa: 1. Constant-time HMAC Doğrula<br/>2. Tutar Kontrolü (total_amount >= expected)<br/>3. completeCartWorkflow çalıştır
-    Medusa->>DB: Sipariş Oluştur & Sepeti Kapat
+    Medusa->>Lock: acquireLock(merchant_oid)
+    Note over Medusa, Lock: Eşzamanlı Callback Serileştirme Koruması
+    Medusa->>DB: Doğrudan İndeksli Arama (idx_payment_session_merchant_oid)
+    Note over Medusa: 1. Constant-time HMAC Doğrula<br/>2. Tutar Kontrolü (total_amount >= expected)<br/>3. completeCartWorkflow çalıştır<br/>4. capturePaymentWorkflow çalıştır (CAPTURED)
+    Medusa->>DB: Sipariş Oluştur, Sepeti Kapat & Ödemeyi Tahsil Et
+    Medusa->>Lock: releaseLock(merchant_oid)
     Medusa-->>PayTR: Plain-text "OK" (Kesin 200 OK)
 
     PayTR->>Musteri: ok_url Yönlendirmesi (/odeme/sonuc?cart_id=...)
@@ -63,9 +71,20 @@ sequenceDiagram
 
 ---
 
-## 3. Güvenlik ve Şifreleme Mimarisi
+## 3. Güvenlik, Şifreleme ve Dayanıklılık Mimarisi
 
-### 3.1 AES-256-GCM ile Veri Güvenliği
+### 3.1 Üretim Başlatma Koruması (Fail-Closed Production Guard)
+
+`apps/medusa/src/loaders/production-payment-guard.ts` ve `apps/medusa/src/modules/payment-guard/service.ts`:
+
+- Medusa ayağa kalkarken `NODE_ENV === "production"` durumunu inceler.
+- Bölge-sağlayıcı bağlantılarını `region_payment_provider` tablosundan sorgular.
+- Eğer herhangi bir bölgeye `pp_system_default` bağlıysa derhal `process.exit(1)` vererek durdurur.
+- Eğer hiçbir bölgeye gerçek sağlayıcı (`pp_paytr_paytr` veya `pp_cod_cod`) bağlı değilse derhal `process.exit(1)` vererek durdurur.
+- Üretimde `PAYTR_API_BASE` veya `DEV_PAYTR_USER_IP` tanımlanmışsa `assertUndefinedInProduction` kuralıyla `process.exit(1)` verir.
+- Sadece PayTR ve/veya COD bağlıysa `[Payment Guard] Production payment guard PASSED` loglar ve sunucu açılır.
+
+### 3.2 AES-256-GCM ile Veri Güvenliği
 
 PayTR Merchant Key, Merchant Salt ve gelecekteki hassas kimlik bilgileri veritabanında asla açık metin (plaintext) olarak saklanmaz:
 
@@ -74,26 +93,40 @@ PayTR Merchant Key, Merchant Salt ve gelecekteki hassas kimlik bilgileri veritab
 - **Format:** `iv:ciphertext:tag` (Her kayıt için 12-byte rastgele IV ve 16-byte GCM authentication tag).
 - **Bütünlük Koruması:** Veritabanındaki şifreli metin harici müdahaleye uğrarsa, GCM tag doğrulaması hata verir ve fail-closed davranır.
 
-### 3.2 Write-Only Admin UI ve Maskeleme
+### 3.3 Eşzamanlılık Kilidi (Concurrency Locking & Mutex)
 
-- Medusa Admin REST API (`GET /admin/payment-settings`) hassas anahtarları asla istemciye dönmez. Sadece son 4 karakteri gösteren maskeli format üretilir: `••••••••••••••••6789`.
-- Ayarlar güncellenirken boş bırakılan veya maskeli gönderilen alanlar mevcut anahtarı korur (Write-Only form).
+- PayTR aynı `merchant_oid` için eşzamanlı olarak birden fazla webhook çağrısı yapabilir.
+- `apps/medusa/src/api/hooks/payment/pp_paytr_paytr/route.ts` içinde `executeWithLock` fonksiyonu kullanılır.
+- Medusa Locking Modülü (`Modules.LOCKING`) öncelikli olarak kullanılır; bulunamadığı durumlarda promise tabanlı in-memory mutex devrededir.
+- Kilit mekanizması sayesinde eşzamanlı 5 callback dahi gelse işlemler sıraya alınır; ilk işlem sepeti siparişe dönüştürüp ödemeyi tahsil ederken, sonraki işlemler sepetin ve oturumun tamamlandığını görerek güvenle `200 OK` döner (çift sipariş ve çift tahsilat engellenir).
 
-### 3.3 Sıfır Yeniden Başlatma (Zero Restart Registry)
+### 3.4 Kurtarma Mekanizması & Elle İade Takibi (Recovery & Manual Refunds)
 
-- Ödeme ayarları güncellendiğinde Medusa sunucusunu yeniden başlatmaya gerek yoktur.
-- `PaymentSettingsRegistry` sınıfı, güncel ayarları bellek içinde önbelleğe alır ve anında tüm isteklerde aktif hale getirir (10 dakika TTL ve veritabanı geri çekilme koruması).
+- **Geçici Hatalar (Transient Errors):** Ağ veya veritabanı kesintilerinde callback HTTP 500 döner; `needs_manual_refund` İŞARETLENMEZ. PayTR protokolü gereği isteği tekrar dener ve bir sonraki denemede sipariş sorunsuz tamamlanır.
+- **Kurtarılamaz Hatalar (Unrecoverable Errors):** Eğer ödeme PayTR tarafından çekilmiş ancak sipariş stok yetersizliği vb. kurtarılamaz bir iş kuralı nedeniyle oluşturulamıyorsa:
+  - Oturum metadata'sına `needs_manual_refund: true` ve `manual_refund_reason` kaydedilir.
+  - Sistem `[CRITICAL ALERT]` loglar.
+  - PayTR döngüsünü durdurmak için `200 OK` döner.
+- **Admin API & UI:**
+  - `GET /admin/payment-settings/manual-refunds`: Kişisel veri (PII) içermeyen (yalnızca `id, cart_id, amount, currency, status, reason, created_at`) kayıt listesi döner.
+  - Medusa Admin Ödeme Ayarları sayfasında kırmızı uyarı kartı ("Elle İade Bekleyenler") yer alır. Bekleyen kayıt yoksa "Bekleyen elle iade yok" rozeti gösterilir.
 
-### 3.4 PayTR Webhook Doğrulaması (Fail-Closed)
+### 3.5 Doğrudan İndeksli Arama Performansı (O(log N))
 
-1. **Zaman Aşımına Dayanıklı Karşılaştırma:** Webhook hash doğrulaması `crypto.timingSafeEqual` kullanılarak yapılır; böylece side-channel / timing atakları engellenir.
-2. **Strict Plain-Text "OK":** PayTR protokolü uyarınca bildirim alındığında yanıt gövdesi yalnızca ve kesinlikle `"OK"` (text/plain) olmalıdır. JSON veya HTML yanıt verilmesi durumunda PayTR bildirimi başarısız sayıp tekrar dener.
-3. **Tutar Doğrulaması:** Callback gövdesindeki `total_amount` kuruş cinsinden sepetin beklenen tutarından küçükse işlem iptal edilir ve sipariş kesinlikle oluşturulmaz.
-4. **İdempotency:** Aynı callback birden fazla kez ulaştığında (örneğin ağ gecikmesi nedeniyle), sistem sepetin zaten siparişe dönüştüğünü tespit eder ve mükerrer sipariş açmadan derhal `"OK"` döner.
+- `payment_session` tablosunda `(data->>'merchant_oid')` alanı için expression index oluşturulmuştur:
+  `CREATE INDEX IF NOT EXISTS idx_payment_session_merchant_oid ON payment_session (((data->>'merchant_oid'))) WHERE deleted_at IS NULL;`
+- Webhook isteklerinde tüm koleksiyonları belleğe çeken lineer arama (O(N)) yerine doğrudan indeks üzerinden tek bir sorguyla O(log N) oturum tespiti yapılır (2.000 oturumda benchmark ile 9 kat hız artışı ve O(log N) doğrulanmıştır).
 
 ---
 
-## 4. Vitrin & CSP Yapılandırması
+## 4. Para Birimi ve Standartlar
+
+- **Tek Para Birimi Standardı:** Sistem genelinde (Admin UI, Veritabanı, Vitrin, API) para birimi standart olarak **TL** (decimal/float, örn. 100 veya 150) olarak kullanılır.
+- **PayTR Dönüşümü:** PayTR API'si kuruş cinsinden tamsayı beklediğinden, yalnızca PayTR'a gönderilen parametrelerde `Math.round(amount * 100)` yapılarak kuruşa çevrilir. Webhook HMAC doğrulaması sepet tutarının kuruş karşılığı üzerinden hesaplanır.
+
+---
+
+## 5. Vitrin & CSP Yapılandırması
 
 Next.js vitrin uygulamasında PayTR iFrame ve script entegrasyonu için Content Security Policy (CSP) kuralları `apps/web/next.config.ts` içinde yapılandırılmıştır:
 
@@ -101,12 +134,3 @@ Next.js vitrin uygulamasında PayTR iFrame ve script entegrasyonu için Content 
 - `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paytr.com;`
 - `connect-src 'self' http://localhost:9000 http://127.0.0.1:9000 https://www.paytr.com;`
 - `form-action 'self' https://www.paytr.com;`
-
----
-
-## 5. Kapıda Ödeme (COD) İşleyişi
-
-- Müşteri Kapıda Ödeme seçtiğinde, `pp_cod_cod` sağlayıcısı seçilir.
-- Vitrin `CheckoutForm` bileşeni sepet özetinde Kapıda Ödeme Hizmet Bedelini dinamik satır olarak ekler ve toplamı günceller.
-- Sipariş oluşturulduğunda metadata içerisine hizmet bedeli ve tutarı kaydedilir.
-- Admin panelinde siparişin ödeme durumu "Awaiting Payment" olarak işaretlenir; kurye teslimatı sonrasında Medusa Admin üzerinden tahsilat kaydı (Capture) tamamlanır.
