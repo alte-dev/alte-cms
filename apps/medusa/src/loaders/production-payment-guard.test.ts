@@ -19,7 +19,7 @@ describe("productionPaymentGuard", () => {
     it("allows certified payment provider in production", () => {
       expect(() => {
         assertProductionPaymentSecurity(
-          ["pp_paytr", "pp_iyzico"],
+          ["pp_paytr", "pp_cod"],
           [{ regionId: "reg_123", providerId: "pp_paytr" }],
           "production",
         );

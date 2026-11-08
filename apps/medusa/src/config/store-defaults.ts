@@ -44,7 +44,7 @@ export function assertProductionPaymentConfigured(
   if (nodeEnv === "production") {
     if (providers.includes("pp_system_default")) {
       throw new Error(
-        "FAIL-CLOSED: 'pp_system_default' is strictly prohibited in production. A certified payment provider (e.g. PayTR, Iyzico) must be configured.",
+        "FAIL-CLOSED: 'pp_system_default' is strictly prohibited in production. A certified payment provider (e.g. PayTR, Kapıda Ödeme / pp_paytr, pp_cod) must be configured.",
       );
     }
     if (providers.length === 0) {

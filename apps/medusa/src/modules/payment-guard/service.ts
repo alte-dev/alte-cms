@@ -23,7 +23,7 @@ export function assertProductionPaymentSecurity(
   // 1. Fail-closed: No payment providers configured or provider list empty
   if (!providers || providers.length === 0) {
     throw new Error(
-      "FAIL-CLOSED: No payment providers configured for production environment. A certified payment provider (e.g. PayTR, Iyzico) must be registered.",
+      "FAIL-CLOSED: No payment providers configured for production environment. A certified payment provider (e.g. PayTR, Kapıda Ödeme / pp_paytr, pp_cod) must be registered.",
     );
   }
 
