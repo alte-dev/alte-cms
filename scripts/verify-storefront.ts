@@ -16,6 +16,13 @@
  * 8. Invalid variant ID check -> returns user-friendly Turkish error message ("bulunamadı" / "satışa kapalı").
  */
 
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
+dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
+dotenv.config();
+
 interface VerificationResult {
   step: string;
   success: boolean;
@@ -24,9 +31,54 @@ interface VerificationResult {
 
 const WEB_URL = process.env.WEB_URL || "http://127.0.0.1:3100";
 const MEDUSA_URL = process.env.MEDUSA_URL || "http://127.0.0.1:9000";
-const PUBLISHABLE_KEY =
-  process.env.MEDUSA_PUBLISHABLE_KEY ||
-  "pk_46575e0d2fe62e1e29874e4a77cb4146de424238b9fd3cb977400419349a0c30";
+let PUBLISHABLE_KEY = "";
+
+async function resolvePublishableApiKey(): Promise<string> {
+  const envKey =
+    process.env.MEDUSA_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
+  if (envKey) {
+    return envKey;
+  }
+
+  const email = process.env.MEDUSA_ADMIN_EMAIL;
+  const password = process.env.MEDUSA_ADMIN_PASSWORD;
+
+  if (email && password) {
+    try {
+      const authRes = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (authRes.ok) {
+        const { token } = (await authRes.json()) as { token?: string };
+        if (token) {
+          const keysRes = await fetch(`${MEDUSA_URL}/admin/api-keys`, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: AbortSignal.timeout(5000),
+          });
+          if (keysRes.ok) {
+            const data = (await keysRes.json()) as any;
+            const pubKey = data.api_keys?.find(
+              (k: any) => k.type === "publishable" && !k.revoked_at,
+            );
+            if (pubKey?.token) {
+              return pubKey.token;
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore and throw below
+    }
+  }
+
+  throw new Error(
+    "Publishable key bulunamadı. Lütfen MEDUSA_PUBLISHABLE_KEY (veya NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY) tanımlayın ya da MEDUSA_ADMIN_EMAIL ve MEDUSA_ADMIN_PASSWORD sağlayın.",
+  );
+}
 
 async function getStoreRegionId(): Promise<string> {
   const res = await fetch(`${MEDUSA_URL}/store/regions`, {
@@ -52,6 +104,14 @@ async function main() {
 
   const results: VerificationResult[] = [];
   let regionId = "";
+
+  try {
+    PUBLISHABLE_KEY = await resolvePublishableApiKey();
+    console.log(`[Bilgi] Publishable Key başarıyla çözüldü.`);
+  } catch (err: any) {
+    console.error(`[HATA] ${err.message}`);
+    process.exit(1);
+  }
 
   try {
     regionId = await getStoreRegionId();
@@ -155,29 +215,22 @@ async function main() {
       }
     }
 
-    // Fallback: query list of products with fields=*variants,*variants.calculated_price
-    if (!sampleProductHandle || !sampleVariantId) {
-      const listUrl = regionId
-        ? `${MEDUSA_URL}/store/products?region_id=${regionId}&fields=*variants,*variants.calculated_price&limit=10`
-        : `${MEDUSA_URL}/store/products?fields=*variants&limit=10`;
+    // Fallback or secondary query to pick a variant with ample stock for cart tests
+    const listUrl = regionId
+      ? `${MEDUSA_URL}/store/products?region_id=${regionId}&fields=*variants&limit=10`
+      : `${MEDUSA_URL}/store/products?fields=*variants&limit=10`;
 
-      const listRes = await fetch(listUrl, {
-        headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
-      });
+    const listRes = await fetch(listUrl, {
+      headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+    });
 
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        for (const prod of listData.products || []) {
-          if (!prod.variants || prod.variants.length === 0) {
-            continue;
-          }
-          if (!sampleProductHandle) sampleProductHandle = prod.handle;
-          if (!sampleVariantId) sampleVariantId = prod.variants[0].id;
-          const managed = prod.variants.find((v: any) => v.manage_inventory);
-          if (managed && !managedVariantId) {
-            managedVariantId = managed.id;
-          }
-        }
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      const ampleProduct = listData.products?.find(
+        (prod: any) => prod.handle !== "test-urun-sabit-1" && prod.variants?.length > 0,
+      );
+      if (ampleProduct && ampleProduct.variants[0]?.id) {
+        sampleVariantId = ampleProduct.variants[0].id;
       }
     }
   } catch (err: any) {
