@@ -162,9 +162,24 @@ Eğer tarayıcınız veya yerel araçlar `api.localhost` adresine erişemiyorsa:
   gitleaks detect --verbose
   ```
 - **Bellek Ölçümü (Production Mod):**
+  Next.js geliştirme modunda (`next dev`) Turbopack ve bellek önbellekleri nedeniyle yüksek RAM tüketir; bu nedenle resmi bütçe karşılaştırması için web süreci production modunda (`next start`) ve heap sınırıyla çalıştırılmalıdır:
+
   ```bash
+  # 1. Web uygulamasını production için derleyin
+  pnpm --filter @alte/web build
+
+  # 2. Web uygulamasını 384 MB heap sınırı ile production modunda başlatın
+  # Windows PowerShell:
+  $env:NODE_OPTIONS = "--max-old-space-size=384"
+  pnpm --filter @alte/web start -p 3100
+  # Linux / macOS:
+  NODE_OPTIONS="--max-old-space-size=384" pnpm --filter @alte/web start -p 3100
+
+  # 3. Bellek ölçümünü yürütün
   pnpm measure:memory
   ```
+
+  Ölçüm aracı (`scripts/measure-memory.ts`) web sürecinin dev/production modunu otomatik tespit eder ve `next dev` tespit edilirse bütçe karşılaştırmasını geçersiz sayarak `docs/MEMORY-BASELINE.md` belgesine işler. Production modunda ölçüldüğünde ise gerçek RAM değerlerini bütçe (~1.1 GB) ile kıyaslar.
 
 ---
 
