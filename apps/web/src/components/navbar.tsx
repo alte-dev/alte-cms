@@ -7,6 +7,7 @@ import { getCartId } from "../lib/medusa/cookies";
 import { getNavigation, getSiteSettings } from "../lib/payload/content";
 import { safeHref } from "../lib/safe-href";
 import { MobileMenu, type MenuItem } from "./mobile-menu";
+import { SearchBar } from "./search/search-bar";
 
 export async function Navbar() {
   const [categories, cartId, navigationGlobal, settingsGlobal] = await Promise.all([
@@ -111,6 +112,11 @@ export async function Navbar() {
               </div>
             ))}
           </nav>
+
+          {/* Header Search Bar */}
+          <div className="flex-1 max-w-[200px] sm:max-w-xs md:max-w-sm mx-2 sm:mx-4">
+            <SearchBar />
+          </div>
 
           {/* Cart Icon & Actions */}
           <div className="flex items-center gap-4">
