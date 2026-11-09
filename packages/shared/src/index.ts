@@ -8,11 +8,6 @@ export const USER_ROLES = ["super-admin", "admin", "shop-manager", "editor", "au
 export type UserRole = (typeof USER_ROLES)[number];
 
 /**
- * Default Store Name
- */
-export const STORE_NAME = "Çisem Elif Boz";
-
-/**
  * Currency configuration for Turkey
  */
 export const STORE_CURRENCY = {
