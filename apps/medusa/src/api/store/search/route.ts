@@ -36,14 +36,25 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     return;
   }
 
-  // 2. Validate and Sanitize Search Query 'q'
-  const validation = validateSearchQuery(req.query.q);
+  // 2. Validate and Sanitize Search Query 'q' (optional when filters are provided)
+  const qParam = req.query.q as string | undefined;
+  const hasFilter =
+    req.query.category !== undefined ||
+    req.query.min_price !== undefined ||
+    req.query.max_price !== undefined ||
+    req.query.in_stock !== undefined ||
+    req.query.sort !== undefined;
+
+  const validation = validateSearchQuery(qParam, {
+    allowEmpty: hasFilter || qParam === undefined,
+  });
   if (!validation.valid) {
     res.status(400).json({ error: validation.error });
     return;
   }
 
   const rawQ = validation.sanitized;
+  const hasQ = rawQ.length > 0;
   const limit = Math.min(48, Math.max(1, parseInt(req.query.limit as string, 10) || 12));
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
   const sort = (req.query.sort as string) || "relevance";
@@ -99,34 +110,40 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
 
   try {
     // Primary SQL Query using pg_trgm & unaccent with Database-level filtering, sorting, and pagination
+    // Explicit CASTs on all parameters prevent PostgreSQL 'could not determine data type of parameter $N' errors
     const sql = `
       SELECT 
         p.id,
         (
-          CASE 
-            WHEN p.title ILIKE :exactPattern THEN 100
-            WHEN p.title ILIKE :prefixPattern THEN 80
-            WHEN p.title ILIKE :likePattern THEN 60
-            WHEN unaccent(p.title) ILIKE unaccent(:likePattern) THEN 50
-            WHEN unaccent(lower(p.title)) ILIKE :normalizedTurkish THEN 45
-            WHEN similarity(p.title, :rawQ) > 0.15 THEN (similarity(p.title, :rawQ) * 40)::int
-            ELSE 0
-          END +
-          CASE 
-            WHEN p.subtitle IS NOT NULL AND p.subtitle ILIKE :likePattern THEN 25
-            WHEN p.subtitle IS NOT NULL AND unaccent(p.subtitle) ILIKE unaccent(:likePattern) THEN 20
-            ELSE 0
-          END +
-          CASE 
-            WHEN EXISTS (
-              SELECT 1 FROM product_variant pv 
-              WHERE pv.product_id = p.id AND pv.sku ILIKE :likePattern AND pv.deleted_at IS NULL
-            ) THEN 50
-            ELSE 0
-          END +
-          CASE 
-            WHEN p.description IS NOT NULL AND (p.description ILIKE :likePattern OR unaccent(p.description) ILIKE unaccent(:likePattern)) THEN 15
-            ELSE 0
+          CASE WHEN CAST(:hasQ AS boolean) = true THEN
+            (
+              CASE 
+                WHEN p.title ILIKE CAST(:exactPattern AS text) THEN 100
+                WHEN p.title ILIKE CAST(:prefixPattern AS text) THEN 80
+                WHEN p.title ILIKE CAST(:likePattern AS text) THEN 60
+                WHEN unaccent(p.title) ILIKE unaccent(CAST(:likePattern AS text)) THEN 50
+                WHEN unaccent(lower(p.title)) ILIKE CAST(:normalizedTurkish AS text) THEN 45
+                WHEN similarity(p.title, CAST(:rawQ AS text)) > 0.15 THEN (similarity(p.title, CAST(:rawQ AS text)) * 40)::int
+                ELSE 0
+              END +
+              CASE 
+                WHEN p.subtitle IS NOT NULL AND p.subtitle ILIKE CAST(:likePattern AS text) THEN 25
+                WHEN p.subtitle IS NOT NULL AND unaccent(p.subtitle) ILIKE unaccent(CAST(:likePattern AS text)) THEN 20
+                ELSE 0
+              END +
+              CASE 
+                WHEN EXISTS (
+                  SELECT 1 FROM product_variant pv 
+                  WHERE pv.product_id = p.id AND pv.sku ILIKE CAST(:likePattern AS text) AND pv.deleted_at IS NULL
+                ) THEN 50
+                ELSE 0
+              END +
+              CASE 
+                WHEN p.description IS NOT NULL AND (p.description ILIKE CAST(:likePattern AS text) OR unaccent(p.description) ILIKE unaccent(CAST(:likePattern AS text))) THEN 15
+                ELSE 0
+              END
+            )
+          ELSE 50
           END
         ) as relevance_score,
         COALESCE(pr_stat.min_price, 0) as min_price,
@@ -153,41 +170,46 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
         )
         -- Text Search Predicates
         AND (
-          p.title ILIKE :likePattern
-          OR unaccent(p.title) ILIKE unaccent(:likePattern)
-          OR unaccent(lower(p.title)) ILIKE :normalizedTurkish
-          OR (p.subtitle IS NOT NULL AND (p.subtitle ILIKE :likePattern OR unaccent(p.subtitle) ILIKE unaccent(:likePattern)))
-          OR (p.description IS NOT NULL AND (p.description ILIKE :likePattern OR unaccent(p.description) ILIKE unaccent(:likePattern)))
-          OR similarity(p.title, :rawQ) > 0.15
+          CAST(:hasQ AS boolean) = false
+          OR p.title ILIKE CAST(:likePattern AS text)
+          OR unaccent(p.title) ILIKE unaccent(CAST(:likePattern AS text))
+          OR unaccent(lower(p.title)) ILIKE CAST(:normalizedTurkish AS text)
+          OR (p.subtitle IS NOT NULL AND (p.subtitle ILIKE CAST(:likePattern AS text) OR unaccent(p.subtitle) ILIKE unaccent(CAST(:likePattern AS text))))
+          OR (p.description IS NOT NULL AND (p.description ILIKE CAST(:likePattern AS text) OR unaccent(p.description) ILIKE unaccent(CAST(:likePattern AS text))))
+          OR similarity(p.title, CAST(:rawQ AS text)) > 0.15
           OR EXISTS (
             SELECT 1 FROM product_variant pv 
-            WHERE pv.product_id = p.id AND pv.sku ILIKE :likePattern AND pv.deleted_at IS NULL
+            WHERE pv.product_id = p.id AND pv.sku ILIKE CAST(:likePattern AS text) AND pv.deleted_at IS NULL
           )
           OR EXISTS (
             SELECT 1 FROM product_category_product pcp
             JOIN product_category pc ON pc.id = pcp.product_category_id
             WHERE pcp.product_id = p.id AND (
-              pc.name ILIKE :likePattern 
-              OR unaccent(pc.name) ILIKE unaccent(:likePattern)
-              OR unaccent(lower(pc.name)) ILIKE :normalizedTurkish
+              pc.name ILIKE CAST(:likePattern AS text) 
+              OR unaccent(pc.name) ILIKE unaccent(CAST(:likePattern AS text))
+              OR unaccent(lower(pc.name)) ILIKE CAST(:normalizedTurkish AS text)
             )
           )
         )
         -- Category Filter in SQL
         AND (
-          :categoryFilter IS NULL 
+          CAST(:categoryFilter AS text) IS NULL 
           OR EXISTS (
             SELECT 1 FROM product_category_product pcp
             JOIN product_category pc ON pc.id = pcp.product_category_id
-            WHERE pcp.product_id = p.id AND (pc.id = :categoryFilter OR pc.handle = :categoryFilter)
+            WHERE pcp.product_id = p.id AND (
+              pc.id = CAST(:categoryFilter AS text) 
+              OR pc.handle = CAST(:categoryFilter AS text)
+              OR pc.name ILIKE CAST(:categoryFilter AS text)
+            )
           )
         )
         -- Price Range Filter in SQL
-        AND (:minPrice IS NULL OR pr_stat.min_price >= :minPrice)
-        AND (:maxPrice IS NULL OR pr_stat.min_price <= :maxPrice)
+        AND (CAST(:minPrice AS numeric) IS NULL OR pr_stat.min_price >= CAST(:minPrice AS numeric))
+        AND (CAST(:maxPrice AS numeric) IS NULL OR pr_stat.min_price <= CAST(:maxPrice AS numeric))
         -- Stock Filter in SQL
         AND (
-          :inStockOnly = false 
+          CAST(:inStockOnly AS boolean) = false 
           OR EXISTS (
             SELECT 1 FROM product_variant pv
             WHERE pv.product_id = p.id AND pv.deleted_at IS NULL
@@ -206,15 +228,16 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
           )
         )
       ORDER BY 
-        CASE WHEN :sort = 'price_asc' THEN pr_stat.min_price END ASC NULLS LAST,
-        CASE WHEN :sort = 'price_desc' THEN pr_stat.min_price END DESC NULLS LAST,
-        CASE WHEN :sort = 'newest' THEN p.created_at END DESC,
+        CASE WHEN CAST(:sort AS text) = 'price_asc' THEN pr_stat.min_price END ASC NULLS LAST,
+        CASE WHEN CAST(:sort AS text) = 'price_desc' THEN pr_stat.min_price END DESC NULLS LAST,
+        CASE WHEN CAST(:sort AS text) = 'newest' THEN p.created_at END DESC,
         relevance_score DESC,
         p.created_at DESC
-      LIMIT :limit OFFSET :offset;
+      LIMIT CAST(:limit AS integer) OFFSET CAST(:offset AS integer);
     `;
 
     const result = await pgConnection.raw(sql, {
+      hasQ,
       rawQ,
       likePattern,
       exactPattern,
@@ -232,51 +255,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     const rows: RawProductMatch[] = result.rows || [];
     matchedProductIds = rows.map((r) => r.id);
     totalCount = rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
-  } catch {
-    // If pg_trgm / unaccent are not installed or test environment fallback, execute standard query
-    try {
-      const fallbackSql = `
-        SELECT 
-          p.id, 
-          50 as relevance_score, 
-          0 as min_price,
-          COUNT(*) OVER() as total_count
-        FROM product p
-        WHERE p.status = 'published'
-          AND p.deleted_at IS NULL
-          AND (p.metadata IS NULL OR (p.metadata->>'is_cod_fee' IS DISTINCT FROM 'true' AND p.metadata->>'hidden' IS DISTINCT FROM 'true'))
-          AND p.handle != 'kapida-odeme-hizmet-bedeli'
-          AND NOT EXISTS (
-            SELECT 1 FROM product_variant pv_cod 
-            WHERE pv_cod.product_id = p.id AND pv_cod.sku = 'SERVICE-COD-FEE'
-          )
-          AND (
-            p.title ILIKE :likePattern
-            OR p.subtitle ILIKE :likePattern
-            OR p.description ILIKE :likePattern
-            OR EXISTS (
-              SELECT 1 FROM product_variant pv 
-              WHERE pv.product_id = p.id AND pv.sku ILIKE :likePattern AND pv.deleted_at IS NULL
-            )
-          )
-        ORDER BY p.created_at DESC
-        LIMIT :limit OFFSET :offset;
-      `;
-
-      const fallbackResult = await pgConnection.raw(fallbackSql, {
-        likePattern,
-        limit,
-        offset,
-      });
-
-      const rows: RawProductMatch[] = fallbackResult.rows || [];
-      matchedProductIds = rows.map((r) => r.id);
-      totalCount = rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
-    } catch (fallbackErr: any) {
-      console.error("[Search API] Veritabanı sorgusu başarısız:", fallbackErr.message);
-      res.status(500).json({ error: "Arama sorgusu yürütülemedi." });
-      return;
-    }
+  } catch (err: any) {
+    console.error("[Search API] Veritabanı sorgusu başarısız:", err?.message || err);
+    res.status(500).json({ error: "Arama sorgusu yürütülemedi." });
+    return;
   }
 
   // If no products matched the text query, return empty early

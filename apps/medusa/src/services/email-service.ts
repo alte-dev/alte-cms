@@ -76,70 +76,11 @@ class EmailSettingsRegistry {
 }
 
 /**
- * Creates email_setting and email_log tables if they do not exist.
- */
-export async function ensureEmailTables(pgConnection: any): Promise<void> {
-  if (!pgConnection || typeof pgConnection.raw !== "function") return;
-
-  try {
-    await pgConnection.raw(`
-      CREATE TABLE IF NOT EXISTS email_setting (
-        id TEXT PRIMARY KEY,
-        enabled BOOLEAN NOT NULL DEFAULT FALSE,
-        host TEXT,
-        port INTEGER NOT NULL DEFAULT 587,
-        secure BOOLEAN NOT NULL DEFAULT FALSE,
-        username TEXT,
-        password TEXT,
-        from_name TEXT NOT NULL DEFAULT 'Mağaza',
-        from_email TEXT NOT NULL DEFAULT 'siparis@example.test',
-        reply_to TEXT,
-        admin_notify_email TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS email_log (
-        id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
-        template TEXT NOT NULL,
-        idempotency_key TEXT UNIQUE NOT NULL,
-        recipient_masked TEXT NOT NULL,
-        subject TEXT NOT NULL,
-        status TEXT NOT NULL,
-        error_code TEXT,
-        attempts INTEGER NOT NULL DEFAULT 1,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_email_log_order_id ON email_log (order_id);
-      CREATE INDEX IF NOT EXISTS idx_email_log_created_at ON email_log (created_at DESC);
-
-      DO $$
-      BEGIN
-        IF EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'email_log' AND column_name = 'payload_json'
-        ) THEN
-          UPDATE email_log SET payload_json = NULL;
-          ALTER TABLE email_log DROP COLUMN payload_json;
-        END IF;
-      END $$;
-    `);
-  } catch (err: any) {
-    console.error("[Email Service] Tablolar oluşturulurken hata:", err.message);
-  }
-}
-
-/**
  * Retrieves the raw DB record or creates default row.
  */
 export async function getOrCreateEmailSettings(pgConnection: any): Promise<EmailSettingRow> {
   const cached = EmailSettingsRegistry.get();
   if (cached) return cached;
-
-  await ensureEmailTables(pgConnection);
 
   const existing = await pgConnection("email_setting")
     .where({ id: SINGLETON_EMAIL_SETTING_ID })
@@ -609,8 +550,6 @@ export async function sendEmailNotification(
   recipientEmail: string,
   payload: OrderEmailPayload,
 ): Promise<{ success: boolean; logId?: string; status: string }> {
-  await ensureEmailTables(pgConnection);
-
   const idempotencyKey = `${payload.orderId}:${template}`;
   const maskedRecipient = maskEmail(recipientEmail);
 
@@ -738,8 +677,6 @@ export async function retryEmailLog(
   pgConnection: any,
   logId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  await ensureEmailTables(pgConnection);
-
   const log = await pgConnection("email_log").where({ id: logId }).first();
   if (!log) {
     return { success: false, error: "E-posta kaydı bulunamadı." };
@@ -776,8 +713,6 @@ export async function retryEmailLog(
  * Returns latest 100 email logs for admin panel.
  */
 export async function getEmailLogs(pgConnection: any, limit: number = 100): Promise<EmailLogRow[]> {
-  await ensureEmailTables(pgConnection);
-
   return await pgConnection("email_log")
     .select(
       "id",

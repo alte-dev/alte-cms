@@ -26,7 +26,6 @@ import pg from "pg";
 import { SMTPServer } from "smtp-server";
 import {
   buildEmailTemplate,
-  ensureEmailTables,
   getMaskedEmailSettings,
   OrderEmailPayload,
   retryEmailLog,
@@ -268,8 +267,6 @@ async function run() {
     );
     knex = createInMemoryKnex();
   }
-
-  await ensureEmailTables(knex);
 
   // Setup Live HTTP Server to expose real HTTP API endpoints for test verification
   const httpPort = await findFreePort();

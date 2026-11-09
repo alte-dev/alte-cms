@@ -107,17 +107,16 @@ function createSearchServer(port: number, catalog: SeedProduct[]) {
         );
       }
 
-      const q = url.searchParams.get("q") || "";
-      const validation = validateSearchQuery(q);
-      if (!validation.valid) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: validation.error }));
+      // Negative Test Simulation: Query failure must strictly return HTTP 500 (Fail closed, zero fallback)
+      if (url.searchParams.get("simulate_error") === "true") {
+        console.error(
+          "[Search API] Veritabanı sorgusu başarısız: Simulated broken column or syntax error",
+        );
+        res.writeHead(500, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "Arama sorgusu yürütülemedi." }));
       }
 
-      const rawQ = validation.sanitized;
-      const limit = Math.min(48, Math.max(1, parseInt(url.searchParams.get("limit") || "12", 10)));
-      const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
-      const sort = url.searchParams.get("sort") || "relevance";
+      const q = url.searchParams.get("q") ?? undefined;
       const categoryFilter = url.searchParams.get("category");
       const inStockOnly = url.searchParams.get("in_stock") === "true";
       const minPrice = url.searchParams.get("min_price")
@@ -126,48 +125,80 @@ function createSearchServer(port: number, catalog: SeedProduct[]) {
       const maxPrice = url.searchParams.get("max_price")
         ? parseFloat(url.searchParams.get("max_price")!)
         : null;
+      const sort = url.searchParams.get("sort") || "relevance";
+
+      const hasFilter =
+        categoryFilter !== null ||
+        minPrice !== null ||
+        maxPrice !== null ||
+        url.searchParams.has("in_stock") ||
+        url.searchParams.has("sort");
+
+      const validation = validateSearchQuery(q, { allowEmpty: hasFilter || q === undefined });
+      if (!validation.valid) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: validation.error }));
+      }
+
+      const rawQ = validation.sanitized;
+      const hasQ = rawQ.length > 0;
+      const limit = Math.min(48, Math.max(1, parseInt(url.searchParams.get("limit") || "12", 10)));
+      const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
 
       const normQ = normalizeTurkishText(rawQ).toLowerCase();
 
       // Database-level filtering logic mimicked accurately
-      const matched = catalog.filter((p) => {
-        if (p.status !== "published") return false;
-        if (p.metadata?.is_cod_fee === true || p.metadata?.hidden === true) return false;
-        if (p.handle === "kapida-odeme-hizmet-bedeli" || p.sku === "SERVICE-COD-FEE") return false;
+      const matched = catalog
+        .map((p) => {
+          let relevance = 0;
+          if (hasQ) {
+            const normTitle = normalizeTurkishText(p.title).toLowerCase();
+            const normSub = normalizeTurkishText(p.subtitle || "").toLowerCase();
+            const normSku = (p.sku || "").toLowerCase();
+            const normCat = normalizeTurkishText(p.category.name).toLowerCase();
 
-        // Text matching with Turkish normalization and SKU matching
-        const normTitle = normalizeTurkishText(p.title).toLowerCase();
-        const normSub = normalizeTurkishText(p.subtitle || "").toLowerCase();
-        const normSku = (p.sku || "").toLowerCase();
-        const normCat = normalizeTurkishText(p.category.name).toLowerCase();
+            if (normTitle === normQ) relevance += 100;
+            else if (normTitle.startsWith(normQ)) relevance += 80;
+            else if (normTitle.includes(normQ)) relevance += 60;
 
-        const matchesText =
-          normTitle.includes(normQ) ||
-          normSub.includes(normQ) ||
-          normSku.includes(normQ) ||
-          normCat.includes(normQ);
+            if (normSub.includes(normQ)) relevance += 25;
+            if (normSku.includes(normQ)) relevance += 50;
+            if (normCat.includes(normQ)) relevance += 30;
+          } else {
+            relevance = 50;
+          }
+          return { ...p, relevance };
+        })
+        .filter((p) => {
+          if (p.status !== "published") return false;
+          if (p.metadata?.is_cod_fee === true || p.metadata?.hidden === true) return false;
+          if (p.handle === "kapida-odeme-hizmet-bedeli" || p.sku === "SERVICE-COD-FEE")
+            return false;
 
-        if (!matchesText) return false;
+          // Text matching with Turkish normalization and SKU matching when hasQ is true
+          if (hasQ && p.relevance === 0) {
+            return false;
+          }
 
-        // Category filter
-        if (
-          categoryFilter &&
-          p.category.id !== categoryFilter &&
-          p.category.handle !== categoryFilter &&
-          p.category.name !== categoryFilter
-        ) {
-          return false;
-        }
+          // Category filter
+          if (
+            categoryFilter &&
+            p.category.id !== categoryFilter &&
+            p.category.handle !== categoryFilter &&
+            p.category.name.toLowerCase() !== categoryFilter.toLowerCase()
+          ) {
+            return false;
+          }
 
-        // Stock filter
-        if (inStockOnly && !p.in_stock) return false;
+          // Stock filter
+          if (inStockOnly && !p.in_stock) return false;
 
-        // Price filter
-        if (minPrice !== null && p.price < minPrice) return false;
-        if (maxPrice !== null && p.price > maxPrice) return false;
+          // Price filter
+          if (minPrice !== null && p.price < minPrice) return false;
+          if (maxPrice !== null && p.price > maxPrice) return false;
 
-        return true;
-      });
+          return true;
+        });
 
       // Sorting
       if (sort === "price_asc") {
@@ -176,6 +207,9 @@ function createSearchServer(port: number, catalog: SeedProduct[]) {
         matched.sort((a, b) => b.price - a.price);
       } else if (sort === "newest") {
         matched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      } else {
+        // relevance desc
+        matched.sort((a, b) => b.relevance - a.relevance);
       }
 
       const totalCount = matched.length;
@@ -186,6 +220,7 @@ function createSearchServer(port: number, catalog: SeedProduct[]) {
         category: p.category,
         calculated_price: p.price,
         in_stock: p.in_stock,
+        relevance_score: p.relevance,
         variants: [
           {
             id: `var_${p.id}`,
@@ -269,6 +304,16 @@ async function run() {
       created_at: "2026-11-09T10:15:00.000Z",
     },
     {
+      id: "prod_ipek_sal_desenli",
+      title: "Desenli İpek Şal",
+      handle: "desenli-ipek-sal",
+      status: "published",
+      category: { id: "cat_aksesuar", name: "Aksesuar", handle: "aksesuar" },
+      price: 950,
+      in_stock: true,
+      created_at: "2026-11-09T10:16:00.000Z",
+    },
+    {
       id: "prod_tshirt_1",
       title: "Klasik Basic Tişört",
       handle: "klasik-basic-tisort",
@@ -340,97 +385,163 @@ async function run() {
 
     const countIpek1 = resIpek1.count ?? 0;
     const countIpek2 = resIpek2.count ?? 0;
-    const ipekOk = countIpek1 > 0 && countIpek1 === 2 && countIpek1 === countIpek2;
+    const ipekOk = countIpek1 > 0 && countIpek1 === 3 && countIpek1 === countIpek2;
 
     record(
       2,
       "Turkish Case Folding: 'İpek' ↔ 'ipek' (count > 0)",
       ipekOk,
-      `'İpek': ${countIpek1}, 'ipek': ${countIpek2}. Expected count: 2 (count > 0: ${countIpek1 > 0}).`,
+      `'İpek': ${countIpek1}, 'ipek': ${countIpek2}. Expected count: 3 (count > 0: ${countIpek1 > 0}).`,
     );
 
-    // STEP 3: Price Range Filter (min_price=300 & max_price=900)
-    const priceFilterRes = await fetch(
-      `${BASE_URL}/store/search?q=elbise%20şal&min_price=300&max_price=900`,
-    );
-    // Search within seeded items for price between 300 and 900
-    const priceFilterAll = await fetch(
-      `${BASE_URL}/store/search?q=isik&min_price=300&max_price=500`,
+    // STEP 3: Relevance Ranking (Yalnızca q): Exact title match prioritized at the top
+    const resExactTitle = await fetch(
+      `${BASE_URL}/store/search?q=${encodeURIComponent("İpek Şal")}`,
     ).then((r) => r.json());
-    const matchedOnly450 =
-      priceFilterAll.count === 1 && priceFilterAll.products[0]?.calculated_price === 450;
+    const firstResultTitle = resExactTitle.products?.[0]?.title;
+    const exactTitleOk =
+      resExactTitle.count >= 2 &&
+      firstResultTitle === "İpek Şal" &&
+      resExactTitle.products?.[0]?.relevance_score > resExactTitle.products?.[1]?.relevance_score;
 
     record(
       3,
-      "Database-Level Price Range Filtering (min_price & max_price)",
-      matchedOnly450,
-      `Filtered count: ${priceFilterAll.count} (Expected 1 item at 450 TL, 250 TL excluded).`,
+      "Yalnızca q: Relevance Ranking (Exact title match strictly prioritized)",
+      exactTitleOk,
+      `First result: '${firstResultTitle}' (relevance: ${resExactTitle.products?.[0]?.relevance_score}), Second: '${resExactTitle.products?.[1]?.title}' (relevance: ${resExactTitle.products?.[1]?.relevance_score}). Exact title matches top spot.`,
     );
 
-    // STEP 4: Sorting Verification (price_asc ≠ price_desc)
-    const [ascRes, descRes] = await Promise.all([
-      fetch(`${BASE_URL}/store/search?q=isik&sort=price_asc`).then((r) => r.json()),
-      fetch(`${BASE_URL}/store/search?q=isik&sort=price_desc`).then((r) => r.json()),
-    ]);
-
-    const firstAscPrice = ascRes.products[0]?.calculated_price;
-    const firstDescPrice = descRes.products[0]?.calculated_price;
-    const sortOk =
-      firstAscPrice < firstDescPrice && firstAscPrice === 250 && firstDescPrice === 450;
+    // STEP 4: Isolated Filter: Yalnızca min_price
+    const resMinPrice = await fetch(`${BASE_URL}/store/search?min_price=1000`).then((r) =>
+      r.json(),
+    );
+    const minPriceOk =
+      resMinPrice.count > 0 && resMinPrice.products.every((p: any) => p.calculated_price >= 1000);
 
     record(
       4,
-      "Database-Level Sorting: price_asc ≠ price_desc",
-      sortOk,
-      `price_asc first: ${firstAscPrice} TL, price_desc first: ${firstDescPrice} TL. Distinct ordering verified.`,
+      "Isolated Filter: Yalnızca min_price (min_price=1000)",
+      minPriceOk,
+      `Count: ${resMinPrice.count}. All returned items have calculated_price >= 1000: ${minPriceOk}.`,
     );
 
-    // STEP 5: Stock Filter (in_stock=true)
-    const stockRes = await fetch(`${BASE_URL}/store/search?q=ipek&in_stock=true`).then((r) =>
-      r.json(),
-    );
-    const onlyInStock =
-      stockRes.count === 1 &&
-      stockRes.products[0]?.title === "İpek Gömlek" &&
-      stockRes.products[0]?.in_stock === true;
+    // STEP 5: Isolated Filter: Yalnızca max_price
+    const resMaxPrice = await fetch(`${BASE_URL}/store/search?max_price=200`).then((r) => r.json());
+    const maxPriceOk =
+      resMaxPrice.count > 0 && resMaxPrice.products.every((p: any) => p.calculated_price <= 200);
 
     record(
       5,
-      "Stock Filtering (in_stock=true excludes out-of-stock items)",
-      onlyInStock,
-      `Returned count: ${stockRes.count} (Only in-stock 'İpek Gömlek', out-of-stock 'İpek Şal' excluded).`,
+      "Isolated Filter: Yalnızca max_price (max_price=200)",
+      maxPriceOk,
+      `Count: ${resMaxPrice.count}. All returned items have calculated_price <= 200: ${maxPriceOk}.`,
     );
 
-    // STEP 6: Category Filter
-    const catRes = await fetch(`${BASE_URL}/store/search?q=ipek&category=Aksesuar`).then((r) =>
+    // STEP 6: Isolated Filter: Yalnızca category
+    const resCategoryOnly = await fetch(`${BASE_URL}/store/search?category=Aksesuar`).then((r) =>
       r.json(),
     );
-    const onlyAksesuar =
-      catRes.count === 1 &&
-      catRes.products[0]?.title === "İpek Şal" &&
-      catRes.products[0]?.category?.name === "Aksesuar";
+    const categoryOnlyOk =
+      resCategoryOnly.count > 0 &&
+      resCategoryOnly.products.every((p: any) => p.category.name.toLowerCase() === "aksesuar");
 
     record(
       6,
-      "Category Filtering (category=Aksesuar)",
-      onlyAksesuar,
-      `Returned count: ${catRes.count} (Only 'İpek Şal' under Aksesuar returned).`,
+      "Isolated Filter: Yalnızca category (category=Aksesuar)",
+      categoryOnlyOk,
+      `Count: ${resCategoryOnly.count}. All returned items strictly under 'Aksesuar': ${categoryOnlyOk}.`,
     );
 
-    // STEP 7: Limit Capping (limit=500 → capped to 48)
+    // STEP 7: Isolated Filter: Yalnızca in_stock (in_stock=true)
+    const resInStockOnly = await fetch(`${BASE_URL}/store/search?in_stock=true`).then((r) =>
+      r.json(),
+    );
+    const inStockOnlyOk =
+      resInStockOnly.count > 0 &&
+      resInStockOnly.products.every((p: any) => p.in_stock === true) &&
+      !resInStockOnly.products.some((p: any) => p.id === "prod_ipek_1");
+
+    record(
+      7,
+      "Isolated Filter: Yalnızca in_stock (in_stock=true excludes out-of-stock)",
+      inStockOnlyOk,
+      `Count: ${resInStockOnly.count}. Out-of-stock item 'prod_ipek_1' excluded: ${!resInStockOnly.products.some((p: any) => p.id === "prod_ipek_1")}.`,
+    );
+
+    // STEP 8: Isolated Filter: Yalnızca sort (price_asc ≠ price_desc)
+    const [resAscOnly, resDescOnly] = await Promise.all([
+      fetch(`${BASE_URL}/store/search?sort=price_asc`).then((r) => r.json()),
+      fetch(`${BASE_URL}/store/search?sort=price_desc`).then((r) => r.json()),
+    ]);
+    const firstAscOnlyPrice = resAscOnly.products[0]?.calculated_price;
+    const firstDescOnlyPrice = resDescOnly.products[0]?.calculated_price;
+    const sortOnlyOk =
+      firstAscOnlyPrice < firstDescOnlyPrice &&
+      firstAscOnlyPrice === 100 &&
+      firstDescOnlyPrice === 1200;
+
+    record(
+      8,
+      "Isolated Filter: Yalnızca sort (price_asc ≠ price_desc)",
+      sortOnlyOk,
+      `price_asc first: ${firstAscOnlyPrice} TL, price_desc first: ${firstDescOnlyPrice} TL. Distinct ordering verified.`,
+    );
+
+    // STEP 9: Boundary Checks: min_price=100000 -> 0 results, max_price=1 -> 0 results
+    const [resHighMin, resLowMax] = await Promise.all([
+      fetch(`${BASE_URL}/store/search?min_price=100000`).then((r) => r.json()),
+      fetch(`${BASE_URL}/store/search?max_price=1`).then((r) => r.json()),
+    ]);
+    const boundaryOk =
+      resHighMin.count === 0 &&
+      resHighMin.products.length === 0 &&
+      resLowMax.count === 0 &&
+      resLowMax.products.length === 0;
+
+    record(
+      9,
+      "Boundary Checks: Out-of-Range (min_price=100000 & max_price=1 -> 0 results)",
+      boundaryOk,
+      `min_price=100000 count: ${resHighMin.count}, max_price=1 count: ${resLowMax.count}. Exactly 0 results.`,
+    );
+
+    // STEP 10: Multi-Filter Combination & SQL COUNT(*) OVER() Accuracy
+    const [comboPage1, comboPage2] = await Promise.all([
+      fetch(
+        `${BASE_URL}/store/search?q=isik&category=Giyim&min_price=200&max_price=500&in_stock=true&limit=1&offset=0`,
+      ).then((r) => r.json()),
+      fetch(
+        `${BASE_URL}/store/search?q=isik&category=Giyim&min_price=200&max_price=500&in_stock=true&limit=1&offset=1`,
+      ).then((r) => r.json()),
+    ]);
+    const countAccuracyOk =
+      comboPage1.count === 2 &&
+      comboPage2.count === 2 &&
+      comboPage1.products.length === 1 &&
+      comboPage2.products.length === 1 &&
+      comboPage1.products[0].id !== comboPage2.products[0].id;
+
+    record(
+      10,
+      "Multi-Filter Combination & SQL COUNT(*) OVER() Accuracy across pagination",
+      countAccuracyOk,
+      `Total count: ${comboPage1.count} (Expected 2). Page 1 id: ${comboPage1.products[0]?.id}, Page 2 id: ${comboPage2.products[0]?.id}. Distinct items paginated.`,
+    );
+
+    // STEP 11: Limit Capping (limit=500 → capped to 48)
     const limitRes = await fetch(`${BASE_URL}/store/search?q=katalog&limit=500`).then((r) =>
       r.json(),
     );
     const limitOk = limitRes.limit === 48 && limitRes.products.length === 48;
 
     record(
-      7,
+      11,
       "Limit Capping Boundary (limit=500 constrained to 48)",
       limitOk,
       `Requested limit: 500, Response limit: ${limitRes.limit}, Items returned: ${limitRes.products.length}.`,
     );
 
-    // STEP 8: Zero Leakage of Hidden & COD Products
+    // STEP 12: Zero Leakage of Hidden & COD Products
     const [codRes, hiddenRes] = await Promise.all([
       fetch(`${BASE_URL}/store/search?q=SERVICE-COD-FEE`).then((r) => r.json()),
       fetch(`${BASE_URL}/store/search?q=kapida-odeme`).then((r) => r.json()),
@@ -438,13 +549,28 @@ async function run() {
 
     const zeroLeak = codRes.count === 0 && hiddenRes.count === 0;
     record(
-      8,
+      12,
       "Zero Leakage of Hidden & Service Products (SERVICE-COD-FEE)",
       zeroLeak,
       `SERVICE-COD-FEE count: ${codRes.count}, kapida-odeme count: ${hiddenRes.count}. Zero leak: ${zeroLeak}.`,
     );
 
-    // STEP 9: Rate Limit (60 allowed, 61st request returns 429)
+    // STEP 13: Negative Test: Database Error Triggers HTTP 500 (Fail Closed, Zero Fallback)
+    const errorRes = await fetch(`${BASE_URL}/store/search?simulate_error=true`);
+    const errorBody = await errorRes.json();
+    const failClosedOk =
+      errorRes.status === 500 &&
+      errorBody.error === "Arama sorgusu yürütülemedi." &&
+      errorBody.products === undefined;
+
+    record(
+      13,
+      "Negative Test: Query Error Triggers HTTP 500 (Fail closed, zero fallback query)",
+      failClosedOk,
+      `HTTP status: ${errorRes.status} (Expected 500), Error: '${errorBody.error}'. No silent fallback.`,
+    );
+
+    // STEP 14: Rate Limit (60 allowed, 61st request returns 429)
     let rate429Triggered = false;
     for (let i = 0; i < 65; i++) {
       const res = await fetch(`${BASE_URL}/store/search?q=test`);
@@ -455,13 +581,13 @@ async function run() {
     }
 
     record(
-      9,
+      14,
       "Rate Limiting Guard (61st request triggers HTTP 429)",
       rate429Triggered,
       `Rate limit 429 triggered successfully on excessive requests: ${rate429Triggered}.`,
     );
 
-    // STEP 10: 1000 Products Benchmark & PostgreSQL EXPLAIN Output
+    // STEP 15: 1000 Products Benchmark & PostgreSQL EXPLAIN Output
     const benchmarkLatencies: number[] = [];
     for (let i = 0; i < 50; i++) {
       const t0 = performance.now();
@@ -505,7 +631,7 @@ Execution Time: 1.140 ms
 
     const perfPass = p95 < 200;
     record(
-      10,
+      15,
       "1000 Products Performance Benchmark (p50 / p95) & EXPLAIN Plan",
       perfPass,
       `Catalog size: ${testCatalog.length} products. Latencies: p50 = ${p50}ms, p95 = ${p95}ms (<200ms target). GIN Trigram index plan verified.`,

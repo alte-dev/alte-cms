@@ -20,12 +20,15 @@
 
 ---
 
-## 2. Faz 6 & Faz 6.1 Bellek ve Kaynak Analizi
+## 2. Faz 6, 6.1 ve 6.2 Bellek ve Kaynak Analizi
 
 1. **Harici Arama Motoru İzolasyonu:** Meilisearch, Elasticsearch veya Typesense gibi harici arama servisleri (JVM/Go tabanlı ek 300–600 MB RAM tüketen) kesinlikle projeye dahil edilmemiştir. Arama dizini ve sıralama işlemleri PostgreSQL üzerindeki `unaccent` ve `pg_trgm` GIN indeksleri ile doğrudan mevcut veritabanı içinde çözülmüştür.
-2. **E-posta ve Kargo Bildirimleri:** `nodemailer` ve dahili olay yöneticisi (event subscribers) Node.js heap belleğine yalnızca ~4 MB ek yük getirmektedir.
-3. **Vitrin Sipariş Takip Rotası (`/siparis-takip`):** Yalnızca **178 B** First Load JS ayak izi ile istemci ve sunucu RAM kullanımına etkisi ihmal edilebilir düzeydedir (< 1 MB).
-4. **Sonuç:** Tepe bellek kullanımı **801 MB** seviyesinde kalmakta olup, **1100 MB** üst sınır bütçesinin yaklaşık **%73'ünü** kullanmaktadır (+299 MB emniyet payı).
+2. **Sorgu Optimizasyonu & Tip Dönüşümleri (Faz 6.2):** Parametre tip dönüşümleri (`CAST(:minPrice AS numeric)`, vb.) sayesinde PostgreSQL sorgu planlayıcısı tek seferde plan önbelleğine alabilmekte ve parametre tipi belirsizliğinden kaynaklanan tekrar derleme maliyetlerini sıfırlamaktadır.
+3. **Çalışma Zamanı DDL Temizliği (Faz 6.2):** Her e-posta gönderimi ve ayar okumasında çağrılan `ensureEmailTables` DDL kontrolü kaldırılarak bağlantı ve bellek havuzu üzerindeki yük ortadan kaldırılmıştır. Tüm şema yalnızca Medusa migrasyonundan (`Migration20261109000000.ts`) beslenmektedir.
+4. **Sunucu Başlatma Isınması (Faz 6.2):** `instrumentation.ts` ile Payload CMS'in sunucu açılışında tek seferde ısıtılması sağlanarak, ilk HTTP isteklerindeki bellek ve CPU sıçramaları (cold start spikes) engellenmiştir.
+5. **E-posta ve Kargo Bildirimleri:** `nodemailer` ve dahili olay yöneticisi (event subscribers) Node.js heap belleğine yalnızca ~4 MB ek yük getirmektedir.
+6. **Vitrin Sipariş Takip Rotası (`/siparis-takip`):** Yalnızca **178 B** First Load JS ayak izi ile istemci ve sunucu RAM kullanımına etkisi ihmal edilebilir düzeydedir (< 1 MB).
+7. **Sonuç:** Tepe bellek kullanımı **801 MB** seviyesinde kalmakta olup, **1100 MB** üst sınır bütçesinin yaklaşık **%73'ünü** kullanmaktadır (+299 MB emniyet payı).
 
 ---
 

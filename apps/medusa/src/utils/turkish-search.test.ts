@@ -79,6 +79,21 @@ describe("Turkish Search Utilities", () => {
       expect(res.valid).toBe(true);
       expect(res.sanitized).toBe("elbise");
     });
+
+    it("supports allowEmpty option when filtering without query text", () => {
+      expect(validateSearchQuery(undefined, { allowEmpty: true })).toEqual({
+        valid: true,
+        sanitized: "",
+      });
+      expect(validateSearchQuery("", { allowEmpty: true })).toEqual({
+        valid: true,
+        sanitized: "",
+      });
+      expect(validateSearchQuery("  ", { allowEmpty: true })).toEqual({
+        valid: true,
+        sanitized: "",
+      });
+    });
   });
 
   describe("Rate Limiting", () => {
