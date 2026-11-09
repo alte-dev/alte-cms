@@ -352,7 +352,7 @@ export interface ContactInfoProps {
 
 export function ContactInfoComponent({
   title = "İletişim Bilgileri",
-  email = "info@cisemelifboz.com",
+  email = "info@example.com",
   phone = "0850 000 00 00",
   address = "Nişantaşı, İstanbul, Türkiye",
   workingHours = "Hafta içi: 09:00 - 18:00",

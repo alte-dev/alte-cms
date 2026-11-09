@@ -48,9 +48,13 @@ export async function POST(req: NextRequest) {
       status: (updated as any)._status,
     });
   } catch (error: any) {
+    const isValidation =
+      error?.name === "ValidationError" ||
+      error?.status === 400 ||
+      (typeof error?.message === "string" && error.message.includes("Puck"));
     return NextResponse.json(
       { error: error?.message || "Sayfa kaydedilirken hata oluştu." },
-      { status: 500 },
+      { status: isValidation ? 400 : 500 },
     );
   }
 }

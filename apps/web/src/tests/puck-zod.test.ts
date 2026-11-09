@@ -8,23 +8,23 @@ import {
 } from "../lib/puck/schema";
 
 describe("Puck Data Security & Structural Validation", () => {
-  it("accepts valid Puck data structure with allowed components", () => {
+  it("accepts valid Puck data structure with allowed components and valid props", () => {
     const validData = {
       content: [
         {
+          id: "hero-1",
           type: "Hero",
           props: {
-            id: "hero-1",
             title: "Yeni Sezon Koleksiyonu",
             subtitle: "En şık tasarımlar",
             primaryButtonText: "Alışverişe Başla",
-            primaryButtonUrl: "/urunler",
+            primaryButtonHref: "/urunler",
           },
         },
         {
-          type: "FeaturedProducts",
+          id: "featured-1",
+          type: "ProductGrid",
           props: {
-            id: "featured-1",
             title: "Öne Çıkanlar",
             limit: 4,
           },
@@ -55,22 +55,120 @@ describe("Puck Data Security & Structural Validation", () => {
     expect(PuckDataZodSchema.safeParse(maliciousData).success).toBe(false);
   });
 
-  it("rejects component props containing dangerous javascript: links", () => {
-    const xssData = {
+  it("rejects unknown properties in component props (strict mode)", () => {
+    const dataWithUnknownProp = {
       content: [
         {
           type: "Hero",
           props: {
-            title: "Tıkla",
-            primaryButtonUrl: "javascript:alert('XSS')",
+            title: "Başlık",
+            unauthorizedInjectedField: "exploit",
           },
         },
       ],
     };
 
-    const res = validatePuckData(xssData);
+    const res = validatePuckData(dataWithUnknownProp);
     expect(res.valid).toBe(false);
-    expect(res.error).toContain("güvenli olmayan bir bağlantı içeriyor");
+    expect(res.error).toMatch(/geçersiz veya bilinmeyen alan|unauthorizedInjectedField/);
+  });
+
+  it("rejects nested structures with buttons:[{href:'javascript:alert(1)'}]", () => {
+    const nestedXssData = {
+      content: [
+        {
+          type: "Hero",
+          props: {
+            title: "Hero",
+          },
+          buttons: [{ href: "javascript:alert(1)" }],
+        },
+      ],
+    };
+
+    const res = validatePuckData(nestedXssData);
+    expect(res.valid).toBe(false);
+    expect(res.error).toMatch(/Güvenli olmayan/);
+  });
+
+  it("rejects protocol-relative URL //evil.com", () => {
+    const protocolRelativeData = {
+      content: [
+        {
+          type: "Hero",
+          props: {
+            title: "Test",
+            primaryButtonHref: "//evil.com",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(protocolRelativeData);
+    expect(res.valid).toBe(false);
+    expect(res.error).toMatch(/Güvenli olmayan/);
+  });
+
+  it("rejects Windows UNC path \\\\evil", () => {
+    const uncData = {
+      content: [
+        {
+          type: "Hero",
+          props: {
+            title: "Test",
+            primaryButtonHref: "\\\\evil\\share",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(uncData);
+    expect(res.valid).toBe(false);
+    expect(res.error).toMatch(/Güvenli olmayan/);
+  });
+
+  it("rejects data: URI in links", () => {
+    const dataUriData = {
+      content: [
+        {
+          type: "ImageBlock",
+          props: {
+            src: "data:image/svg+xml;base64,PHN2Z...",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(dataUriData);
+    expect(res.valid).toBe(false);
+    expect(res.error).toMatch(/Güvenli olmayan/);
+  });
+
+  it("rejects leading whitespace variant ' javascript:' and mixed case 'JaVa\\tScript:'", () => {
+    const whitespaceXss = {
+      content: [
+        {
+          type: "Hero",
+          props: {
+            primaryButtonHref: " javascript:alert(1)",
+          },
+        },
+      ],
+    };
+
+    const mixedCaseXss = {
+      content: [
+        {
+          type: "Hero",
+          props: {
+            primaryButtonHref: "JaVa\tScript:alert(1)",
+          },
+        },
+      ],
+    };
+
+    expect(validatePuckData(whitespaceXss).valid).toBe(false);
+    expect(validatePuckData(mixedCaseXss).valid).toBe(false);
   });
 
   it("rejects tree exceeding maximum component limit (> 200)", () => {
@@ -78,7 +176,7 @@ describe("Puck Data Security & Structural Validation", () => {
     for (let i = 0; i < MAX_PUCK_COMPONENTS + 1; i++) {
       items.push({
         type: "Spacer",
-        props: { id: `spacer-${i}`, height: 20 },
+        props: { height: "small" as const },
       });
     }
 
@@ -88,16 +186,15 @@ describe("Puck Data Security & Structural Validation", () => {
   });
 
   it("rejects nested structures exceeding maximum depth (> 6 levels)", () => {
-    // Build nested columns of depth 7
     let current: any = {
       type: "Spacer",
-      props: { height: 10 },
+      props: { height: "small" as const },
     };
 
     for (let d = 0; d < MAX_PUCK_DEPTH + 1; d++) {
       current = {
         type: "Columns",
-        props: {},
+        props: { columns: "2" as const },
         zones: {
           left: [current],
         },
