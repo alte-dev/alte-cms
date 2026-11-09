@@ -231,3 +231,56 @@ export async function getProductByHandle(handle: string): Promise<StoreProduct |
     return null;
   }
 }
+
+export interface SearchProductsParams {
+  q: string;
+  category?: string;
+  min_price?: number;
+  max_price?: number;
+  in_stock?: boolean;
+  sort?: "relevance" | "price_asc" | "price_desc" | "newest";
+  limit?: number;
+  offset?: number;
+}
+
+export interface SearchProductsResponse {
+  products: StoreProduct[];
+  count: number;
+  limit: number;
+  offset: number;
+  query: string;
+}
+
+/**
+ * Searches products from Medusa Store API using PostgreSQL pg_trgm + unaccent.
+ */
+export async function searchProducts(
+  params: SearchProductsParams,
+): Promise<SearchProductsResponse> {
+  const queryParams = new URLSearchParams();
+  queryParams.set("q", params.q);
+
+  if (params.category) queryParams.set("category", params.category);
+  if (params.min_price !== undefined) queryParams.set("min_price", String(params.min_price));
+  if (params.max_price !== undefined) queryParams.set("max_price", String(params.max_price));
+  if (params.in_stock) queryParams.set("in_stock", "true");
+  if (params.sort) queryParams.set("sort", params.sort);
+  if (params.limit) queryParams.set("limit", String(params.limit));
+  if (params.offset) queryParams.set("offset", String(params.offset));
+
+  try {
+    const data = await medusaFetch<SearchProductsResponse>(
+      `/store/search?${queryParams.toString()}`,
+      { cache: "no-store" },
+    );
+    return data;
+  } catch {
+    return {
+      products: [],
+      count: 0,
+      limit: params.limit || 12,
+      offset: params.offset || 0,
+      query: params.q,
+    };
+  }
+}
