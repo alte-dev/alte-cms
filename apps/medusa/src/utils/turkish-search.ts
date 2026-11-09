@@ -44,14 +44,36 @@ export interface SearchQueryValidationResult {
   error?: string;
 }
 
+export interface ValidateSearchQueryOptions {
+  allowEmpty?: boolean;
+}
+
 /**
  * Validates and sanitizes raw user search query string.
  * Enforces:
- * - Minimum length: 2 characters (after trimming)
+ * - Minimum length: 2 characters (after trimming) when query is provided
  * - Maximum length: 100 characters
  * - Strips control characters
+ * - Allows empty/omitted string when options.allowEmpty is true
  */
-export function validateSearchQuery(raw: unknown): SearchQueryValidationResult {
+export function validateSearchQuery(
+  raw: unknown,
+  options?: ValidateSearchQueryOptions,
+): SearchQueryValidationResult {
+  if (raw === undefined || raw === null || raw === "") {
+    if (options?.allowEmpty) {
+      return {
+        valid: true,
+        sanitized: "",
+      };
+    }
+    return {
+      valid: false,
+      sanitized: "",
+      error: "Arama terimi zorunludur ve metin formatında olmalıdır.",
+    };
+  }
+
   if (typeof raw !== "string") {
     return {
       valid: false,
@@ -62,6 +84,13 @@ export function validateSearchQuery(raw: unknown): SearchQueryValidationResult {
 
   // Remove control characters (ASCII 0-31, 127)
   const cleaned = raw.replace(/[\x00-\x1F\x7F]/g, "").trim();
+
+  if (cleaned.length === 0 && options?.allowEmpty) {
+    return {
+      valid: true,
+      sanitized: "",
+    };
+  }
 
   if (cleaned.length < 2) {
     return {

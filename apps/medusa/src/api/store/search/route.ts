@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, Modules, QueryContext } from "@medusajs/framework/utils";
 import {
   validateSearchQuery,
   escapeLikeWildcards,
@@ -10,12 +10,14 @@ import {
 interface RawProductMatch {
   id: string;
   relevance_score: number;
+  total_count: number;
 }
 
 /**
  * GET /store/search
  * High-performance, Turkish-aware, PostgreSQL trigram & unaccent search API.
  * Rate limited to 60 req/min per IP.
+ * Applies category, price, stock filters and sorting strictly in database query.
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void> {
   // 1. Rate Limiting Check (60 requests / minute per client IP)
@@ -34,14 +36,25 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     return;
   }
 
-  // 2. Validate and Sanitize Search Query 'q'
-  const validation = validateSearchQuery(req.query.q);
+  // 2. Validate and Sanitize Search Query 'q' (optional when filters are provided)
+  const qParam = req.query.q as string | undefined;
+  const hasFilter =
+    req.query.category !== undefined ||
+    req.query.min_price !== undefined ||
+    req.query.max_price !== undefined ||
+    req.query.in_stock !== undefined ||
+    req.query.sort !== undefined;
+
+  const validation = validateSearchQuery(qParam, {
+    allowEmpty: hasFilter || qParam === undefined,
+  });
   if (!validation.valid) {
     res.status(400).json({ error: validation.error });
     return;
   }
 
   const rawQ = validation.sanitized;
+  const hasQ = rawQ.length > 0;
   const limit = Math.min(48, Math.max(1, parseInt(req.query.limit as string, 10) || 12));
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
   const sort = (req.query.sort as string) || "relevance";
@@ -60,145 +73,13 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     // handled below
   }
 
-  const escapedLike = escapeLikeWildcards(rawQ);
-  const likePattern = `%${escapedLike}%`;
-  const exactPattern = escapedLike;
-  const prefixPattern = `${escapedLike}%`;
-  const normalizedTurkish = `%${normalizeTurkishText(rawQ)}%`;
-
-  let matchedProductIds: string[] = [];
-  const relevanceMap = new Map<string, number>();
-
-  if (pgConnection && typeof pgConnection.raw === "function") {
-    try {
-      // Parameterized SQL query utilizing pg_trgm and unaccent
-      const sql = `
-        SELECT 
-          p.id,
-          (
-            CASE 
-              WHEN p.title ILIKE :exactPattern THEN 100
-              WHEN p.title ILIKE :prefixPattern THEN 80
-              WHEN p.title ILIKE :likePattern THEN 60
-              WHEN unaccent(p.title) ILIKE unaccent(:likePattern) THEN 50
-              WHEN unaccent(lower(p.title)) ILIKE :normalizedTurkish THEN 45
-              WHEN similarity(p.title, :rawQ) > 0.15 THEN (similarity(p.title, :rawQ) * 40)::int
-              ELSE 0
-            END +
-            CASE 
-              WHEN p.subtitle IS NOT NULL AND p.subtitle ILIKE :likePattern THEN 25
-              WHEN p.subtitle IS NOT NULL AND unaccent(p.subtitle) ILIKE unaccent(:likePattern) THEN 20
-              ELSE 0
-            END +
-            CASE 
-              WHEN EXISTS (
-                SELECT 1 FROM product_variant pv 
-                WHERE pv.product_id = p.id AND pv.sku ILIKE :likePattern
-              ) THEN 50
-              ELSE 0
-            END +
-            CASE 
-              WHEN p.description IS NOT NULL AND (p.description ILIKE :likePattern OR unaccent(p.description) ILIKE unaccent(:likePattern)) THEN 15
-              ELSE 0
-            END
-          ) as relevance_score
-        FROM product p
-        WHERE p.status = 'published'
-          AND p.deleted_at IS NULL
-          AND (p.metadata IS NULL OR (p.metadata->>'is_cod_fee' IS DISTINCT FROM 'true' AND p.metadata->>'hidden' IS DISTINCT FROM 'true'))
-          AND p.handle != 'kapida-odeme-hizmet-bedeli'
-          AND NOT EXISTS (
-            SELECT 1 FROM product_variant pv_cod 
-            WHERE pv_cod.product_id = p.id AND pv_cod.sku = 'SERVICE-COD-FEE'
-          )
-          AND (
-            p.title ILIKE :likePattern
-            OR unaccent(p.title) ILIKE unaccent(:likePattern)
-            OR unaccent(lower(p.title)) ILIKE :normalizedTurkish
-            OR (p.subtitle IS NOT NULL AND (p.subtitle ILIKE :likePattern OR unaccent(p.subtitle) ILIKE unaccent(:likePattern)))
-            OR (p.description IS NOT NULL AND (p.description ILIKE :likePattern OR unaccent(p.description) ILIKE unaccent(:likePattern)))
-            OR similarity(p.title, :rawQ) > 0.15
-            OR EXISTS (
-              SELECT 1 FROM product_variant pv 
-              WHERE pv.product_id = p.id AND pv.sku ILIKE :likePattern
-            )
-            OR EXISTS (
-              SELECT 1 FROM product_category_product pcp
-              JOIN product_category pc ON pc.id = pcp.product_category_id
-              WHERE pcp.product_id = p.id AND (
-                pc.name ILIKE :likePattern 
-                OR unaccent(pc.name) ILIKE unaccent(:likePattern)
-                OR unaccent(lower(pc.name)) ILIKE :normalizedTurkish
-              )
-            )
-          )
-        ORDER BY relevance_score DESC, p.created_at DESC
-        LIMIT 200;
-      `;
-
-      const result = await pgConnection.raw(sql, {
-        rawQ,
-        likePattern,
-        exactPattern,
-        prefixPattern,
-        normalizedTurkish,
-      });
-
-      const rows: RawProductMatch[] = result.rows || [];
-      matchedProductIds = rows.map((r) => r.id);
-      for (const row of rows) {
-        relevanceMap.set(row.id, Number(row.relevance_score) || 0);
-      }
-    } catch (err: any) {
-      // In case unaccent/pg_trgm are unavailable, fallback to standard LIKE query
-      const fallbackSql = `
-        SELECT p.id, 50 as relevance_score
-        FROM product p
-        WHERE p.status = 'published'
-          AND p.deleted_at IS NULL
-          AND (p.metadata IS NULL OR (p.metadata->>'is_cod_fee' IS DISTINCT FROM 'true' AND p.metadata->>'hidden' IS DISTINCT FROM 'true'))
-          AND p.handle != 'kapida-odeme-hizmet-bedeli'
-          AND NOT EXISTS (
-            SELECT 1 FROM product_variant pv_cod 
-            WHERE pv_cod.product_id = p.id AND pv_cod.sku = 'SERVICE-COD-FEE'
-          )
-          AND (
-            p.title ILIKE :likePattern
-            OR p.subtitle ILIKE :likePattern
-            OR p.description ILIKE :likePattern
-            OR EXISTS (
-              SELECT 1 FROM product_variant pv 
-              WHERE pv.product_id = p.id AND pv.sku ILIKE :likePattern
-            )
-          )
-        LIMIT 200;
-      `;
-      try {
-        const fallbackResult = await pgConnection.raw(fallbackSql, { likePattern });
-        const rows: RawProductMatch[] = fallbackResult.rows || [];
-        matchedProductIds = rows.map((r) => r.id);
-        for (const row of rows) {
-          relevanceMap.set(row.id, 50);
-        }
-      } catch {
-        // Fallback failed
-      }
-    }
-  }
-
-  // If no products matched the text query, return empty early
-  if (matchedProductIds.length === 0) {
-    res.status(200).json({
-      products: [],
-      count: 0,
-      limit,
-      offset,
-      query: rawQ,
-    });
+  if (!pgConnection || typeof pgConnection.raw !== "function") {
+    console.error("[Search API] Veritabanı bağlantısı sağlanamadı (PG_CONNECTION eksik).");
+    res.status(500).json({ error: "Veritabanı bağlantısı kurulamadı." });
     return;
   }
 
-  // 3. Resolve Turkey Region for Server-Authoritative Pricing
+  // 3. Resolve Turkey Region for Server-Authoritative Pricing (Fail closed, no silent fallback)
   let turkeyRegionId: string | null = null;
   try {
     const regionService = req.scope.resolve(Modules.REGION);
@@ -206,11 +87,193 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     if (regions && regions.length > 0) {
       turkeyRegionId = regions[0].id;
     }
-  } catch {
-    // fallback
+  } catch (err: any) {
+    console.error("[Search API] Fiyat bağlamı çözülemedi:", err.message);
   }
 
-  // 4. Load full product data with calculated prices using Medusa Remote Query
+  if (!turkeyRegionId) {
+    console.error(
+      "[Search API] Fiyat bağlamı çözülemedi: currency_code='try' olan bölge bulunamadı.",
+    );
+    res.status(500).json({ error: "Fiyat bağlamı çözülemedi." });
+    return;
+  }
+
+  const escapedLike = escapeLikeWildcards(rawQ);
+  const likePattern = `%${escapedLike}%`;
+  const exactPattern = escapedLike;
+  const prefixPattern = `${escapedLike}%`;
+  const normalizedTurkish = `%${normalizeTurkishText(rawQ)}%`;
+
+  let matchedProductIds: string[] = [];
+  let totalCount = 0;
+
+  try {
+    // Primary SQL Query using pg_trgm & unaccent with Database-level filtering, sorting, and pagination
+    // Explicit CASTs on all parameters prevent PostgreSQL 'could not determine data type of parameter $N' errors
+    const sql = `
+      SELECT 
+        p.id,
+        (
+          CASE WHEN CAST(:hasQ AS boolean) = true THEN
+            (
+              CASE 
+                WHEN p.title ILIKE CAST(:exactPattern AS text) THEN 100
+                WHEN p.title ILIKE CAST(:prefixPattern AS text) THEN 80
+                WHEN p.title ILIKE CAST(:likePattern AS text) THEN 60
+                WHEN unaccent(p.title) ILIKE unaccent(CAST(:likePattern AS text)) THEN 50
+                WHEN unaccent(lower(p.title)) ILIKE CAST(:normalizedTurkish AS text) THEN 45
+                WHEN similarity(p.title, CAST(:rawQ AS text)) > 0.15 THEN (similarity(p.title, CAST(:rawQ AS text)) * 40)::int
+                ELSE 0
+              END +
+              CASE 
+                WHEN p.subtitle IS NOT NULL AND p.subtitle ILIKE CAST(:likePattern AS text) THEN 25
+                WHEN p.subtitle IS NOT NULL AND unaccent(p.subtitle) ILIKE unaccent(CAST(:likePattern AS text)) THEN 20
+                ELSE 0
+              END +
+              CASE 
+                WHEN EXISTS (
+                  SELECT 1 FROM product_variant pv 
+                  WHERE pv.product_id = p.id AND pv.sku ILIKE CAST(:likePattern AS text) AND pv.deleted_at IS NULL
+                ) THEN 50
+                ELSE 0
+              END +
+              CASE 
+                WHEN p.description IS NOT NULL AND (p.description ILIKE CAST(:likePattern AS text) OR unaccent(p.description) ILIKE unaccent(CAST(:likePattern AS text))) THEN 15
+                ELSE 0
+              END
+            )
+          ELSE 50
+          END
+        ) as relevance_score,
+        COALESCE(pr_stat.min_price, 0) as min_price,
+        COUNT(*) OVER() as total_count
+      FROM product p
+      LEFT JOIN LATERAL (
+        SELECT 
+          MIN(pr.amount) as min_price,
+          MAX(pr.amount) as max_price
+        FROM product_variant pv
+        LEFT JOIN product_variant_price_set pvps ON pvps.variant_id = pv.id
+        LEFT JOIN price pr ON pr.price_set_id = pvps.price_set_id 
+          AND pr.currency_code = 'try' 
+          AND pr.deleted_at IS NULL
+        WHERE pv.product_id = p.id AND pv.deleted_at IS NULL
+      ) pr_stat ON true
+      WHERE p.status = 'published'
+        AND p.deleted_at IS NULL
+        AND (p.metadata IS NULL OR (p.metadata->>'is_cod_fee' IS DISTINCT FROM 'true' AND p.metadata->>'hidden' IS DISTINCT FROM 'true'))
+        AND p.handle != 'kapida-odeme-hizmet-bedeli'
+        AND NOT EXISTS (
+          SELECT 1 FROM product_variant pv_cod 
+          WHERE pv_cod.product_id = p.id AND pv_cod.sku = 'SERVICE-COD-FEE'
+        )
+        -- Text Search Predicates
+        AND (
+          CAST(:hasQ AS boolean) = false
+          OR p.title ILIKE CAST(:likePattern AS text)
+          OR unaccent(p.title) ILIKE unaccent(CAST(:likePattern AS text))
+          OR unaccent(lower(p.title)) ILIKE CAST(:normalizedTurkish AS text)
+          OR (p.subtitle IS NOT NULL AND (p.subtitle ILIKE CAST(:likePattern AS text) OR unaccent(p.subtitle) ILIKE unaccent(CAST(:likePattern AS text))))
+          OR (p.description IS NOT NULL AND (p.description ILIKE CAST(:likePattern AS text) OR unaccent(p.description) ILIKE unaccent(CAST(:likePattern AS text))))
+          OR similarity(p.title, CAST(:rawQ AS text)) > 0.15
+          OR EXISTS (
+            SELECT 1 FROM product_variant pv 
+            WHERE pv.product_id = p.id AND pv.sku ILIKE CAST(:likePattern AS text) AND pv.deleted_at IS NULL
+          )
+          OR EXISTS (
+            SELECT 1 FROM product_category_product pcp
+            JOIN product_category pc ON pc.id = pcp.product_category_id
+            WHERE pcp.product_id = p.id AND (
+              pc.name ILIKE CAST(:likePattern AS text) 
+              OR unaccent(pc.name) ILIKE unaccent(CAST(:likePattern AS text))
+              OR unaccent(lower(pc.name)) ILIKE CAST(:normalizedTurkish AS text)
+            )
+          )
+        )
+        -- Category Filter in SQL
+        AND (
+          CAST(:categoryFilter AS text) IS NULL 
+          OR EXISTS (
+            SELECT 1 FROM product_category_product pcp
+            JOIN product_category pc ON pc.id = pcp.product_category_id
+            WHERE pcp.product_id = p.id AND (
+              pc.id = CAST(:categoryFilter AS text) 
+              OR pc.handle = CAST(:categoryFilter AS text)
+              OR pc.name ILIKE CAST(:categoryFilter AS text)
+            )
+          )
+        )
+        -- Price Range Filter in SQL
+        AND (CAST(:minPrice AS numeric) IS NULL OR pr_stat.min_price >= CAST(:minPrice AS numeric))
+        AND (CAST(:maxPrice AS numeric) IS NULL OR pr_stat.min_price <= CAST(:maxPrice AS numeric))
+        -- Stock Filter in SQL
+        AND (
+          CAST(:inStockOnly AS boolean) = false 
+          OR EXISTS (
+            SELECT 1 FROM product_variant pv
+            WHERE pv.product_id = p.id AND pv.deleted_at IS NULL
+              AND (
+                pv.manage_inventory = false
+                OR EXISTS (
+                  SELECT 1 FROM product_variant_inventory_item pvii
+                  JOIN inventory_level il ON il.inventory_item_id = pvii.inventory_item_id
+                  WHERE pvii.variant_id = pv.id AND (il.stocked_quantity - COALESCE(il.reserved_quantity, 0)) > 0
+                )
+                OR NOT EXISTS (
+                  SELECT 1 FROM product_variant_inventory_item pvii
+                  WHERE pvii.variant_id = pv.id
+                )
+              )
+          )
+        )
+      ORDER BY 
+        CASE WHEN CAST(:sort AS text) = 'price_asc' THEN pr_stat.min_price END ASC NULLS LAST,
+        CASE WHEN CAST(:sort AS text) = 'price_desc' THEN pr_stat.min_price END DESC NULLS LAST,
+        CASE WHEN CAST(:sort AS text) = 'newest' THEN p.created_at END DESC,
+        relevance_score DESC,
+        p.created_at DESC
+      LIMIT CAST(:limit AS integer) OFFSET CAST(:offset AS integer);
+    `;
+
+    const result = await pgConnection.raw(sql, {
+      hasQ,
+      rawQ,
+      likePattern,
+      exactPattern,
+      prefixPattern,
+      normalizedTurkish,
+      categoryFilter,
+      inStockOnly,
+      minPrice,
+      maxPrice,
+      sort,
+      limit,
+      offset,
+    });
+
+    const rows: RawProductMatch[] = result.rows || [];
+    matchedProductIds = rows.map((r) => r.id);
+    totalCount = rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+  } catch (err: any) {
+    console.error("[Search API] Veritabanı sorgusu başarısız:", err?.message || err);
+    res.status(500).json({ error: "Arama sorgusu yürütülemedi." });
+    return;
+  }
+
+  // If no products matched the text query, return empty early
+  if (matchedProductIds.length === 0) {
+    res.status(200).json({
+      products: [],
+      count: totalCount,
+      limit,
+      offset,
+      query: rawQ,
+    });
+    return;
+  }
+
+  // 4. Load full product data with calculated prices using Medusa Remote Query & QueryContext
   let products: any[] = [];
   try {
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
@@ -243,109 +306,52 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
         id: matchedProductIds,
         status: "published",
       },
-      context: turkeyRegionId
-        ? {
+      context: {
+        variants: {
+          calculated_price: QueryContext({
             region_id: turkeyRegionId,
             currency_code: "try",
-          }
-        : undefined,
+          }),
+        },
+      },
     });
     products = data || [];
-  } catch {
-    // If remote query fails, fallback to productService
-    try {
-      const productService = req.scope.resolve(Modules.PRODUCT);
-      products = await productService.listProducts({ id: matchedProductIds });
-    } catch {
-      products = [];
-    }
+  } catch (err: any) {
+    console.error("[Search API] query.graph hatası:", err.message);
+    res.status(500).json({ error: "Arama işlemi sırasında bir hata oluştu." });
+    return;
   }
 
-  // 5. Apply Strict Filtering:
-  // - Category filter
-  // - Hidden product exclusion (double-check in memory)
-  // - Stock filter (in_stock)
-  // - Price range filter (min_price, max_price)
-  const filtered = products.filter((p) => {
-    // Never return hidden/COD service products
-    if (
-      p.metadata?.is_cod_fee === true ||
-      p.metadata?.hidden === true ||
-      p.handle === "kapida-odeme-hizmet-bedeli" ||
-      p.variants?.some((v: any) => v.sku === "SERVICE-COD-FEE")
-    ) {
-      return false;
-    }
-
-    // Category filter
-    if (categoryFilter) {
-      const hasCategory = p.categories?.some(
-        (c: any) => c.id === categoryFilter || c.handle === categoryFilter,
-      );
-      if (!hasCategory) return false;
-    }
-
-    // In-stock filter
-    if (inStockOnly) {
-      const hasStock = p.variants?.some((v: any) => {
-        if (v.manage_inventory === false) return true;
-        return (v.inventory_quantity ?? 0) > 0;
-      });
-      if (!hasStock) return false;
-    }
-
-    // Calculated price resolution
-    const firstVariantPrice =
-      p.variants?.[0]?.calculated_price?.calculated_amount ??
-      p.variants?.[0]?.prices?.[0]?.amount ??
-      null;
-
-    if (firstVariantPrice !== null) {
-      // In Medusa, calculated_amount for TRY is often in minor units (kuruş) or standard depending on setup
-      // If amount > 1000 and min_price is around 100, normalize if needed or compare directly
-      const priceVal = firstVariantPrice;
-      if (minPrice !== null && priceVal < minPrice) return false;
-      if (maxPrice !== null && priceVal > maxPrice) return false;
-    }
-
-    return true;
-  });
-
-  // 6. Sorting
-  if (sort === "price_asc") {
-    filtered.sort((a, b) => {
-      const priceA = a.variants?.[0]?.calculated_price?.calculated_amount ?? 0;
-      const priceB = b.variants?.[0]?.calculated_price?.calculated_amount ?? 0;
-      return priceA - priceB;
-    });
-  } else if (sort === "price_desc") {
-    filtered.sort((a, b) => {
-      const priceA = a.variants?.[0]?.calculated_price?.calculated_amount ?? 0;
-      const priceB = b.variants?.[0]?.calculated_price?.calculated_amount ?? 0;
-      return priceB - priceA;
-    });
-  } else if (sort === "newest") {
-    filtered.sort((a, b) => {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-  } else {
-    // Default: Sort by relevance score
-    filtered.sort((a, b) => {
-      const scoreA = relevanceMap.get(a.id) ?? 0;
-      const scoreB = relevanceMap.get(b.id) ?? 0;
-      if (scoreB !== scoreA) {
-        return scoreB - scoreA;
+  // Map products strictly preserving the SQL order, attaching summary calculated_price & stock
+  const productMap = new Map<string, any>(products.map((p) => [p.id, p]));
+  const orderedProducts = matchedProductIds
+    .map((id) => productMap.get(id))
+    .filter(Boolean)
+    .map((p) => {
+      let minPriceVal: number | null = null;
+      for (const v of p.variants || []) {
+        const amt = v.calculated_price?.calculated_amount ?? null;
+        if (amt !== null) {
+          minPriceVal = minPriceVal === null ? amt : Math.min(minPriceVal, amt);
+        }
       }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-  }
 
-  const totalMatching = filtered.length;
-  const paginated = filtered.slice(offset, offset + limit);
+      const inStock =
+        p.variants?.some((v: any) => {
+          if (v.manage_inventory === false) return true;
+          return (v.inventory_quantity ?? 0) > 0;
+        }) ?? true;
+
+      return {
+        ...p,
+        calculated_price: minPriceVal,
+        in_stock: inStock,
+      };
+    });
 
   res.status(200).json({
-    products: paginated,
-    count: totalMatching,
+    products: orderedProducts,
+    count: totalCount,
     limit,
     offset,
     query: rawQ,

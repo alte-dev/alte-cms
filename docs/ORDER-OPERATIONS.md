@@ -69,3 +69,62 @@ Müşteriler üye girişi yapmadan sipariş numarası ve siparişte belirttikler
   - IP başına dakikada maksimum **10 istek**.
   - Aynı IP ve sipariş numarası için **5 başarısız denemeden sonra 15 dakika engelleme**.
 - **Arama Motoru İzolasyonu:** Sayfa `robots: { index: false, follow: false }` (`noindex`) içerir ve `robots.txt` ile taranması engellenmiştir.
+
+### 5.1. POST /store/order-tracking İstek ve Yanıt Sözleşmesi
+
+- **Metot:** `POST`
+- **Uç Nokta:** `/store/order-tracking`
+- **İstek Başlığı:** `Content-Type: application/json`
+
+#### İstek Gövdesi Biçimi:
+
+```json
+{
+  "order_id_or_number": "#1001",
+  "email": "musteri@example.test"
+}
+```
+
+#### Başarılı Yanıt (HTTP 200 OK) — Sıfır Kişisel Veri (Zero PII):
+
+Müşteri adı, soyadı, açık teslimat adresi veya telefon numarası **asla döndürülmez**:
+
+```json
+{
+  "order": {
+    "display_id": 1001,
+    "status": "completed",
+    "created_at": "2026-11-09T12:00:00.000Z",
+    "items": [
+      {
+        "title": "Keten Gömlek",
+        "quantity": 1
+      }
+    ],
+    "subtotal": 1250.0,
+    "shipping_total": 0.0,
+    "total": 1250.0,
+    "carrier_name": "Yurtiçi Kargo",
+    "tracking_code": "YK-12345678",
+    "tracking_url": "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=YK-12345678",
+    "shipped_at": "2026-11-09T13:00:00.000Z"
+  }
+}
+```
+
+#### Eşleşmeyen / Yanlış Bilgilerde Tek Tip Yanıt (HTTP 404 Not Found):
+
+Saldırganların geçerli sipariş numaralarını veya e-posta adreslerini ayırt edememesi için gerek yanlış numara, gerek yanlış e-posta gerekse geçersiz giriş formatlarında **birebir aynı gövde ve HTTP 404 durum kodu** döndürülür:
+
+```json
+{
+  "error": "Sipariş bulunamadı veya e-posta adresi eşleşmiyor."
+}
+```
+
+#### Hız Sınırı Aşıldığında (HTTP 429 Too Many Requests):
+
+- Dakikada 10 istek aşıldığında:
+  `{ "error": "Hız sınırı aşıldı. Lütfen dakikada en fazla 10 sorgulama yapınız." }`
+- 5 başarısız denemeden sonra 15 dakikalık geçici engel tetiklendiğinde (doğru bilgiler girilse dahi):
+  `{ "error": "Çok fazla hatalı deneme yapıldı. Güvenlik nedeniyle 15 dakika sonra tekrar deneyiniz." }`

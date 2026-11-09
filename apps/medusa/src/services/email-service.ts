@@ -76,60 +76,11 @@ class EmailSettingsRegistry {
 }
 
 /**
- * Creates email_setting and email_log tables if they do not exist.
- */
-export async function ensureEmailTables(pgConnection: any): Promise<void> {
-  if (!pgConnection || typeof pgConnection.raw !== "function") return;
-
-  try {
-    await pgConnection.raw(`
-      CREATE TABLE IF NOT EXISTS email_setting (
-        id TEXT PRIMARY KEY,
-        enabled BOOLEAN NOT NULL DEFAULT FALSE,
-        host TEXT,
-        port INTEGER NOT NULL DEFAULT 587,
-        secure BOOLEAN NOT NULL DEFAULT FALSE,
-        username TEXT,
-        password TEXT,
-        from_name TEXT NOT NULL DEFAULT 'Alte Butik',
-        from_email TEXT NOT NULL DEFAULT 'siparis@example.test',
-        reply_to TEXT,
-        admin_notify_email TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS email_log (
-        id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
-        template TEXT NOT NULL,
-        idempotency_key TEXT UNIQUE NOT NULL,
-        recipient_masked TEXT NOT NULL,
-        subject TEXT NOT NULL,
-        status TEXT NOT NULL,
-        error_code TEXT,
-        attempts INTEGER NOT NULL DEFAULT 1,
-        payload_json TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_email_log_order_id ON email_log (order_id);
-      CREATE INDEX IF NOT EXISTS idx_email_log_created_at ON email_log (created_at DESC);
-    `);
-  } catch (err: any) {
-    console.error("[Email Service] Tablolar oluşturulurken hata:", err.message);
-  }
-}
-
-/**
  * Retrieves the raw DB record or creates default row.
  */
 export async function getOrCreateEmailSettings(pgConnection: any): Promise<EmailSettingRow> {
   const cached = EmailSettingsRegistry.get();
   if (cached) return cached;
-
-  await ensureEmailTables(pgConnection);
 
   const existing = await pgConnection("email_setting")
     .where({ id: SINGLETON_EMAIL_SETTING_ID })
@@ -148,7 +99,7 @@ export async function getOrCreateEmailSettings(pgConnection: any): Promise<Email
     secure: false,
     username: "",
     password: null,
-    from_name: "Alte Butik",
+    from_name: "Mağaza",
     from_email: "siparis@example.test",
     reply_to: null,
     admin_notify_email: null,
@@ -184,7 +135,7 @@ export async function getMaskedEmailSettings(
     username: row.username || "",
     has_password: Boolean(row.password),
     password_masked: row.password ? maskSecret(row.password) : "",
-    from_name: row.from_name || "Alte Butik",
+    from_name: row.from_name || "Mağaza",
     from_email: row.from_email || "siparis@example.test",
     reply_to: row.reply_to || "",
     admin_notify_email: row.admin_notify_email || "",
@@ -285,6 +236,66 @@ export async function createTransporter(pgConnection: any): Promise<{
   return { transporter, settings };
 }
 
+const inMemoryOrderPayloads = new Map<string, OrderEmailPayload>();
+
+export function cacheOrderPayloadForRetry(orderId: string, payload: OrderEmailPayload) {
+  inMemoryOrderPayloads.set(orderId, payload);
+}
+
+export async function getOrderPayloadById(
+  pgConnection: any,
+  orderId: string,
+): Promise<OrderEmailPayload | null> {
+  if (inMemoryOrderPayloads.has(orderId)) {
+    return inMemoryOrderPayloads.get(orderId)!;
+  }
+
+  if (!pgConnection) return null;
+
+  try {
+    const order = await pgConnection("order").where({ id: orderId }).first();
+    if (!order) return null;
+
+    const items = await pgConnection("order_item")
+      .where({ order_id: orderId })
+      .orWhere({ order_id: order.id });
+
+    const meta =
+      typeof order.metadata === "string" ? JSON.parse(order.metadata) : order.metadata || {};
+
+    const address = order.shipping_address || {};
+
+    return {
+      orderId: order.id,
+      displayId: order.display_id || order.id.slice(-6),
+      customerEmail: order.email,
+      customerName:
+        [address.first_name, address.last_name].filter(Boolean).join(" ") || "Değerli Müşterimiz",
+      items: (items || []).map((it: any) => ({
+        title: it.title || "Ürün",
+        quantity: Number(it.quantity || 1),
+        unitPriceTRY: Number(it.unit_price || 0),
+        totalPriceTRY: Number(it.unit_price || 0) * Number(it.quantity || 1),
+      })),
+      subtotalTRY: Number(order.subtotal || 0),
+      shippingTRY: Number(order.shipping_total || 0),
+      codFeeTRY: meta.cod_fee ? Number(meta.cod_fee) : undefined,
+      totalTRY: Number(order.total || 0),
+      paymentMethod: meta.payment_provider === "cod" ? "Kapıda Ödeme" : "Kredi Kartı (PayTR)",
+      shippingAddress: {
+        address1: address.address_1 || "",
+        city: address.city || "",
+        province: address.province || "",
+      },
+      trackingCode: meta.tracking_code,
+      trackingUrl: meta.tracking_url,
+      carrierName: meta.carrier_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface OrderEmailPayload {
   orderId: string;
   displayId: string | number;
@@ -327,8 +338,8 @@ export function buildEmailTemplate(
     | "order.canceled"
     | "payment.failed_admin",
   payload: OrderEmailPayload,
-  storeName: string = "Alte Butik",
-  storeUrl: string = "https://altebutik.com",
+  storeName: string = process.env.STORE_NAME || "Mağaza",
+  storeUrl: string = process.env.WEB_PUBLIC_URL || "https://example.test",
 ): { subject: string; html: string; text: string } {
   const safeStoreName = escapeHtml(storeName);
   const displayId = escapeHtml(payload.displayId);
@@ -337,13 +348,14 @@ export function buildEmailTemplate(
   const footerHtml = `
     <hr style="border:none;border-top:1px solid #e7e5e4;margin:24px 0;" />
     <p style="font-size:12px;color:#78716c;line-height:1.5;">
-      Bu e-posta sipariş bilgilendirmesi amacıyla otomatik olarak oluşturulmuştur. 
-      Mesafeli Satış Sözleşmesi ve KVKK Aydınlatma Metni için <a href="${escapeHtml(storeUrl)}/sayfa/gizlilik-ve-guvenlik" style="color:#1c1917;text-decoration:underline;">web sitemizi</a> ziyaret edebilirsiniz.<br />
+      Bu e-posta sipariş bilgilendirmesi amacıyla otomatik olarak oluşturulmuştur.<br />
+      <a href="${escapeHtml(storeUrl)}/sayfa/mesafeli-satis-sozlesmesi" style="color:#1c1917;text-decoration:underline;">Mesafeli Satış Sözleşmesi</a> &bull; 
+      <a href="${escapeHtml(storeUrl)}/sayfa/kvkk" style="color:#1c1917;text-decoration:underline;">KVKK Aydınlatma Metni</a><br />
       &copy; ${new Date().getFullYear()} ${safeStoreName}. Tüm hakları saklıdır.
     </p>
   `;
 
-  const footerText = `\n---\nBu e-posta sipariş bilgilendirmesi amacıyla otomatik olarak gönderilmiştir.\n© ${new Date().getFullYear()} ${storeName}.`;
+  const footerText = `\n---\nBu e-posta sipariş bilgilendirmesi amacıyla otomatik olarak gönderilmiştir.\nMesafeli Satış Sözleşmesi: ${storeUrl}/sayfa/mesafeli-satis-sozlesmesi\nKVKK: ${storeUrl}/sayfa/kvkk\n© ${new Date().getFullYear()} ${storeName}.`;
 
   if (template === "order.placed_customer") {
     const subject = sanitizeHeader(`Siparişiniz Alındı — #${payload.displayId} | ${storeName}`);
@@ -538,8 +550,6 @@ export async function sendEmailNotification(
   recipientEmail: string,
   payload: OrderEmailPayload,
 ): Promise<{ success: boolean; logId?: string; status: string }> {
-  await ensureEmailTables(pgConnection);
-
   const idempotencyKey = `${payload.orderId}:${template}`;
   const maskedRecipient = maskEmail(recipientEmail);
 
@@ -613,6 +623,8 @@ export async function sendEmailNotification(
     }
   }
 
+  cacheOrderPayloadForRetry(payload.orderId, payload);
+
   const logId =
     existingLog?.id || `elog_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const status = lastError ? "failed" : "sent";
@@ -630,7 +642,6 @@ export async function sendEmailNotification(
         status,
         error_code: errorCode,
         attempts,
-        payload_json: JSON.stringify(payload),
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -666,22 +677,15 @@ export async function retryEmailLog(
   pgConnection: any,
   logId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  await ensureEmailTables(pgConnection);
-
   const log = await pgConnection("email_log").where({ id: logId }).first();
   if (!log) {
     return { success: false, error: "E-posta kaydı bulunamadı." };
   }
 
-  if (!log.payload_json) {
-    return { success: false, error: "Kayıtta yeniden gönderim için yük verisi bulunamadı." };
-  }
-
-  let payload: OrderEmailPayload;
-  try {
-    payload = JSON.parse(log.payload_json);
-  } catch {
-    return { success: false, error: "Kayıt verisi çözülemedi." };
+  // Load payload authoritatively from order data (Zero PII stored in email_log)
+  const payload = await getOrderPayloadById(pgConnection, log.order_id);
+  if (!payload) {
+    return { success: false, error: "Sipariş verisi bulunamadı." };
   }
 
   const settings = await getOrCreateEmailSettings(pgConnection);
@@ -709,8 +713,6 @@ export async function retryEmailLog(
  * Returns latest 100 email logs for admin panel.
  */
 export async function getEmailLogs(pgConnection: any, limit: number = 100): Promise<EmailLogRow[]> {
-  await ensureEmailTables(pgConnection);
-
   return await pgConnection("email_log")
     .select(
       "id",

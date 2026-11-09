@@ -67,11 +67,16 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     .split(",")[0]
     .trim();
 
+  const UNIFORM_NOT_FOUND_MESSAGE = "Sipariş bulunamadı veya e-posta adresi eşleşmiyor.";
+
   const parseResult = trackingRequestSchema.safeParse(req.body);
   if (!parseResult.success) {
-    return res
-      .status(400)
-      .json({ error: "Lütfen sipariş numaranızı ve e-posta adresinizi doğru giriniz." });
+    const attemptedOrder =
+      typeof (req.body as any)?.order_id_or_number === "string"
+        ? (req.body as any).order_id_or_number
+        : "unknown";
+    recordFailedAttempt(clientIp, attemptedOrder);
+    return res.status(404).json({ error: UNIFORM_NOT_FOUND_MESSAGE });
   }
 
   const { order_id_or_number, email } = parseResult.data;

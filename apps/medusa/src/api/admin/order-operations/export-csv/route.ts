@@ -82,8 +82,8 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         Number(order.shipping_total || 0).toFixed(2),
         codFee > 0 ? codFee.toFixed(2) : "0.00",
         Number(order.total || 0).toFixed(2),
-        meta.carrier_name || meta.carrier_id || "-",
-        meta.tracking_code || "-",
+        meta.carrier_name || meta.carrier_id || "",
+        meta.tracking_code || "",
       ];
 
       rows.push(row.map(sanitizeCsvCell).join(","));

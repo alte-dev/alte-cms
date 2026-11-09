@@ -24,7 +24,7 @@ export default function EmailSettingsPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
-  const [fromName, setFromName] = useState("Alte Butik");
+  const [fromName, setFromName] = useState("");
   const [fromEmail, setFromEmail] = useState("siparis@example.test");
   const [replyTo, setReplyTo] = useState("");
   const [adminNotifyEmail, setAdminNotifyEmail] = useState("");
@@ -47,7 +47,7 @@ export default function EmailSettingsPage() {
       setUsername(s.username || "");
       setHasPassword(Boolean(s.has_password));
       setPassword(""); // never show raw password
-      setFromName(s.from_name || "Alte Butik");
+      setFromName(s.from_name || "");
       setFromEmail(s.from_email || "siparis@example.test");
       setReplyTo(s.reply_to || "");
       setAdminNotifyEmail(s.admin_notify_email || "");
@@ -293,7 +293,7 @@ export default function EmailSettingsPage() {
             <div>
               <Label className="text-xs font-medium">Gönderen Adı (From Name)</Label>
               <Input
-                placeholder="Alte Butik"
+                placeholder="Örn: Mağaza Adı"
                 value={fromName}
                 onChange={(e) => setFromName(e.target.value)}
                 className="mt-1"
@@ -305,7 +305,7 @@ export default function EmailSettingsPage() {
               <Label className="text-xs font-medium">Gönderen E-posta (From Email)</Label>
               <Input
                 type="email"
-                placeholder="siparis@altebutik.com"
+                placeholder="siparis@example.test"
                 value={fromEmail}
                 onChange={(e) => setFromEmail(e.target.value)}
                 className="mt-1"
@@ -317,7 +317,7 @@ export default function EmailSettingsPage() {
               <Label className="text-xs font-medium">Yanıt Adresi (Reply-To / İsteğe Bağlı)</Label>
               <Input
                 type="email"
-                placeholder="destek@altebutik.com"
+                placeholder="destek@example.test"
                 value={replyTo}
                 onChange={(e) => setReplyTo(e.target.value)}
                 className="mt-1"
@@ -330,7 +330,7 @@ export default function EmailSettingsPage() {
               </Label>
               <Input
                 type="email"
-                placeholder="admin@altebutik.com"
+                placeholder="admin@example.test"
                 value={adminNotifyEmail}
                 onChange={(e) => setAdminNotifyEmail(e.target.value)}
                 className="mt-1"

@@ -56,7 +56,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     const subject = sanitizeHeader(
-      `[TEST] ${settings.from_name || "Alte Butik"} E-posta Bağlantı Testi`,
+      `[TEST] ${settings.from_name || "Mağaza"} E-posta Bağlantı Testi`,
     );
     const sentTime = new Date().toLocaleString("tr-TR");
 
