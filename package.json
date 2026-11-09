@@ -33,6 +33,10 @@
     "seed:content": "pnpm --filter @alte/web seed:content",
     "seed:fake": "tsx scripts/seed-fake-catalog.ts",
     "create-admin": "pnpm --filter @alte/web create-admin",
+    "migrate": "pnpm --filter @alte/medusa db:migrate && pnpm --filter @alte/web migrate",
+    "migrate:medusa": "pnpm --filter @alte/medusa db:migrate",
+    "migrate:payload": "pnpm --filter @alte/web migrate",
+    "migrate:payload:status": "pnpm --filter @alte/web migrate:status",
     "prepare": "lefthook install"
   },
   "pnpm": {

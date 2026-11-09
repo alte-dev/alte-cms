@@ -94,33 +94,10 @@ async function run() {
 
   // STEP 1: Payload Health & REST endpoints
   try {
-    // Graceful warm-up loop: wait up to 30s for server to settle and initialize Payload CMS
-    let adminRes: Response | null = null;
-    let pagesApiRes: Response | null = null;
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < 30000) {
-      try {
-        const testRes = await fetch(`${STORE_URL}/api/pages?limit=1`);
-        if (testRes.status === 200) {
-          pagesApiRes = testRes;
-          adminRes = await fetch(`${STORE_URL}/admin`, { redirect: "manual" });
-          break;
-        }
-      } catch {
-        // server still warming up / starting
-      }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-
-    if (!adminRes) {
-      adminRes = await fetch(`${STORE_URL}/admin`, { redirect: "manual" });
-    }
-    if (!pagesApiRes) {
-      pagesApiRes = await fetch(`${STORE_URL}/api/pages?limit=1`);
-    }
-
+    const adminRes = await fetch(`${STORE_URL}/admin`, { redirect: "manual" });
     const isHealthy = adminRes.status === 200 || adminRes.status === 302 || adminRes.status === 307;
+
+    const pagesApiRes = await fetch(`${STORE_URL}/api/pages?limit=1`);
     const pagesApiHealthy = pagesApiRes.status === 200;
 
     recordStep(
