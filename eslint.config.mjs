@@ -12,6 +12,8 @@ export default tseslint.config(
       "docs/measurements/**",
       "*.mjs",
       "*.cjs",
+      "**/apps/web/src/app/(payload)/admin/importMap.js",
+      "**/apps/web/src/payload-types.ts",
     ],
   },
   ...tseslint.configs.recommended,

@@ -62,6 +62,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Verify Payload Generated Types are In Sync
+        run: |
+          pnpm --filter @alte/web exec payload generate:types
+          git diff --exit-code apps/web/src/payload-types.ts
+
       - name: Typecheck
         run: pnpm typecheck
 
