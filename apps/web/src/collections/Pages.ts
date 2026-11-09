@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
-import { slugify } from "../lib/slugify";
+import { ValidationError } from "payload";
+import { slugify, validateSlugField } from "../lib/slugify";
 import { validatePuckData } from "../lib/puck/schema";
 import { seoGroup } from "../fields/seo";
 import {
@@ -46,7 +47,14 @@ export const Pages: CollectionConfig = {
           if (data.puckData) {
             const validation = validatePuckData(data.puckData);
             if (!validation.valid) {
-              throw new Error(`Güvenlik ve Şema Hatası (Puck): ${validation.error}`);
+              throw new ValidationError({
+                errors: [
+                  {
+                    message: `Güvenlik ve Şema Hatası (Puck): ${validation.error}`,
+                    path: "puckData",
+                  },
+                ],
+              });
             }
           }
 
@@ -112,6 +120,12 @@ export const Pages: CollectionConfig = {
       unique: true,
       index: true,
       label: "Sayfa URL Yolu (Slug)",
+      validate: (val: unknown, { siblingData }: any) => {
+        if (siblingData?.isHome && (val === "index" || !val)) {
+          return true;
+        }
+        return validateSlugField(val);
+      },
       admin: {
         position: "sidebar",
         description:
@@ -133,6 +147,14 @@ export const Pages: CollectionConfig = {
       name: "puckData",
       type: "json",
       label: "Görsel Düzenleyici Verisi (Puck)",
+      validate: (val: unknown) => {
+        if (!val) return true;
+        const res = validatePuckData(val);
+        if (!res.valid) {
+          return res.error || "Geçersiz puckData verisi.";
+        }
+        return true;
+      },
       admin: {
         description: "Puck görsel sayfa oluşturucu verisi.",
       },

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { slugify } from "../lib/slugify";
+import { slugify, validateSlugField } from "../lib/slugify";
 import { calculateReadingTime } from "../lib/reading-time";
 import { seoGroup } from "../fields/seo";
 import {
@@ -68,6 +68,7 @@ export const Posts: CollectionConfig = {
       unique: true,
       index: true,
       label: "Yazı URL Yolu (Slug)",
+      validate: (val: unknown) => validateSlugField(val),
       admin: {
         position: "sidebar",
         description: "Yazının URL adresi. Boş bırakılırsa başlıktan otomatik oluşturulur.",
