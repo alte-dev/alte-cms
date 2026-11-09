@@ -45,10 +45,14 @@ jobs:
       # Standalone Gitleaks binary with verified SHA-256 checksum
       # Prevents GitHub organization licensing error on alte-dev org
       - name: Install and Run Gitleaks (Secret Scanner)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           GITLEAKS_VERSION="8.24.0"
           GITLEAKS_CHECKSUM="cb49b7de5ee986510fe8666ca0273a6cc15eb82571f2f14832c9e8920751f3a4"
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          if ! gh release download "v${GITLEAKS_VERSION}" --repo gitleaks/gitleaks --pattern "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" --output gitleaks.tar.gz; then
+            curl -sSfL --retry 3 "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          fi
           echo "${GITLEAKS_CHECKSUM}  gitleaks.tar.gz" | sha256sum -c -
           tar -xzf gitleaks.tar.gz gitleaks
           chmod +x gitleaks
