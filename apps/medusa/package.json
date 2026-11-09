@@ -25,13 +25,15 @@
     "dotenv": "16.4.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "zod": "3.24.2"
+    "zod": "3.24.2",
+    "nodemailer": "10.2.1"
   },
   "devDependencies": {
     "@medusajs/cli": "2.22.4",
     "@types/node": "22.10.7",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
+    "@types/nodemailer": "8.0.2",
     "rimraf": "6.0.1",
     "ts-node": "10.9.2",
     "typescript": "5.7.3",
