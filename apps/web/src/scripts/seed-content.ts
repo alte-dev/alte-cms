@@ -5,22 +5,60 @@ async function seedContent() {
   console.log("🌱 Starting Payload CMS Content Seed...");
   const payload = await getPayload({ config: configPromise });
 
+  // 0. Ensure Test Staff Users Exist (Admin & Editor)
+  console.log("👥 Checking Staff Users...");
+  const existingAdmin = await payload.find({
+    collection: "users",
+    where: { email: { equals: "admin@example.test" } },
+    limit: 1,
+  });
+  if (existingAdmin.docs.length === 0) {
+    await payload.create({
+      collection: "users",
+      data: {
+        email: "admin@example.test",
+        password: "test-admin-password-123",
+        name: "Test Admin",
+        role: "admin",
+      },
+    });
+    console.log("  + Test Admin created: admin@example.test");
+  }
+
+  const existingEditor = await payload.find({
+    collection: "users",
+    where: { email: { equals: "editor@example.test" } },
+    limit: 1,
+  });
+  if (existingEditor.docs.length === 0) {
+    await payload.create({
+      collection: "users",
+      data: {
+        email: "editor@example.test",
+        password: "test-editor-password-123",
+        name: "Test Editör",
+        role: "editor",
+      },
+    });
+    console.log("  + Test Editor created: editor@example.test");
+  }
+
   // 1. Site Settings Global
   console.log("⚙️  Updating Site Settings Global...");
   await payload.updateGlobal({
     slug: "site-settings",
     data: {
-      storeName: "Çisem Elif Boz",
+      storeName: "Demo Mağaza",
       storeDescription:
         "Özenle tasarlanmış giyim, aksesuar ve yaşam ürünleri. Zarafet, doğallık ve kaliteli işçilik.",
-      contactEmail: "iletisim@cisemelifboz.com",
+      contactEmail: "iletisim@example.test",
       contactPhone: "0850 000 00 00",
       address: "Nişantaşı Mah. Abdi İpekçi Cad. No: 42/3 Şişli / İstanbul",
       socialMedia: {
-        instagram: "https://instagram.com/cisemelifboz",
-        facebook: "https://facebook.com/cisemelifboz",
-        twitter: "https://x.com/cisemelifboz",
-        youtube: "https://youtube.com/@cisemelifboz",
+        instagram: "https://instagram.com/example",
+        facebook: "https://facebook.com/example",
+        twitter: "https://x.com/example",
+        youtube: "https://youtube.com/@example",
       },
     },
   });
@@ -120,50 +158,64 @@ async function seedContent() {
       content: {
         root: {
           type: "root",
+          direction: "ltr" as const,
+          format: "" as const,
+          indent: 0,
+          version: 1,
           children: [
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Kapsül gardırop kavramı, birbiriyle uyumlu, yüksek kaliteli ve zamansız parçalardan oluşan minimalist bir giyim koleksiyonudur. Gardırobunuzu sadeleştirerek hem her sabah 'ne giyeceğim' stresinden kurtulabilir hem de her daim özenli ve şık görünebilirsiniz.",
                 },
               ],
             },
             {
               type: "heading",
+              version: 1,
               tag: "h2",
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "1. Nötr Renk Paleti ile Temeli Atın",
                 },
               ],
             },
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Siyah, beyaz, bej, ekru ve lacivert gibi temel renkler, tüm parçaların birbiriyle zahmetsizce eşleşmesini sağlar. Sezon renklerini ise küçük aksesuarlarla koleksiyonunuza dahil edebilirsiniz.",
                 },
               ],
             },
             {
               type: "heading",
+              version: 1,
               tag: "h2",
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "2. Doğal Kumaşlara Yatırım Yapın",
                 },
               ],
             },
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Pamuk, keten ve yün gibi doğal dokular hem nefes alır hem de uzun yıllar formunu kaybetmeden ilk günkü zarafetini korur.",
                 },
               ],
@@ -181,31 +233,41 @@ async function seedContent() {
       content: {
         root: {
           type: "root",
+          direction: "ltr" as const,
+          format: "" as const,
+          indent: 0,
+          version: 1,
           children: [
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Keten, insanlık tarihinin bilinen en eski ve en asil kumaşlarından biridir. Dayanıklılığı ve kendine has doğal kırışıklıkları ile rahat şıklığın simgesidir.",
                 },
               ],
             },
             {
               type: "heading",
+              version: 1,
               tag: "h2",
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Yıkama Sıcaklığı ve Deterjan Seçimi",
                 },
               ],
             },
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Keten kıyafetlerinizi daima 30 dereceyi geçmeyen ılık veya soğuk suda, hassas yıkama programında yıkayınız. Ağartıcı ve ağır kimyasallar kumaşın doğal liflerine zarar verebilir.",
                 },
               ],
@@ -223,12 +285,18 @@ async function seedContent() {
       content: {
         root: {
           type: "root",
+          direction: "ltr" as const,
+          format: "" as const,
+          indent: 0,
+          version: 1,
           children: [
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
+                  version: 1,
                   text: "Yeni sezon koleksiyonumuzu tasarlarken doğanın sunduğu huzurlu tonlardan ve zamansız silüetlerden ilham aldık. Her bir dikiş, kumaşın akışkanlığına saygı duyularak titizlikle hazırlandı.",
                 },
               ],
@@ -258,9 +326,9 @@ async function seedContent() {
           slug: post.slug,
           excerpt: post.excerpt,
           content: post.content,
-          categories: categoryId ? [categoryId] : [],
+          categories: categoryId ? [Number(categoryId)] : [],
           author: defaultAuthorId,
-          _status: "published",
+          _status: "published" as const,
         },
       });
       console.log(`  + Post '${post.title}' created and published.`);
@@ -274,7 +342,7 @@ async function seedContent() {
   const hakkimizdaData = {
     title: "Hakkımızda",
     slug: "hakkimizda",
-    _status: "published",
+    _status: "published" as const,
     puckData: {
       root: { props: { title: "Hakkımızda" } },
       content: [
@@ -293,7 +361,7 @@ async function seedContent() {
           type: "RichText",
           props: {
             content:
-              "Çisem Elif Boz markası olarak, her parçanın kendine has bir hikayesi olduğuna inanıyoruz. Üretim sürecimizde çevreye duyarlı, yüksek kaliteli doğal kumaşları ve usta işçiliği tercih ediyoruz.\n\nAmacımız yalnızca giysi üretmek değil, kendinizi özel ve özgüvenli hissettiren zamansız bir deneyim sunmaktır.",
+              "Mağaza olarak, her parçanın kendine has bir hikayesi olduğuna inanıyoruz. Üretim sürecimizde çevreye duyarlı, yüksek kaliteli doğal kumaşları ve usta işçiliği tercih ediyoruz.\n\nAmacımız yalnızca giysi üretmek değil, kendinizi özel ve özgüvenli hissettiren zamansız bir deneyim sunmaktır.",
             maxWidth: "prose-lg",
           },
         },
@@ -327,7 +395,7 @@ async function seedContent() {
   } else {
     await payload.create({
       collection: "pages",
-      data: hakkimizdaData as any,
+      data: hakkimizdaData,
     });
     console.log("  + Page 'hakkimizda' created and published.");
   }
@@ -336,7 +404,7 @@ async function seedContent() {
   const iletisimData = {
     title: "İletişim",
     slug: "iletisim",
-    _status: "published",
+    _status: "published" as const,
     puckData: {
       root: { props: { title: "İletişim" } },
       content: [
@@ -354,7 +422,7 @@ async function seedContent() {
           type: "ContactInfo",
           props: {
             title: "Müşteri Hizmetleri & Atölye",
-            email: "iletisim@cisemelifboz.com",
+            email: "iletisim@example.test",
             phone: "0850 000 00 00",
             address: "Nişantaşı Mah. Abdi İpekçi Cad. No: 42/3 Şişli / İstanbul",
             workingHours: "Hafta içi: 09:00 - 18:00 (Hafta sonu kapalı)",
@@ -383,7 +451,7 @@ async function seedContent() {
   } else {
     await payload.create({
       collection: "pages",
-      data: iletisimData as any,
+      data: iletisimData,
     });
     console.log("  + Page 'iletisim' created and published.");
   }
@@ -403,7 +471,7 @@ async function seedContent() {
       data: {
         title: "Mesafeli Satış Sözleşmesi",
         slug: "mesafeli-satis-sozlesmesi",
-        _status: "draft",
+        _status: "draft" as const,
         puckData: {
           root: { props: { title: "Mesafeli Satış Sözleşmesi" } },
           content: [
@@ -417,7 +485,7 @@ async function seedContent() {
             },
           ],
         },
-      } as any,
+      },
     });
     console.log("  + Legal Page 'mesafeli-satis-sozlesmesi' created as DRAFT.");
   }
@@ -437,7 +505,7 @@ async function seedContent() {
       data: {
         title: "KVKK Aydınlatma Metni",
         slug: "kvkk",
-        _status: "draft",
+        _status: "draft" as const,
         puckData: {
           root: { props: { title: "KVKK Aydınlatma Metni" } },
           content: [
@@ -451,7 +519,7 @@ async function seedContent() {
             },
           ],
         },
-      } as any,
+      },
     });
     console.log("  + Legal Page 'kvkk' created as DRAFT.");
   }

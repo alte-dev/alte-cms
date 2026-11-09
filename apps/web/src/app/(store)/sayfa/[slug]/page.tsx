@@ -2,6 +2,7 @@ import { notFound, redirect, RedirectType } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublishedPageBySlug, getSiteSettings, findRedirect } from "@/lib/payload/content";
 import { RenderPuckContent } from "@/lib/puck/render";
+import { safeParsePuckData } from "@/lib/puck/schema";
 import { generateJsonLdWebPage } from "@/lib/seo/json-ld";
 
 interface Props {
@@ -16,12 +17,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!pageDoc) {
     return {
-      title: "Sayfa Bulunamadı | Çisem Elif Boz",
+      title: "Sayfa Bulunamadı | Mağaza",
     };
   }
 
-  const storeName = settings?.storeName || "Çisem Elif Boz";
-  const seo = (pageDoc as any)?.seo;
+  const storeName = settings?.storeName || "Mağaza";
+  const seo = pageDoc.seo;
   const title = seo?.metaTitle || `${pageDoc.title} | ${storeName}`;
   const description = seo?.metaDescription || settings?.storeDescription || "";
   const noIndex = Boolean(seo?.noIndex);
@@ -49,7 +50,7 @@ export default async function DynamicStorePage({ params }: Props) {
   const pageDoc = await getPublishedPageBySlug(slug);
 
   // If page is not found or not published, check for configured redirects
-  if (!pageDoc || (pageDoc as any)._status !== "published") {
+  if (!pageDoc || pageDoc._status !== "published") {
     const matchedRedirect =
       (await findRedirect(`/sayfa/${slug}`)) || (await findRedirect(`/${slug}`));
 
@@ -63,21 +64,29 @@ export default async function DynamicStorePage({ params }: Props) {
     notFound();
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://cisemelifboz.com";
+  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3100";
   const pageUrl = `${baseUrl}/sayfa/${slug}`;
 
   const jsonLd = generateJsonLdWebPage({
     title: pageDoc.title || "Sayfa",
-    description: (pageDoc as any)?.seo?.metaDescription,
+    description: pageDoc.seo?.metaDescription || undefined,
     url: pageUrl,
     datePublished: pageDoc.createdAt,
     dateModified: pageDoc.updatedAt,
   });
 
+  const safePuck = safeParsePuckData(pageDoc.puckData);
+
   return (
     <article className="w-full">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
-      <RenderPuckContent data={pageDoc.puckData} />
+      {safePuck ? (
+        <RenderPuckContent data={safePuck} />
+      ) : (
+        <div className="max-w-4xl mx-auto px-4 py-16 text-center text-zinc-500">
+          Bu sayfada henüz görüntülenecek içerik bulunmuyor.
+        </div>
+      )}
     </article>
   );
 }

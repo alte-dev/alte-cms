@@ -4,6 +4,11 @@ import type { Metadata } from "next";
 import { getPublishedPostBySlug, getSiteSettings } from "@/lib/payload/content";
 import { LexicalRenderer } from "@/components/blog/LexicalRenderer";
 import { generateJsonLdBlogPosting } from "@/lib/seo/json-ld";
+import {
+  isPopulatedMedia,
+  isPopulatedUser,
+  getPopulatedCategories,
+} from "@/lib/payload/relationships";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -16,15 +21,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const [post, settings] = await Promise.all([getPublishedPostBySlug(slug), getSiteSettings()]);
 
   if (!post) {
-    return { title: "Yazı Bulunamadı | Çisem Elif Boz" };
+    return { title: "Yazı Bulunamadı | Mağaza" };
   }
 
-  const storeName = settings?.storeName || "Çisem Elif Boz";
-  const seo = (post as any)?.seo;
+  const storeName = settings?.storeName || "Mağaza";
+  const seo = post.seo;
   const title = seo?.metaTitle || `${post.title} | ${storeName}`;
   const description = seo?.metaDescription || post.excerpt || "";
   const noIndex = Boolean(seo?.noIndex);
-  const coverUrl = post.coverImage?.url;
+  const coverMedia = isPopulatedMedia(post.coverImage) ? post.coverImage : null;
+  const coverUrl = coverMedia?.url || undefined;
 
   return {
     title,
@@ -52,19 +58,23 @@ export default async function BlogPostPage({ params }: Props) {
   const [post, settings] = await Promise.all([getPublishedPostBySlug(slug), getSiteSettings()]);
 
   // Drafts or missing posts return 404
-  if (!post || (post as any)._status !== "published") {
+  if (!post || post._status !== "published") {
     notFound();
   }
 
-  const storeName = settings?.storeName || "Çisem Elif Boz";
-  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://cisemelifboz.com";
+  const storeName = settings?.storeName || "Mağaza";
+  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3100";
   const postUrl = `${baseUrl}/blog/${slug}`;
 
   // Safe author name (author email is NEVER accessed or rendered)
-  const authorName = post.author?.name || "Editör";
+  const authorDoc = isPopulatedUser(post.author) ? post.author : null;
+  const authorName = authorDoc?.name || "Editör";
 
-  const coverUrl = post.coverImage?.url;
-  const coverAlt = post.coverImage?.alt || post.title;
+  const coverMedia = isPopulatedMedia(post.coverImage) ? post.coverImage : null;
+  const coverUrl = coverMedia?.url || null;
+  const coverAlt = coverMedia?.alt || post.title;
+
+  const categories = getPopulatedCategories(post.categories);
 
   const dateStr = post.createdAt
     ? new Date(post.createdAt).toLocaleDateString("tr-TR", {
@@ -82,7 +92,7 @@ export default async function BlogPostPage({ params }: Props) {
     dateModified: post.updatedAt,
     authorName,
     publisherName: storeName,
-    imageUrl: coverUrl,
+    imageUrl: coverUrl || undefined,
   });
 
   return (
@@ -99,9 +109,9 @@ export default async function BlogPostPage({ params }: Props) {
           &larr; Tüm Blog Yazıları
         </Link>
 
-        {Array.isArray(post.categories) && post.categories.length > 0 && (
+        {categories.length > 0 && (
           <div className="flex items-center gap-2">
-            {post.categories.map((cat: any) => (
+            {categories.map((cat) => (
               <Link
                 key={cat.id}
                 href={`/blog/kategori/${cat.slug}`}
@@ -158,7 +168,7 @@ export default async function BlogPostPage({ params }: Props) {
         >
           &larr; Blog Anasayfasına Dön
         </Link>
-        <span className="text-xs text-zinc-500">Çisem Elif Boz Blog</span>
+        <span className="text-xs text-zinc-500">{storeName} Blog</span>
       </div>
     </article>
   );

@@ -6,6 +6,7 @@ import { getProducts, getCategories, getCollections } from "@/lib/medusa/product
 import { ProductCard } from "@/components/product-card";
 import { getPublishedHomePage, getSiteSettings } from "@/lib/payload/content";
 import { RenderPuckContent } from "@/lib/puck/render";
+import { safeParsePuckData } from "@/lib/puck/schema";
 import { generateJsonLdWebsite, generateJsonLdOrganization } from "@/lib/seo/json-ld";
 
 export const dynamic = "force-dynamic";
@@ -13,14 +14,14 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const [homePage, settings] = await Promise.all([getPublishedHomePage(), getSiteSettings()]);
 
-  const storeName = settings?.storeName || "Çisem Elif Boz";
+  const storeName = settings?.storeName || "Mağaza";
   const defaultDesc =
     settings?.storeDescription ||
     "Özenle tasarlanmış giyim, aksesuar ve yaşam ürünleri. Türkiye geneli hızlı teslimat ve güvenli ödeme.";
 
-  const title = (homePage as any)?.seo?.metaTitle || `${storeName} | Resmi Mağaza`;
-  const description = (homePage as any)?.seo?.metaDescription || defaultDesc;
-  const noIndex = Boolean((homePage as any)?.seo?.noIndex);
+  const title = homePage?.seo?.metaTitle || `${storeName} | Resmi Mağaza`;
+  const description = homePage?.seo?.metaDescription || defaultDesc;
+  const noIndex = Boolean(homePage?.seo?.noIndex);
 
   return {
     title,
@@ -42,20 +43,21 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   const [homePage, settings] = await Promise.all([getPublishedHomePage(), getSiteSettings()]);
 
-  const storeName = settings?.storeName || "Çisem Elif Boz";
-  const storeUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://cisemelifboz.com";
+  const storeName = settings?.storeName || "Mağaza";
+  const storeUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3100";
 
   const jsonLdWebsite = generateJsonLdWebsite(storeName, storeUrl);
   const jsonLdOrg = generateJsonLdOrganization(storeName, storeUrl);
 
-  // If a published isHome page exists with Puck content, render it via Puck
-  if (homePage?.puckData) {
+  // If a published isHome page exists with valid Puck content, render it via Puck
+  const safePuck = safeParsePuckData(homePage?.puckData);
+  if (safePuck) {
     return (
       <div className="w-full">
         {/* JSON-LD Structured Data */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdWebsite }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdOrg }} />
-        <RenderPuckContent data={homePage.puckData} />
+        <RenderPuckContent data={safePuck} />
       </div>
     );
   }
