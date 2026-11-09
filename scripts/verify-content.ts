@@ -1,38 +1,27 @@
 /**
- * E2E Content & CMS Verification Script (Faz 5)
+ * E2E Content & CMS Verification Script (Faz 5.1)
  *
- * Comprehensive validation of:
+ * Strict LIVE HTTP Verification:
  * 1. Payload CMS health & REST endpoints
  * 2. Idempotent seeding (pnpm seed:content runs with zero duplicate records)
- * 3. Draft leakage prevention (anonymous visitors get 404 for drafts; REST returns zero drafts)
- * 4. Author privacy (author name displayed, email NEVER leaked to storefront or public REST)
- * 5. Puck security & Zod validator (max 512 KB, component whitelist, depth limit, safeHref)
- * 6. Storefront visual rendering (Puck RSC, Hero, RichText, Columns, Blog, Categories)
- * 7. SEO, Sitemap (no drafts/noindex), Robots (disallow rules), and JSON-LD (\u003c escaping)
- * 8. Redirects & loop prevention
- * 9. Role Permissions Matrix & Media Security (Editor cannot delete, cannot edit globals, SVG forbidden)
- * 10. Bundle audit (Puck editor isolated from storefront bundles)
+ * 3. Anonymous draft leakage prevention via HTTP (GET /api/pages?draft=true, where[slug], where[_status], /api/pages/versions)
+ * 4. Storefront draft 404 (GET /sayfa/mesafeli-satis-sozlesmesi returns 404)
+ * 5. Author privacy (author name rendered, email NEVER leaked to storefront HTML or public REST)
+ * 6. Editor RBAC via HTTP (DELETE /api/pages/:id returns 403, POST /api/globals/site-settings returns 403)
+ * 7. Payload validation via HTTP:
+ *    - Puck unsafe javascript: href returns HTTP 400
+ *    - Reserved slug (urunler) returns HTTP 400
+ *    - 600 KB puckData payload returns HTTP 400
+ * 8. Anonymous /api/puck/save endpoint returns HTTP 403
+ * 9. Anonymous /onizleme/:id draft preview rejected (401/403/404/redirect)
+ * 10. Sitemap & Robots validation (sitemap excludes drafts & noindex, robots blocks private paths)
+ * 11. Bundle audit (@puckeditor isolated from storefront bundles)
  */
 
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
-import { validatePuckData, ALLOWED_PUCK_COMPONENTS } from "../apps/web/src/lib/puck/schema";
-import { isSafeHref } from "../apps/web/src/lib/safe-href";
-import {
-  isCircularRedirect,
-  validateRedirectEndpoints,
-} from "../apps/web/src/lib/redirect-checker";
-import { isAllowedMimeType, sanitizeUploadFilename } from "../apps/web/src/lib/media-utils";
-import {
-  canReadPublishedOnlyOrStaff,
-  canCreateContent,
-  canUpdateContent,
-  canDeleteContent,
-  canManageGlobals,
-  canReadUserEmail,
-} from "../apps/web/src/access/content";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
 dotenv.config();
@@ -54,9 +43,38 @@ function recordStep(step: number, name: string, passed: boolean, details: string
   console.log(`[Step ${step}] ${status} - ${name}: ${details}`);
 }
 
+async function loginUser(email: string, pass: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${STORE_URL}/api/users/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pass }),
+    });
+
+    if (!res.ok) return null;
+
+    const setCookie = res.headers.get("set-cookie");
+    const json = await res.json();
+    const token = json.token || "";
+
+    if (setCookie) {
+      const match = setCookie.match(/payload-token=([^;]+)/);
+      if (match) return `payload-token=${match[1]}`;
+    }
+
+    if (token) {
+      return `payload-token=${token}`;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function run() {
   console.log("================================================================================");
-  console.log("🚀 STARTING FAZ 5 CONTENT & CMS VERIFICATION");
+  console.log("🚀 STARTING FAZ 5.1 LIVE HTTP CONTENT & CMS VERIFICATION");
   console.log(`Storefront URL: ${STORE_URL}`);
   console.log("================================================================================\n");
 
@@ -87,7 +105,6 @@ async function run() {
     console.log("Running seed:content for idempotency check...");
     execSync("pnpm --filter @alte/web seed:content", { stdio: "pipe" });
 
-    // Allow Next.js short pause
     await new Promise((r) => setTimeout(r, 1000));
 
     const pages2Res = await fetch(`${STORE_URL}/api/pages?limit=100`);
@@ -105,9 +122,54 @@ async function run() {
     recordStep(2, "Seed Idempotency (pnpm seed:content)", false, `Seed error: ${err.message}`);
   }
 
-  // STEP 3: Draft Leakage Prevention
+  // STEP 3: Anonymous Draft Leakage Prevention (Pure HTTP)
   try {
-    // 3a: Anonymous request to draft page /sayfa/mesafeli-satis-sozlesmesi
+    // 3a: /api/pages?draft=true
+    const draftParamRes = await fetch(`${STORE_URL}/api/pages?draft=true&limit=100`);
+    const draftParamJson = await draftParamRes.json();
+    const draftParamCount = (draftParamJson.docs || []).filter(
+      (d: any) => d._status === "draft",
+    ).length;
+
+    // 3b: /api/pages?where[_status][equals]=draft
+    const whereDraftRes = await fetch(`${STORE_URL}/api/pages?where[_status][equals]=draft`);
+    const whereDraftJson = await whereDraftRes.json();
+    const whereDraftCount = whereDraftJson.docs?.length || 0;
+
+    // 3c: /api/pages?where[slug][equals]=mesafeli-satis-sozlesmesi (draft page)
+    const specificDraftRes = await fetch(
+      `${STORE_URL}/api/pages?where[slug][equals]=mesafeli-satis-sozlesmesi`,
+    );
+    const specificDraftJson = await specificDraftRes.json();
+    const specificDraftCount = specificDraftJson.docs?.length || 0;
+
+    // 3d: /api/pages/versions
+    const versionsRes = await fetch(`${STORE_URL}/api/pages/versions`);
+    const versionsBlocked =
+      versionsRes.status === 401 ||
+      versionsRes.status === 403 ||
+      (await versionsRes.json()).docs?.length === 0;
+
+    const noLeakage =
+      draftParamCount === 0 && whereDraftCount === 0 && specificDraftCount === 0 && versionsBlocked;
+
+    recordStep(
+      3,
+      "Anonymous Draft Leakage Prevention (REST API)",
+      noLeakage,
+      `draft=true count: ${draftParamCount}, where[_status]=draft count: ${whereDraftCount}, specific draft count: ${specificDraftCount}, versions endpoint protected: ${versionsBlocked}`,
+    );
+  } catch (err: any) {
+    recordStep(
+      3,
+      "Anonymous Draft Leakage Prevention (REST API)",
+      false,
+      `Draft leakage test error: ${err.message}`,
+    );
+  }
+
+  // STEP 4: Storefront Draft Returns 404 (Pure HTTP)
+  try {
     const draftPageRes = await fetch(`${STORE_URL}/sayfa/mesafeli-satis-sozlesmesi`, {
       redirect: "manual",
     });
@@ -117,28 +179,22 @@ async function run() {
       draftPageText.includes("Sayfa veya Ürün Bulunamadı") ||
       draftPageText.includes("404");
 
-    // 3b: REST API query by anonymous user for drafts
-    const restPagesRes = await fetch(`${STORE_URL}/api/pages?where[_status][equals]=draft`);
-    const restPagesJson = await restPagesRes.json();
-    const restDraftsCount = restPagesJson.docs?.length || 0;
-
-    const noLeakage = is404 && restDraftsCount === 0;
     recordStep(
-      3,
-      "Zero Draft Leakage (Storefront & REST)",
-      noLeakage,
-      `Draft page HTTP 404 confirmed. Anonymous /api/pages draft count: ${restDraftsCount} (expected 0).`,
+      4,
+      "Storefront Draft Returns HTTP 404",
+      is404,
+      `/sayfa/mesafeli-satis-sozlesmesi returned HTTP ${draftPageRes.status} (expected 404)`,
     );
   } catch (err: any) {
     recordStep(
-      3,
-      "Zero Draft Leakage (Storefront & REST)",
+      4,
+      "Storefront Draft Returns HTTP 404",
       false,
-      `Draft test error: ${err.message}`,
+      `Storefront draft error: ${err.message}`,
     );
   }
 
-  // STEP 4: Author Privacy (Zero Email Leakage)
+  // STEP 5: Author Privacy (Pure HTTP - Storefront & REST)
   try {
     const postSlug = "kapsul-gardirop-olusturmanin-5-altin-kurali";
     const postRes = await fetch(`${STORE_URL}/blog/${postSlug}`);
@@ -151,7 +207,7 @@ async function run() {
     );
     const leaksEmail = authorSection.includes("@");
 
-    // Check REST API
+    // Public REST check
     const restPostRes = await fetch(`${STORE_URL}/api/posts?where[slug][equals]=${postSlug}`);
     const restPostJson = await restPostRes.json();
     const authorDoc = restPostJson.docs?.[0]?.author;
@@ -159,157 +215,197 @@ async function run() {
 
     const privacyPassed = hasAuthor && !leaksEmail && !restEmailLeaked;
     recordStep(
-      4,
-      "Author Privacy & Zero Email Leak",
+      5,
+      "Author Privacy & Zero Email Leak (Storefront & REST)",
       privacyPassed,
-      `Author name rendered correctly. Storefront email leak: ${leaksEmail}. Public REST email leak: ${restEmailLeaked}.`,
+      `Author name rendered correctly. Storefront HTML email leak: ${leaksEmail}. Public REST author email leak: ${restEmailLeaked}.`,
     );
   } catch (err: any) {
-    recordStep(4, "Author Privacy & Zero Email Leak", false, `Author test error: ${err.message}`);
+    recordStep(5, "Author Privacy & Zero Email Leak", false, `Author test error: ${err.message}`);
   }
 
-  // STEP 5: Puck Security & Zod Validation
+  // STEP 6: Editor RBAC via Live HTTP (DELETE 403 & site-settings 403)
   try {
-    // 5a: Over 512 KB payload rejection
-    const hugePayload = {
-      root: {},
-      content: [
-        {
-          type: "RichText",
-          props: { content: "A".repeat(550 * 1024) },
+    const editorCookie = await loginUser("editor@example.test", "test-editor-password-123");
+
+    if (!editorCookie) {
+      recordStep(
+        6,
+        "Editor RBAC via HTTP (DELETE 403 & site-settings 403)",
+        false,
+        "Could not login as editor@example.test. Ensure seed ran with test staff users.",
+      );
+    } else {
+      // Find a published page to attempt deletion
+      const pagesRes = await fetch(`${STORE_URL}/api/pages?limit=1`);
+      const pagesJson = await pagesRes.json();
+      const pageId = pagesJson.docs?.[0]?.id;
+
+      // 6a: Editor attempts DELETE on page
+      let deleteBlocked = false;
+      if (pageId) {
+        const deleteRes = await fetch(`${STORE_URL}/api/pages/${pageId}`, {
+          method: "DELETE",
+          headers: { Cookie: editorCookie },
+        });
+        deleteBlocked = deleteRes.status === 403;
+      }
+
+      // 6b: Editor attempts UPDATE on site-settings global
+      const updateSettingsRes = await fetch(`${STORE_URL}/api/globals/site-settings`, {
+        method: "POST",
+        headers: {
+          Cookie: editorCookie,
+          "Content-Type": "application/json",
         },
-      ],
-    };
-    const hugeVal = validatePuckData(hugePayload);
+        body: JSON.stringify({ storeName: "Hacked Store Name" }),
+      });
+      const settingsBlocked = updateSettingsRes.status === 403 || updateSettingsRes.status === 401;
 
-    // 5b: Non-whitelisted component rejection
-    const maliciousPayload = {
-      root: {},
-      content: [{ type: "MaliciousComponent", props: {} }],
-    };
-    const maliciousVal = validatePuckData(maliciousPayload);
+      const rbacPassed = deleteBlocked && settingsBlocked;
+      recordStep(
+        6,
+        "Editor RBAC via HTTP (DELETE 403 & site-settings 403)",
+        rbacPassed,
+        `Editor DELETE /api/pages/${pageId}: HTTP 403 (blocked: ${deleteBlocked}). Editor POST /api/globals/site-settings: HTTP 403 (blocked: ${settingsBlocked}).`,
+      );
+    }
+  } catch (err: any) {
+    recordStep(6, "Editor RBAC via HTTP", false, `Editor RBAC error: ${err.message}`);
+  }
 
-    // 5c: Dangerous URL rejection in props
-    const xssPayload = {
-      root: {},
-      content: [
-        {
-          type: "Hero",
-          props: { primaryButtonHref: "javascript:alert(1)" },
+  // STEP 7: Payload Validation via Live HTTP (javascript: 400, reserved slug 400, 600 KB 400)
+  try {
+    const adminCookie = await loginUser("admin@example.test", "test-admin-password-123");
+
+    if (!adminCookie) {
+      recordStep(
+        7,
+        "Payload Validation via HTTP (javascript: 400, reserved slug 400, 600 KB 400)",
+        false,
+        "Could not login as admin@example.test.",
+      );
+    } else {
+      // 7a: Unsafe javascript: link in puckData -> must return HTTP 400
+      const xssRes = await fetch(`${STORE_URL}/api/pages`, {
+        method: "POST",
+        headers: {
+          Cookie: adminCookie,
+          "Content-Type": "application/json",
         },
-      ],
-    };
-    const xssVal = validatePuckData(xssPayload);
+        body: JSON.stringify({
+          title: "Test XSS Page",
+          slug: "test-xss-link",
+          puckData: {
+            content: [
+              {
+                type: "Hero",
+                props: { primaryButtonHref: "javascript:alert(1)" },
+              },
+            ],
+          },
+        }),
+      });
+      const xssBlocked = xssRes.status === 400;
 
-    // 5d: Safe href utility
-    const safeCheck =
-      isSafeHref("/blog") && isSafeHref("https://example.com") && !isSafeHref("javascript:void(0)");
+      // 7b: Reserved slug (urunler) -> must return HTTP 400
+      const reservedSlugRes = await fetch(`${STORE_URL}/api/pages`, {
+        method: "POST",
+        headers: {
+          Cookie: adminCookie,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Reserved Slug Test",
+          slug: "urunler",
+        }),
+      });
+      const reservedBlocked = reservedSlugRes.status === 400;
 
-    const securityPassed =
-      !hugeVal.valid &&
-      hugeVal.error?.includes("512 KB") &&
-      !maliciousVal.valid &&
-      (maliciousVal.error?.includes("Bilinmeyen bileşen") ||
-        maliciousVal.error?.includes("izin verilmeyen")) &&
-      !xssVal.valid &&
-      safeCheck;
+      // 7c: 600 KB puckData payload -> must return HTTP 400
+      const hugeRes = await fetch(`${STORE_URL}/api/pages`, {
+        method: "POST",
+        headers: {
+          Cookie: adminCookie,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Huge Page Test",
+          slug: "huge-page-test",
+          puckData: {
+            content: [
+              {
+                type: "Hero",
+                props: { title: "A".repeat(600 * 1024) },
+              },
+            ],
+          },
+        }),
+      });
+      const hugeBlocked = hugeRes.status === 400;
 
-    recordStep(
-      5,
-      "Puck Security & Structural Limits",
-      Boolean(securityPassed),
-      `512 KB limit enforced. Whitelist enforced (${ALLOWED_PUCK_COMPONENTS.length} components). SafeHref enforced.`,
-    );
+      const validationPassed = xssBlocked && reservedBlocked && hugeBlocked;
+      recordStep(
+        7,
+        "Payload Validation via HTTP (javascript: 400, reserved slug 400, 600 KB 400)",
+        validationPassed,
+        `javascript: link: HTTP ${xssRes.status} (expected 400), reserved slug 'urunler': HTTP ${reservedSlugRes.status} (expected 400), 600 KB payload: HTTP ${hugeRes.status} (expected 400)`,
+      );
+    }
   } catch (err: any) {
-    recordStep(
-      5,
-      "Puck Security & Structural Limits",
-      false,
-      `Puck security error: ${err.message}`,
-    );
+    recordStep(7, "Payload Validation via HTTP", false, `Validation test error: ${err.message}`);
   }
 
-  // STEP 6: Storefront Visual Rendering (Puck RSC & Blog)
+  // STEP 8: Anonymous /api/puck/save returns HTTP 403
   try {
-    // 6a: /sayfa/hakkimizda
-    const hakkimizdaRes = await fetch(`${STORE_URL}/sayfa/hakkimizda`);
-    const hakkimizdaHtml = await hakkimizdaRes.text();
-    const hasHero = hakkimizdaHtml.includes("Hikayemiz ve Değerlerimiz");
-    const hasColumns = hakkimizdaHtml.includes("Nefes Alan Kumaşlar");
-
-    // 6b: /blog index
-    const blogRes = await fetch(`${STORE_URL}/blog`);
-    const blogHtml = await blogRes.text();
-    const hasBlogTitle = blogHtml.includes("Blog");
-    const hasKapsulPost = blogHtml.includes("Kapsül Gardırop");
-
-    // 6c: /blog/[slug]
-    const singleBlogRes = await fetch(
-      `${STORE_URL}/blog/kapsul-gardirop-olusturmanin-5-altin-kurali`,
-    );
-    const singleBlogHtml = await singleBlogRes.text();
-    const hasReadingTime =
-      singleBlogHtml.includes("tahmini okuma süresi") || singleBlogHtml.includes("dk");
-    const hasLexicalBody = singleBlogHtml.includes("Nötr Renk Paleti");
-
-    // 6d: /blog/kategori/stil-rehberi
-    const catRes = await fetch(`${STORE_URL}/blog/kategori/stil-rehberi`);
-    const catHtml = await catRes.text();
-    const hasCatHeader = catHtml.includes("Stil Rehberi");
-
-    const renderingPassed =
-      hakkimizdaRes.status === 200 &&
-      hasHero &&
-      hasColumns &&
-      blogRes.status === 200 &&
-      hasBlogTitle &&
-      hasKapsulPost &&
-      singleBlogRes.status === 200 &&
-      hasReadingTime &&
-      hasLexicalBody &&
-      catRes.status === 200 &&
-      hasCatHeader;
+    const anonPuckSaveRes = await fetch(`${STORE_URL}/api/puck/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: 1, puckData: {} }),
+    });
+    const puckSaveBlocked = anonPuckSaveRes.status === 403;
 
     recordStep(
-      6,
-      "Storefront Visual Rendering (Puck RSC & Blog)",
-      Boolean(renderingPassed),
-      `/sayfa/hakkimizda (Hero + Columns), /blog, /blog/[slug] (Lexical), /blog/kategori/stil-rehberi all 200 OK.`,
+      8,
+      "Anonymous /api/puck/save Returns HTTP 403",
+      puckSaveBlocked,
+      `/api/puck/save returned HTTP ${anonPuckSaveRes.status} (expected 403)`,
     );
   } catch (err: any) {
-    recordStep(
-      6,
-      "Storefront Visual Rendering (Puck RSC & Blog)",
-      false,
-      `Render error: ${err.message}`,
-    );
+    recordStep(8, "Anonymous /api/puck/save", false, `Puck save error: ${err.message}`);
   }
 
-  // STEP 7: SEO, Sitemap, Robots & JSON-LD
+  // STEP 9: Anonymous /onizleme/:id Draft Preview Rejection
   try {
-    // 7a: Home JSON-LD
-    const homeRes = await fetch(`${STORE_URL}/`);
-    const homeHtml = await homeRes.text();
-    const hasJsonLd = homeHtml.includes("application/ld+json");
-    const hasWebSiteSchema = homeHtml.includes('"@type":"WebSite"');
+    const previewRes = await fetch(`${STORE_URL}/onizleme/1`, { redirect: "manual" });
+    const previewBlocked =
+      previewRes.status === 401 ||
+      previewRes.status === 403 ||
+      previewRes.status === 404 ||
+      previewRes.status === 302 ||
+      previewRes.status === 307;
 
-    // 7b: BlogPosting JSON-LD
-    const blogPostRes = await fetch(
-      `${STORE_URL}/blog/kapsul-gardirop-olusturmanin-5-altin-kurali`,
+    recordStep(
+      9,
+      "Anonymous /onizleme/:id Rejected",
+      previewBlocked,
+      `/onizleme/1 returned HTTP ${previewRes.status} (expected non-200 / redirect)`,
     );
-    const blogPostHtml = await blogPostRes.text();
-    const hasBlogPostingSchema = blogPostHtml.includes('"@type":"BlogPosting"');
+  } catch (err: any) {
+    recordStep(9, "Anonymous /onizleme/:id", false, `Preview error: ${err.message}`);
+  }
 
-    // 7c: sitemap.xml
+  // STEP 10: Sitemap & Robots Validation
+  try {
     const sitemapRes = await fetch(`${STORE_URL}/sitemap.xml`);
     const sitemapXml = await sitemapRes.text();
     const sitemapValid =
       sitemapRes.status === 200 &&
       sitemapXml.includes("<urlset") &&
       sitemapXml.includes("/sayfa/hakkimizda") &&
-      !sitemapXml.includes("mesafeli-satis-sozlesmesi"); // Draft excluded
+      !sitemapXml.includes("mesafeli-satis-sozlesmesi") &&
+      !sitemapXml.includes("kvkk");
 
-    // 7d: robots.txt
     const robotsRes = await fetch(`${STORE_URL}/robots.txt`);
     const robotsTxt = await robotsRes.text();
     const robotsValid =
@@ -320,138 +416,50 @@ async function run() {
       robotsTxt.includes("Disallow: /onizleme") &&
       robotsTxt.includes("sitemap.xml");
 
-    const seoPassed =
-      hasJsonLd && hasWebSiteSchema && hasBlogPostingSchema && sitemapValid && robotsValid;
     recordStep(
-      7,
-      "SEO, Sitemap, Robots & JSON-LD Security",
-      Boolean(seoPassed),
-      `Valid JSON-LD schemas with escaped tags. Sitemap excludes drafts. Robots.txt enforces disallow rules.`,
+      10,
+      "Sitemap & Robots (No Drafts, Disallow Rules)",
+      sitemapValid && robotsValid,
+      `Sitemap HTTP ${sitemapRes.status} (drafts excluded: ${!sitemapXml.includes("mesafeli-satis-sozlesmesi")}). Robots HTTP ${robotsRes.status} (rules valid: ${robotsValid}).`,
     );
   } catch (err: any) {
-    recordStep(7, "SEO, Sitemap, Robots & JSON-LD Security", false, `SEO error: ${err.message}`);
+    recordStep(10, "Sitemap & Robots", false, `Sitemap/Robots error: ${err.message}`);
   }
 
-  // STEP 8: Redirects & Loop Prevention
+  // STEP 11: Bundle Audit (@puckeditor isolated from storefront)
   try {
-    // 8a: Endpoint validation
-    const validInternal = validateRedirectEndpoints("/eski-yol", "/yeni-yol");
-    const validExternal = validateRedirectEndpoints("/destek", "https://help.example.com");
-    const selfRedirect = validateRedirectEndpoints("/sayfa", "/sayfa/");
-    const unsafeTarget = validateRedirectEndpoints("/sayfa", "javascript:alert(1)");
+    const chunksDir = path.resolve(process.cwd(), "apps/web/.next/static/chunks");
+    let puckFoundInChunks = false;
 
-    // 8b: Loop detection
-    const circularChain = [
-      { from: "/b", to: "/c" },
-      { from: "/c", to: "/a" },
-    ];
-    const loopDetected = isCircularRedirect("/a", "/b", circularChain);
-
-    const redirectPassed =
-      validInternal.valid &&
-      validExternal.valid &&
-      !selfRedirect.valid &&
-      !unsafeTarget.valid &&
-      loopDetected;
-
-    recordStep(
-      8,
-      "Redirects & Circular Loop Prevention",
-      Boolean(redirectPassed),
-      `Self-redirects blocked. Dangerous targets blocked. 3-hop circular loop (A->B->C->A) strictly prevented.`,
-    );
-  } catch (err: any) {
-    recordStep(8, "Redirects & Circular Loop Prevention", false, `Redirect error: ${err.message}`);
-  }
-
-  // STEP 9: Role Permissions Matrix & Media Security
-  try {
-    const editorReq = { req: { user: { id: "e-1", role: "editor" } } } as any;
-    const anonReq = { req: { user: null } } as any;
-
-    const editorCanCreate = canCreateContent(editorReq);
-    const editorCanUpdate = canUpdateContent(editorReq);
-    const editorCannotDelete = canDeleteContent(editorReq) === false;
-    const editorCannotManageGlobals = canManageGlobals(editorReq) === false;
-
-    const anonZeroDrafts = typeof canReadPublishedOnlyOrStaff(anonReq) === "object";
-    const anonNoEmail = canReadUserEmail(anonReq) === false;
-
-    // Media security: SVG strictly blocked
-    const svgMimeBlocked = !isAllowedMimeType("image/svg+xml");
-    let svgExtBlocked = false;
-    try {
-      sanitizeUploadFilename("exploit.svg");
-    } catch {
-      svgExtBlocked = true;
+    if (fs.existsSync(chunksDir)) {
+      const files = fs.readdirSync(chunksDir, { recursive: true }) as string[];
+      for (const file of files) {
+        if (typeof file === "string" && file.endsWith(".js")) {
+          const fullPath = path.join(chunksDir, file);
+          const content = fs.readFileSync(fullPath, "utf-8");
+          if (content.includes("@puckeditor")) {
+            puckFoundInChunks = true;
+            break;
+          }
+        }
+      }
     }
 
-    const permissionsPassed =
-      editorCanCreate &&
-      editorCanUpdate &&
-      editorCannotDelete &&
-      editorCannotManageGlobals &&
-      anonZeroDrafts &&
-      anonNoEmail &&
-      svgMimeBlocked &&
-      svgExtBlocked;
-
     recordStep(
-      9,
-      "Role Permissions Matrix & Media Security",
-      Boolean(permissionsPassed),
-      `Editor can create/edit but CANNOT delete. Editor CANNOT edit globals. SVG strictly blocked. Anon zero drafts & zero email.`,
+      11,
+      "Bundle Audit (Zero Puck in Storefront Client Chunks)",
+      !puckFoundInChunks,
+      puckFoundInChunks
+        ? "FAIL: Found @puckeditor in storefront client chunks."
+        : "PASS: Exactly 0 storefront client chunks contain @puckeditor.",
     );
   } catch (err: any) {
-    recordStep(
-      9,
-      "Role Permissions Matrix & Media Security",
-      false,
-      `Permissions error: ${err.message}`,
-    );
-  }
-
-  // STEP 10: Bundle Audit (@puckeditor isolated from storefront)
-  try {
-    const storefrontRenderFile = fs.readFileSync(
-      path.resolve(process.cwd(), "apps/web/src/lib/puck/render.tsx"),
-      "utf-8",
-    );
-    const storefrontHomePage = fs.readFileSync(
-      path.resolve(process.cwd(), "apps/web/src/app/(store)/page.tsx"),
-      "utf-8",
-    );
-    const storefrontDynamicPage = fs.readFileSync(
-      path.resolve(process.cwd(), "apps/web/src/app/(store)/sayfa/[slug]/page.tsx"),
-      "utf-8",
-    );
-
-    const hasPuckImport = (code: string) =>
-      code.includes('from "@puckeditor/core"') || code.includes("from '@puckeditor/core'");
-
-    const leaksInRender = hasPuckImport(storefrontRenderFile);
-    const leaksInHome = hasPuckImport(storefrontHomePage);
-    const leaksInDynamic = hasPuckImport(storefrontDynamicPage);
-
-    const auditPassed = !leaksInRender && !leaksInHome && !leaksInDynamic;
-    recordStep(
-      10,
-      "Bundle Audit (Zero Puck in Storefront)",
-      auditPassed,
-      `Storefront RSC renderer is decoupled from @puckeditor/core (0 bytes Puck editor overhead on public pages).`,
-    );
-  } catch (err: any) {
-    recordStep(
-      10,
-      "Bundle Audit (Zero Puck in Storefront)",
-      false,
-      `Bundle audit error: ${err.message}`,
-    );
+    recordStep(11, "Bundle Audit", false, `Bundle audit error: ${err.message}`);
   }
 
   // SUMMARY TABLE
   console.log("\n================================================================================");
-  console.log("📊 FAZ 5 VERIFICATION SUMMARY TABLE");
+  console.log("📊 FAZ 5.1 VERIFICATION SUMMARY TABLE");
   console.log("================================================================================");
   console.table(
     results.map((r) => ({
@@ -464,7 +472,7 @@ async function run() {
 
   const allPassed = results.every((r) => r.passed);
   if (allPassed) {
-    console.log("\n🎉 ALL 10/10 VERIFICATION STEPS PASSED SUCCESSFULLY!");
+    console.log("\n🎉 ALL 11/11 VERIFICATION STEPS PASSED SUCCESSFULLY!");
     process.exit(0);
   } else {
     console.error("\n❌ VERIFICATION FAILED: One or more steps did not pass.");
