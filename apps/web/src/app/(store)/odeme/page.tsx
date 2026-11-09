@@ -4,10 +4,8 @@ import { redirect } from "next/navigation";
 import { getCart, getCartShippingOptions, getPaymentOptions } from "@/lib/medusa/cart";
 import { getCartId } from "@/lib/medusa/cookies";
 import { CheckoutForm } from "@/components/checkout-form";
-import { STORE_NAME } from "@/lib/constants/store-config";
-
 export const metadata: Metadata = {
-  title: `Ödeme ve Teslimat | ${STORE_NAME}`,
+  title: "Ödeme ve Teslimat | Mağaza",
   description: "Güvenli misafir ödeme ve sipariş tamamlama sayfası",
 };
 

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const storeName = settings?.storeName || "Çisem Elif Boz";
+  const storeName = settings?.storeName || "Mağaza";
 
   return {
     title: `Blog | ${storeName}`,

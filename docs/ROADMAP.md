@@ -146,7 +146,7 @@ Bu doküman, aşamalı e-ticaret platformunun geliştirme fazlarını, teslimat 
 
 - [ ] Canlı WooCommerce mağazasından son ürün, müşteri ve sipariş geçmişi aktarımı
 - [ ] 301 yönlendirme haritasının doğrulanması
-- [ ] DNS TTL düşürme ve alan adı geçişi (www.cisemelifboz.com)
+- [ ] DNS TTL düşürme ve alan adı geçişi (canlı alan adı)
 - [ ] Canlı ödeme doğrulaması ve geri dönüş (rollback) tatbikatı
 
 ---

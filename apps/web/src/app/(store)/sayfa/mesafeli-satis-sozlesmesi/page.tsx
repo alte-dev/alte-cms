@@ -1,8 +1,6 @@
 import { Metadata } from "next";
-import { STORE_NAME } from "@/lib/constants/store-config";
-
 export const metadata: Metadata = {
-  title: `Mesafeli Satış Sözleşmesi | ${STORE_NAME}`,
+  title: "Mesafeli Satış Sözleşmesi | Mağaza",
   description: "Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Koşulları",
 };
 

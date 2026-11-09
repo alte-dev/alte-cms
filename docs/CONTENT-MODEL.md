@@ -99,7 +99,7 @@ erDiagram
 
 ### 3.1. SiteSettings (Site Ayarları)
 
-- `storeName`: Varsayılan: `"Çisem Elif Boz"`.
+- `storeName`: Varsayılan: `"Mağaza"`.
 - `storeDescription`: Mağaza tanıtım sloganı.
 - `contactEmail`, `contactPhone`, `address`.
 - `logo`, `favicon`: Media koleksiyonuna bağlı raster görseller.

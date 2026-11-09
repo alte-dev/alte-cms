@@ -78,7 +78,7 @@ export function generateJsonLdBlogPosting(params: {
     },
     publisher: {
       "@type": "Organization",
-      name: params.publisherName || "Çisem Elif Boz",
+      name: params.publisherName || "Mağaza",
       ...(params.publisherLogo
         ? { logo: { "@type": "ImageObject", url: params.publisherLogo } }
         : {}),

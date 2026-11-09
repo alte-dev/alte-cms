@@ -3,7 +3,7 @@ import { getProducts, getCategories } from "@/lib/medusa/products";
 import { getPayloadClient } from "@/lib/payload/content";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://cisemelifboz.com";
+  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3100";
   const urls: MetadataRoute.Sitemap = [];
 
   // 1. Static Storefront Pages

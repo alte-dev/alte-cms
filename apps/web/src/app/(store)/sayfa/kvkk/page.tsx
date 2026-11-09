@@ -1,8 +1,6 @@
 import { Metadata } from "next";
-import { STORE_NAME } from "@/lib/constants/store-config";
-
 export const metadata: Metadata = {
-  title: `KVKK Aydınlatma Metni | ${STORE_NAME}`,
+  title: "KVKK Aydınlatma Metni | Mağaza",
   description: "6698 Sayılı Kişisel Verilerin Korunması Kanunu Kapsamında Aydınlatma Metni",
 };
 

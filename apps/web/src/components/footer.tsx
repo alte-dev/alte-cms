@@ -9,7 +9,7 @@ export async function Footer() {
     getSiteSettings().catch(() => null),
   ]);
 
-  const storeName = settingsGlobal?.storeName || "Çisem Elif Boz";
+  const storeName = settingsGlobal?.storeName || "Mağaza";
   const storeDescription =
     settingsGlobal?.storeDescription ||
     "Özenle tasarlanmış giyim, aksesuar ve yaşam ürünleri. Türkiye geneli hızlı teslimat ve güvenli ödeme.";

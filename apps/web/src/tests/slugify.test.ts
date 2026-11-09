@@ -3,7 +3,7 @@ import { slugify, isReservedSlug, validateSlugField } from "../lib/slugify";
 
 describe("Slugify Utility (Turkish Transliteration & Rules)", () => {
   it("correctly transliterates Turkish characters to lowercase ASCII", () => {
-    expect(slugify("Çisem Elif Boz")).toBe("cisem-elif-boz");
+    expect(slugify("Örnek Türkçe Mağaza")).toBe("ornek-turkce-magaza");
     expect(slugify("Ilık Çay & Şeker")).toBe("ilik-cay-seker");
     expect(slugify("Örnek Türkçe Başlık: Şişe, Üzüm, Ağaç")).toBe(
       "ornek-turkce-baslik-sise-uzum-agac",

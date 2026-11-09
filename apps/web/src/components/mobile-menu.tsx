@@ -123,7 +123,7 @@ export function MobileMenu({ items }: MobileMenuProps) {
             </nav>
 
             <div className="mt-auto pt-6 border-t border-stone-200 text-xs text-stone-500">
-              <p>Çisem Elif Boz • Resmi Mağaza</p>
+              <p>Mağaza • Resmi Satış</p>
             </div>
           </div>
         </div>

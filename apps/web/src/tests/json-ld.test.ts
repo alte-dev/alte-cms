@@ -21,35 +21,36 @@ describe("JSON-LD Generators & Escaping Security", () => {
   });
 
   it("generates valid WebSite schema", () => {
-    const jsonStr = generateJsonLdWebsite("Çisem Elif Boz", "https://cisemelifboz.com");
+    const jsonStr = generateJsonLdWebsite("Örnek Mağaza", "https://example.test");
     const parsed = JSON.parse(jsonStr);
 
     expect(parsed["@type"]).toBe("WebSite");
-    expect(parsed.name).toBe("Çisem Elif Boz");
-    expect(parsed.url).toBe("https://cisemelifboz.com");
+    expect(parsed.name).toBe("Örnek Mağaza");
+    expect(parsed.url).toBe("https://example.test");
   });
 
   it("generates valid Organization schema", () => {
-    const jsonStr = generateJsonLdOrganization("Çisem Elif Boz", "https://cisemelifboz.com");
+    const jsonStr = generateJsonLdOrganization("Örnek Mağaza", "https://example.test");
     const parsed = JSON.parse(jsonStr);
 
     expect(parsed["@type"]).toBe("Organization");
-    expect(parsed.name).toBe("Çisem Elif Boz");
+    expect(parsed.name).toBe("Örnek Mağaza");
   });
 
   it("generates valid BlogPosting schema with author and publisher", () => {
     const jsonStr = generateJsonLdBlogPosting({
       headline: "Stil Rehberi",
       description: "Yeni sezon rehberi",
-      url: "https://cisemelifboz.com/blog/stil-rehberi",
+      url: "https://example.test/blog/stil-rehberi",
       datePublished: "2026-11-08T00:00:00.000Z",
-      authorName: "Çisem Elif Boz",
+      authorName: "Örnek Yazar",
+      publisherName: "Örnek Mağaza",
     });
     const parsed = JSON.parse(jsonStr);
 
     expect(parsed["@type"]).toBe("BlogPosting");
     expect(parsed.headline).toBe("Stil Rehberi");
-    expect(parsed.author.name).toBe("Çisem Elif Boz");
-    expect(parsed.publisher.name).toBe("Çisem Elif Boz");
+    expect(parsed.author.name).toBe("Örnek Yazar");
+    expect(parsed.publisher.name).toBe("Örnek Mağaza");
   });
 });

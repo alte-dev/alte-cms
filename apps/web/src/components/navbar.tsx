@@ -19,7 +19,7 @@ export async function Navbar() {
   const cart = cartId ? await getCart(cartId).catch(() => null) : null;
   const itemCount = cart?.items?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
 
-  const storeName = settingsGlobal?.storeName || "Çisem Elif Boz";
+  const storeName = settingsGlobal?.storeName || "Mağaza";
 
   // Build nav items: Prefer Payload navigation global, fallback to default
   let navItems: MenuItem[] = [];

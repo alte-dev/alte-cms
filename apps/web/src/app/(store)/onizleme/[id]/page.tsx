@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Taslak Önizleme | Çisem Elif Boz",
+    title: "Taslak Önizleme | Mağaza",
     robots: {
       index: false,
       follow: false,

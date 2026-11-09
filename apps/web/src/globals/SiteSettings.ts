@@ -13,7 +13,7 @@ export const SiteSettings: GlobalConfig = {
       name: "storeName",
       type: "text",
       required: true,
-      defaultValue: "Çisem Elif Boz",
+      defaultValue: "Mağaza",
       label: "Mağaza Adı",
     },
     {

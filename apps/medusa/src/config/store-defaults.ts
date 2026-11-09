@@ -138,7 +138,7 @@ export type StoreDefaults = z.infer<typeof StoreDefaultsSchema>;
  */
 export const STORE_DEFAULTS: StoreDefaults = StoreDefaultsSchema.parse({
   store: {
-    name: "Çisem Elif Boz",
+    name: "Mağaza",
     default_currency_code: "try",
   },
   region: {

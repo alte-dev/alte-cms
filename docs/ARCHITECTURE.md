@@ -106,10 +106,10 @@ Tarayıcılar ile Node.js sunucusunun loopback çözümleme farklılıklarından
 
 ## 4. Ortam Haritası
 
-| Ortam             | Durum                    | Storefront / CMS URL            | Medusa API URL                      | Veritabanı Modeli                   |
-| :---------------- | :----------------------- | :------------------------------ | :---------------------------------- | :---------------------------------- |
-| **Yerel (Local)** | **AKTİF**                | `http://localhost:3100`         | `http://api.localhost:9000`         | Docker Desktop (Postgres + Redis)   |
-| **Staging**       | _Gelecek Planı (Faz 0B)_ | `https://yeni.cisemelifboz.com` | `https://yeni-api.cisemelifboz.com` | Doğrudan Linux Servisleri (systemd) |
-| **Production**    | _Gelecek Planı (Faz 0B)_ | `https://www.cisemelifboz.com`  | `https://api.cisemelifboz.com`      | Doğrudan Linux Servisleri (systemd) |
+| Ortam             | Durum                    | Storefront / CMS URL          | Medusa API URL                    | Veritabanı Modeli                   |
+| :---------------- | :----------------------- | :---------------------------- | :-------------------------------- | :---------------------------------- |
+| **Yerel (Local)** | **AKTİF**                | `http://localhost:3100`       | `http://api.localhost:9000`       | Docker Desktop (Postgres + Redis)   |
+| **Staging**       | _Gelecek Planı (Faz 0B)_ | `https://staging.example.com` | `https://staging-api.example.com` | Doğrudan Linux Servisleri (systemd) |
+| **Production**    | _Gelecek Planı (Faz 0B)_ | `https://www.example.com`     | `https://api.example.com`         | Doğrudan Linux Servisleri (systemd) |
 
-> **Önemli:** Canlı site (`cisemelifboz.com`), DNS kayıtları ve mevcut sunucu ortamına Faz 0'da hiçbir şekilde müdahale edilmez. Tüm alan adı değerleri ortam değişkenleri üzerinden yönetilir; kod içinde sabit alan adı bulunmaz.
+> **Önemli:** Canlı site, DNS kayıtları ve mevcut sunucu ortamına Faz 0'da hiçbir şekilde müdahale edilmez. Tüm alan adı değerleri ortam değişkenleri üzerinden yönetilir; kod içinde sabit alan adı bulunmaz.

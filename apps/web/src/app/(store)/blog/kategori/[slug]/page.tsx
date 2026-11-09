@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const [categories, settings] = await Promise.all([getAllPostCategories(), getSiteSettings()]);
 
   const cat = categories.find((c: any) => c.slug === slug);
-  const storeName = settings?.storeName || "Çisem Elif Boz";
+  const storeName = settings?.storeName || "Mağaza";
 
   if (!cat) {
     return { title: `Kategori Bulunamadı | ${storeName}` };
