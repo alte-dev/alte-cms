@@ -5,7 +5,8 @@
  * - Max total components: 200
  * - Max nesting depth: 6 levels
  * - Allowed component whitelist
- * - Per-component strict Zod schemas rejecting unknown props
+ * - Per-component strict Zod schemas with id: z.string()
+ * - Root props schema validation
  * - Deep recursive link and unsafe protocol inspection
  */
 
@@ -38,9 +39,18 @@ export const MAX_PUCK_PAYLOAD_BYTES = 512 * 1024; // 512 KB
 export const MAX_PUCK_COMPONENTS = 200;
 export const MAX_PUCK_DEPTH = 6;
 
-// Per-component strict Zod schemas
+// Root Props Schema
+export const RootPropsSchema = z
+  .object({
+    id: z.string().optional(),
+    title: z.string().optional(),
+  })
+  .strict();
+
+// Per-component strict Zod schemas with id: z.string()
 export const HeroPropsSchema = z
   .object({
+    id: z.string(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
     bgImage: z.string().optional(),
@@ -55,6 +65,7 @@ export const HeroPropsSchema = z
 
 export const RichTextPropsSchema = z
   .object({
+    id: z.string(),
     content: z.string().optional(),
     maxWidth: z.enum(["prose", "prose-lg", "full"]).optional(),
   })
@@ -62,6 +73,7 @@ export const RichTextPropsSchema = z
 
 export const ImageBlockPropsSchema = z
   .object({
+    id: z.string(),
     src: z.string().optional(),
     alt: z.string().optional(),
     caption: z.string().optional(),
@@ -72,6 +84,7 @@ export const ImageBlockPropsSchema = z
 
 export const ColumnsPropsSchema = z
   .object({
+    id: z.string(),
     columns: z.enum(["2", "3", "4"]).optional(),
     col1Title: z.string().optional(),
     col1Content: z.string().optional(),
@@ -86,18 +99,21 @@ export const ColumnsPropsSchema = z
 
 export const SpacerPropsSchema = z
   .object({
+    id: z.string(),
     height: z.enum(["small", "medium", "large", "xlarge"]).optional(),
   })
   .strict();
 
 export const DividerPropsSchema = z
   .object({
+    id: z.string(),
     style: z.enum(["solid", "dashed", "dotted"]).optional(),
   })
   .strict();
 
 export const AccordionPropsSchema = z
   .object({
+    id: z.string(),
     q1: z.string().optional(),
     a1: z.string().optional(),
     q2: z.string().optional(),
@@ -109,6 +125,7 @@ export const AccordionPropsSchema = z
 
 export const BannerPropsSchema = z
   .object({
+    id: z.string(),
     text: z.string().optional(),
     style: z.enum(["info", "warning", "success", "accent"]).optional(),
     linkText: z.string().optional(),
@@ -118,6 +135,7 @@ export const BannerPropsSchema = z
 
 export const ContactInfoPropsSchema = z
   .object({
+    id: z.string(),
     title: z.string().optional(),
     email: z.string().optional(),
     phone: z.string().optional(),
@@ -128,6 +146,7 @@ export const ContactInfoPropsSchema = z
 
 export const ProductGridPropsSchema = z
   .object({
+    id: z.string(),
     title: z.string().optional(),
     limit: z.number().optional(),
   })
@@ -135,6 +154,7 @@ export const ProductGridPropsSchema = z
 
 export const FeaturedProductsPropsSchema = z
   .object({
+    id: z.string(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
   })
@@ -142,12 +162,14 @@ export const FeaturedProductsPropsSchema = z
 
 export const CategoryListPropsSchema = z
   .object({
+    id: z.string(),
     title: z.string().optional(),
   })
   .strict();
 
 export const FreeShippingBarPropsSchema = z
   .object({
+    id: z.string(),
     threshold: z.number().optional(),
     message: z.string().optional(),
   })
@@ -155,6 +177,7 @@ export const FreeShippingBarPropsSchema = z
 
 export const LatestPostsPropsSchema = z
   .object({
+    id: z.string(),
     title: z.string().optional(),
     limit: z.number().optional(),
   })
@@ -177,7 +200,7 @@ export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> 
   LatestPosts: LatestPostsPropsSchema,
 };
 
-const LINK_KEY_PATTERN = /(?:href|url|link|src|action)/i;
+const LINK_KEY_PATTERN = /(?:href|url|src|action)$|^link$/i;
 
 /**
  * Recursively scans all nested objects and arrays for link-like keys and unsafe protocols.
@@ -239,6 +262,8 @@ export function recursivelyScanForUnsafeHrefs(
 interface PuckComponentNode {
   type: string;
   props?: Record<string, unknown>;
+  zones?: Record<string, unknown[]>;
+  readOnly?: Record<string, boolean>;
   [key: string]: unknown;
 }
 
@@ -287,7 +312,7 @@ function traversePuckTree(nodes: unknown, depth: number, ctx: ValidationContext)
         const componentType = node.type as AllowedPuckComponent;
         const schema = COMPONENT_PROP_SCHEMAS[componentType];
 
-        // Validate props with component's strict Zod schema
+        // Validate props with component's strict Zod schema (enforces id: z.string() and valid props)
         if (schema) {
           const propsToValidate = node.props || {};
           const result = schema.safeParse(propsToValidate);
@@ -378,6 +403,23 @@ export function validatePuckData(data: unknown): {
   };
 
   const obj = data as Record<string, unknown>;
+
+  // Validate root props if present
+  if (obj.root && typeof obj.root === "object") {
+    const rootObj = obj.root as { props?: unknown };
+    if (rootObj.props && typeof rootObj.props === "object") {
+      const rootRes = RootPropsSchema.safeParse(rootObj.props);
+      if (!rootRes.success) {
+        const firstErr = rootRes.error.issues?.[0];
+        const errField = firstErr?.path?.join(".") || "props";
+        ctx.violations.push(
+          `Root bileşeni geçersiz veya bilinmeyen alan içeriyor: ${errField} (${firstErr?.message || "Doğrulama hatası"}).`,
+        );
+      }
+    }
+    recursivelyScanForUnsafeHrefs(obj.root, "root", ctx.violations);
+  }
+
   if (obj.content && Array.isArray(obj.content)) {
     traversePuckTree(obj.content, 1, ctx);
   }
@@ -386,11 +428,6 @@ export function validatePuckData(data: unknown): {
     for (const zoneItems of Object.values(obj.zones as Record<string, unknown>)) {
       traversePuckTree(zoneItems, 1, ctx);
     }
-  }
-
-  // Also scan root props
-  if (obj.root && typeof obj.root === "object") {
-    recursivelyScanForUnsafeHrefs(obj.root, "root", ctx.violations);
   }
 
   if (ctx.violations.length > 0) {

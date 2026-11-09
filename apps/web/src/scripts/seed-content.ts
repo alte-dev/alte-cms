@@ -349,6 +349,7 @@ async function seedContent() {
         {
           type: "Hero",
           props: {
+            id: "hakkimizda-hero",
             title: "Hikayemiz ve Değerlerimiz",
             subtitle: "Zarafeti, kaliteyi ve sürdürülebilir tasarımı bir araya getiriyoruz.",
             bgColor: "gray",
@@ -360,6 +361,7 @@ async function seedContent() {
         {
           type: "RichText",
           props: {
+            id: "hakkimizda-intro",
             content:
               "Mağaza olarak, her parçanın kendine has bir hikayesi olduğuna inanıyoruz. Üretim sürecimizde çevreye duyarlı, yüksek kaliteli doğal kumaşları ve usta işçiliği tercih ediyoruz.\n\nAmacımız yalnızca giysi üretmek değil, kendinizi özel ve özgüvenli hissettiren zamansız bir deneyim sunmaktır.",
             maxWidth: "prose-lg",
@@ -368,6 +370,7 @@ async function seedContent() {
         {
           type: "Columns",
           props: {
+            id: "hakkimizda-values",
             columns: "3",
             col1Title: "Doğal & Nefes Alan Kumaşlar",
             col1Content:
@@ -411,6 +414,7 @@ async function seedContent() {
         {
           type: "Hero",
           props: {
+            id: "iletisim-hero",
             title: "Bizimle İletişime Geçin",
             subtitle:
               "Siparişleriniz, stil danışmanlığı veya sorularınız için her zaman buradayız.",
@@ -421,6 +425,7 @@ async function seedContent() {
         {
           type: "ContactInfo",
           props: {
+            id: "iletisim-info",
             title: "Müşteri Hizmetleri & Atölye",
             email: "iletisim@example.test",
             phone: "0850 000 00 00",
@@ -431,6 +436,7 @@ async function seedContent() {
         {
           type: "RichText",
           props: {
+            id: "iletisim-note",
             content:
               "Sorularınız ve özel talepleriniz için bize yukarıdaki iletişim kanallarından ulaşabilirsiniz. Müşteri temsilcilerimiz en geç 24 saat içinde dönüş yapacaktır.",
             maxWidth: "prose",
@@ -478,6 +484,7 @@ async function seedContent() {
             {
               type: "RichText",
               props: {
+                id: "mss-body",
                 content:
                   "Yer tutucu — bu hukuki metin mağaza sahibi tarafından eklenecektir.\n\nDikkat: Bu sayfa şu anda taslak modundadır.",
                 maxWidth: "prose-lg",
@@ -512,6 +519,7 @@ async function seedContent() {
             {
               type: "RichText",
               props: {
+                id: "kvkk-body",
                 content:
                   "Yer tutucu — bu hukuki metin mağaza sahibi tarafından eklenecektir.\n\nDikkat: Bu sayfa şu anda taslak modundadır.",
                 maxWidth: "prose-lg",
@@ -522,6 +530,40 @@ async function seedContent() {
       },
     });
     console.log("  + Legal Page 'kvkk' created as DRAFT.");
+  }
+
+  // Draft Test Page (Pure draft page for storefront 404 test)
+  const existingDraftTest = await payload.find({
+    collection: "pages",
+    where: { slug: { equals: "ozel-taslak-sayfa-test" } },
+    limit: 1,
+  });
+
+  if (existingDraftTest.docs.length > 0) {
+    console.log("  - Draft Page 'ozel-taslak-sayfa-test' already exists.");
+  } else {
+    await payload.create({
+      collection: "pages",
+      data: {
+        title: "Özel Taslak Test Sayfası",
+        slug: "ozel-taslak-sayfa-test",
+        _status: "draft" as const,
+        puckData: {
+          root: { props: { title: "Özel Taslak Test Sayfası" } },
+          content: [
+            {
+              type: "RichText",
+              props: {
+                id: "draft-test-body",
+                content: "Bu sayfa yalnızca taslaktır ve vitrinde 404 dönmelidir.",
+                maxWidth: "prose",
+              },
+            },
+          ],
+        },
+      },
+    });
+    console.log("  + Draft Page 'ozel-taslak-sayfa-test' created as DRAFT.");
   }
 
   // 6. Sample Safe Redirect (Idempotent)

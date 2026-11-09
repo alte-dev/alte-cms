@@ -1,21 +1,22 @@
 /**
- * E2E Content & CMS Verification Script (Faz 5.1)
+ * E2E Content & CMS Verification Script (Faz 5.2)
  *
  * Strict LIVE HTTP Verification:
  * 1. Payload CMS health & REST endpoints
- * 2. Idempotent seeding (pnpm seed:content runs with zero duplicate records)
+ * 2. Real Database Table Seed Idempotency (Pages, Posts, Categories, Redirects counts identical across runs)
  * 3. Anonymous draft leakage prevention via HTTP (GET /api/pages?draft=true, where[slug], where[_status], /api/pages/versions)
- * 4. Storefront draft 404 (GET /sayfa/mesafeli-satis-sozlesmesi returns 404)
+ * 4. Storefront unconflicted draft page 404 (GET /sayfa/ozel-taslak-sayfa-test returns strictly HTTP 404)
  * 5. Author privacy (author name rendered, email NEVER leaked to storefront HTML or public REST)
  * 6. Editor RBAC via HTTP (DELETE /api/pages/:id returns 403, POST /api/globals/site-settings returns 403)
- * 7. Payload validation via HTTP:
+ * 7. Payload validation via HTTP (with JWT auth):
  *    - Puck unsafe javascript: href returns HTTP 400
  *    - Reserved slug (urunler) returns HTTP 400
  *    - 600 KB puckData payload returns HTTP 400
  * 8. Anonymous /api/puck/save endpoint returns HTTP 403
- * 9. Anonymous /onizleme/:id draft preview rejected (401/403/404/redirect)
- * 10. Sitemap & Robots validation (sitemap excludes drafts & noindex, robots blocks private paths)
- * 11. Bundle audit (@puckeditor isolated from storefront bundles)
+ * 9. Live HTTP Puck Page Creation & Publishing (Valid Puck format with props.id returns 200 on /sayfa/<slug> with title visible in HTML)
+ * 10. Anonymous /onizleme/:id draft preview rejected (401/403/404/redirect)
+ * 11. Sitemap & Robots validation (sitemap excludes drafts & noindex, robots blocks private paths)
+ * 12. Bundle audit (@puckeditor isolated from storefront bundles)
  */
 
 import { execSync } from "child_process";
@@ -43,7 +44,13 @@ function recordStep(step: number, name: string, passed: boolean, details: string
   console.log(`[Step ${step}] ${status} - ${name}: ${details}`);
 }
 
-async function loginUser(email: string, pass: string): Promise<string | null> {
+interface AuthResult {
+  token: string;
+  cookie: string;
+  headers: Record<string, string>;
+}
+
+async function loginUser(email: string, pass: string): Promise<AuthResult | null> {
   try {
     const res = await fetch(`${STORE_URL}/api/users/login`, {
       method: "POST",
@@ -53,20 +60,27 @@ async function loginUser(email: string, pass: string): Promise<string | null> {
 
     if (!res.ok) return null;
 
-    const setCookie = res.headers.get("set-cookie");
+    const setCookie = res.headers.get("set-cookie") || "";
     const json = await res.json();
     const token = json.token || "";
 
-    if (setCookie) {
-      const match = setCookie.match(/payload-token=([^;]+)/);
-      if (match) return `payload-token=${match[1]}`;
+    let cookieStr = "";
+    const match = setCookie.match(/payload-token=([^;]+)/);
+    if (match) {
+      cookieStr = `payload-token=${match[1]}`;
+    } else if (token) {
+      cookieStr = `payload-token=${token}`;
     }
 
-    if (token) {
-      return `payload-token=${token}`;
-    }
-
-    return null;
+    return {
+      token,
+      cookie: cookieStr,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `JWT ${token}` } : {}),
+        ...(cookieStr ? { Cookie: cookieStr } : {}),
+      },
+    };
   } catch {
     return null;
   }
@@ -74,7 +88,7 @@ async function loginUser(email: string, pass: string): Promise<string | null> {
 
 async function run() {
   console.log("================================================================================");
-  console.log("🚀 STARTING FAZ 5.1 LIVE HTTP CONTENT & CMS VERIFICATION");
+  console.log("🚀 STARTING FAZ 5.2 LIVE HTTP CONTENT & CMS VERIFICATION");
   console.log(`Storefront URL: ${STORE_URL}`);
   console.log("================================================================================\n");
 
@@ -96,30 +110,56 @@ async function run() {
     recordStep(1, "Payload Health & REST API", false, `Connection error: ${err.message}`);
   }
 
-  // STEP 2: Seed Idempotency
+  // STEP 2: Real Database Table Seed Idempotency
   try {
-    const pages1Res = await fetch(`${STORE_URL}/api/pages?limit=100`);
-    const pages1Json = await pages1Res.json();
-    const count1 = pages1Json.totalDocs;
+    const [pages1, posts1, cats1, reds1] = await Promise.all([
+      fetch(`${STORE_URL}/api/pages?limit=100`).then((r) => r.json()),
+      fetch(`${STORE_URL}/api/posts?limit=100`).then((r) => r.json()),
+      fetch(`${STORE_URL}/api/post-categories?limit=100`).then((r) => r.json()),
+      fetch(`${STORE_URL}/api/redirects?limit=100`).then((r) => r.json()),
+    ]);
+
+    const count1 = {
+      pages: pages1.totalDocs ?? 0,
+      posts: posts1.totalDocs ?? 0,
+      categories: cats1.totalDocs ?? 0,
+      redirects: reds1.totalDocs ?? 0,
+    };
 
     console.log("Running seed:content for idempotency check...");
     execSync("pnpm --filter @alte/web seed:content", { stdio: "pipe" });
 
     await new Promise((r) => setTimeout(r, 1000));
 
-    const pages2Res = await fetch(`${STORE_URL}/api/pages?limit=100`);
-    const pages2Json = await pages2Res.json();
-    const count2 = pages2Json.totalDocs;
+    const [pages2, posts2, cats2, reds2] = await Promise.all([
+      fetch(`${STORE_URL}/api/pages?limit=100`).then((r) => r.json()),
+      fetch(`${STORE_URL}/api/posts?limit=100`).then((r) => r.json()),
+      fetch(`${STORE_URL}/api/post-categories?limit=100`).then((r) => r.json()),
+      fetch(`${STORE_URL}/api/redirects?limit=100`).then((r) => r.json()),
+    ]);
 
-    const idempotent = count1 === count2 && count1 > 0;
+    const count2 = {
+      pages: pages2.totalDocs ?? 0,
+      posts: posts2.totalDocs ?? 0,
+      categories: cats2.totalDocs ?? 0,
+      redirects: reds2.totalDocs ?? 0,
+    };
+
+    const countsIdentical =
+      count1.pages === count2.pages &&
+      count1.posts === count2.posts &&
+      count1.categories === count2.categories &&
+      count1.redirects === count2.redirects &&
+      count1.pages > 0;
+
     recordStep(
       2,
-      "Seed Idempotency (pnpm seed:content)",
-      idempotent,
-      `Run 1 total docs: ${count1}, Run 2 total docs: ${count2}. Zero duplicate pages created.`,
+      "Real Table Seed Idempotency (pnpm seed:content)",
+      countsIdentical,
+      `Run 1: pages=${count1.pages}, posts=${count1.posts}, categories=${count1.categories}, redirects=${count1.redirects} | Run 2: pages=${count2.pages}, posts=${count2.posts}, categories=${count2.categories}, redirects=${count2.redirects}. Zero duplicates.`,
     );
   } catch (err: any) {
-    recordStep(2, "Seed Idempotency (pnpm seed:content)", false, `Seed error: ${err.message}`);
+    recordStep(2, "Real Table Seed Idempotency", false, `Seed error: ${err.message}`);
   }
 
   // STEP 3: Anonymous Draft Leakage Prevention (Pure HTTP)
@@ -136,9 +176,9 @@ async function run() {
     const whereDraftJson = await whereDraftRes.json();
     const whereDraftCount = whereDraftJson.docs?.length || 0;
 
-    // 3c: /api/pages?where[slug][equals]=mesafeli-satis-sozlesmesi (draft page)
+    // 3c: /api/pages?where[slug][equals]=ozel-taslak-sayfa-test (draft page)
     const specificDraftRes = await fetch(
-      `${STORE_URL}/api/pages?where[slug][equals]=mesafeli-satis-sozlesmesi`,
+      `${STORE_URL}/api/pages?where[slug][equals]=ozel-taslak-sayfa-test`,
     );
     const specificDraftJson = await specificDraftRes.json();
     const specificDraftCount = specificDraftJson.docs?.length || 0;
@@ -168,22 +208,18 @@ async function run() {
     );
   }
 
-  // STEP 4: Storefront Draft Returns 404 (Pure HTTP)
+  // STEP 4: Storefront Unconflicted Draft Page Returns 404 (Pure HTTP)
   try {
-    const draftPageRes = await fetch(`${STORE_URL}/sayfa/mesafeli-satis-sozlesmesi`, {
+    const draftPageRes = await fetch(`${STORE_URL}/sayfa/ozel-taslak-sayfa-test`, {
       redirect: "manual",
     });
-    const draftPageText = await draftPageRes.text();
-    const is404 =
-      draftPageRes.status === 404 ||
-      draftPageText.includes("Sayfa veya Ürün Bulunamadı") ||
-      draftPageText.includes("404");
+    const is404 = draftPageRes.status === 404;
 
     recordStep(
       4,
       "Storefront Draft Returns HTTP 404",
       is404,
-      `/sayfa/mesafeli-satis-sozlesmesi returned HTTP ${draftPageRes.status} (expected 404)`,
+      `/sayfa/ozel-taslak-sayfa-test returned HTTP ${draftPageRes.status} (strictly expected 404)`,
     );
   } catch (err: any) {
     recordStep(
@@ -226,9 +262,9 @@ async function run() {
 
   // STEP 6: Editor RBAC via Live HTTP (DELETE 403 & site-settings 403)
   try {
-    const editorCookie = await loginUser("editor@example.test", "test-editor-password-123");
+    const editorAuth = await loginUser("editor@example.test", "test-editor-password-123");
 
-    if (!editorCookie) {
+    if (!editorAuth) {
       recordStep(
         6,
         "Editor RBAC via HTTP (DELETE 403 & site-settings 403)",
@@ -236,28 +272,24 @@ async function run() {
         "Could not login as editor@example.test. Ensure seed ran with test staff users.",
       );
     } else {
-      // Find a published page to attempt deletion
       const pagesRes = await fetch(`${STORE_URL}/api/pages?limit=1`);
       const pagesJson = await pagesRes.json();
       const pageId = pagesJson.docs?.[0]?.id;
 
-      // 6a: Editor attempts DELETE on page
+      // 6a: Editor attempts DELETE on page -> 403
       let deleteBlocked = false;
       if (pageId) {
         const deleteRes = await fetch(`${STORE_URL}/api/pages/${pageId}`, {
           method: "DELETE",
-          headers: { Cookie: editorCookie },
+          headers: editorAuth.headers,
         });
         deleteBlocked = deleteRes.status === 403;
       }
 
-      // 6b: Editor attempts UPDATE on site-settings global
+      // 6b: Editor attempts UPDATE on site-settings global -> 403
       const updateSettingsRes = await fetch(`${STORE_URL}/api/globals/site-settings`, {
         method: "POST",
-        headers: {
-          Cookie: editorCookie,
-          "Content-Type": "application/json",
-        },
+        headers: editorAuth.headers,
         body: JSON.stringify({ storeName: "Hacked Store Name" }),
       });
       const settingsBlocked = updateSettingsRes.status === 403 || updateSettingsRes.status === 401;
@@ -267,7 +299,7 @@ async function run() {
         6,
         "Editor RBAC via HTTP (DELETE 403 & site-settings 403)",
         rbacPassed,
-        `Editor DELETE /api/pages/${pageId}: HTTP 403 (blocked: ${deleteBlocked}). Editor POST /api/globals/site-settings: HTTP 403 (blocked: ${settingsBlocked}).`,
+        `Editor DELETE /api/pages/${pageId}: HTTP ${deleteBlocked ? 403 : "other"} (blocked: ${deleteBlocked}). Editor POST /api/globals/site-settings: HTTP ${settingsBlocked ? 403 : "other"} (blocked: ${settingsBlocked}).`,
       );
     }
   } catch (err: any) {
@@ -276,9 +308,9 @@ async function run() {
 
   // STEP 7: Payload Validation via Live HTTP (javascript: 400, reserved slug 400, 600 KB 400)
   try {
-    const adminCookie = await loginUser("admin@example.test", "test-admin-password-123");
+    const adminAuth = await loginUser("admin@example.test", "test-admin-password-123");
 
-    if (!adminCookie) {
+    if (!adminAuth) {
       recordStep(
         7,
         "Payload Validation via HTTP (javascript: 400, reserved slug 400, 600 KB 400)",
@@ -289,10 +321,7 @@ async function run() {
       // 7a: Unsafe javascript: link in puckData -> must return HTTP 400
       const xssRes = await fetch(`${STORE_URL}/api/pages`, {
         method: "POST",
-        headers: {
-          Cookie: adminCookie,
-          "Content-Type": "application/json",
-        },
+        headers: adminAuth.headers,
         body: JSON.stringify({
           title: "Test XSS Page",
           slug: "test-xss-link",
@@ -300,7 +329,7 @@ async function run() {
             content: [
               {
                 type: "Hero",
-                props: { primaryButtonHref: "javascript:alert(1)" },
+                props: { id: "hero-bad", primaryButtonHref: "javascript:alert(1)" },
               },
             ],
           },
@@ -311,10 +340,7 @@ async function run() {
       // 7b: Reserved slug (urunler) -> must return HTTP 400
       const reservedSlugRes = await fetch(`${STORE_URL}/api/pages`, {
         method: "POST",
-        headers: {
-          Cookie: adminCookie,
-          "Content-Type": "application/json",
-        },
+        headers: adminAuth.headers,
         body: JSON.stringify({
           title: "Reserved Slug Test",
           slug: "urunler",
@@ -325,10 +351,7 @@ async function run() {
       // 7c: 600 KB puckData payload -> must return HTTP 400
       const hugeRes = await fetch(`${STORE_URL}/api/pages`, {
         method: "POST",
-        headers: {
-          Cookie: adminCookie,
-          "Content-Type": "application/json",
-        },
+        headers: adminAuth.headers,
         body: JSON.stringify({
           title: "Huge Page Test",
           slug: "huge-page-test",
@@ -336,7 +359,7 @@ async function run() {
             content: [
               {
                 type: "Hero",
-                props: { title: "A".repeat(600 * 1024) },
+                props: { id: "hero-huge", title: "A".repeat(600 * 1024) },
               },
             ],
           },
@@ -349,7 +372,7 @@ async function run() {
         7,
         "Payload Validation via HTTP (javascript: 400, reserved slug 400, 600 KB 400)",
         validationPassed,
-        `javascript: link: HTTP ${xssRes.status} (expected 400), reserved slug 'urunler': HTTP ${reservedSlugRes.status} (expected 400), 600 KB payload: HTTP ${hugeRes.status} (expected 400)`,
+        `javascript: link: HTTP ${xssRes.status} (strictly expected 400), reserved slug 'urunler': HTTP ${reservedSlugRes.status} (strictly expected 400), 600 KB payload: HTTP ${hugeRes.status} (strictly expected 400)`,
       );
     }
   } catch (err: any) {
@@ -369,13 +392,139 @@ async function run() {
       8,
       "Anonymous /api/puck/save Returns HTTP 403",
       puckSaveBlocked,
-      `/api/puck/save returned HTTP ${anonPuckSaveRes.status} (expected 403)`,
+      `/api/puck/save returned HTTP ${anonPuckSaveRes.status} (strictly expected 403)`,
     );
   } catch (err: any) {
     recordStep(8, "Anonymous /api/puck/save", false, `Puck save error: ${err.message}`);
   }
 
-  // STEP 9: Anonymous /onizleme/:id Draft Preview Rejection
+  // STEP 9: Live HTTP Puck Page Creation & Publishing
+  try {
+    const editorAuth = await loginUser("editor@example.test", "test-editor-password-123");
+    if (!editorAuth) {
+      recordStep(
+        9,
+        "Live HTTP Puck Page Creation & Publishing",
+        false,
+        "Could not login as editor to test Puck page creation.",
+      );
+    } else {
+      const testSlug = "puck-canli-dogrulama-test";
+
+      // Delete if already existing from prior run
+      const checkExisting = await fetch(
+        `${STORE_URL}/api/pages?where[slug][equals]=${testSlug}&draft=true`,
+        { headers: editorAuth.headers },
+      );
+      const existingJson = await checkExisting.json();
+      if (existingJson.docs?.length > 0) {
+        const adminAuth = await loginUser("admin@example.test", "test-admin-password-123");
+        for (const doc of existingJson.docs) {
+          await fetch(`${STORE_URL}/api/pages/${doc.id}`, {
+            method: "DELETE",
+            headers: adminAuth?.headers || editorAuth.headers,
+          });
+        }
+      }
+
+      // Create page in draft with Puck format
+      const createRes = await fetch(`${STORE_URL}/api/pages`, {
+        method: "POST",
+        headers: editorAuth.headers,
+        body: JSON.stringify({
+          title: "Puck Doğrulama Sayfası",
+          slug: testSlug,
+          _status: "draft",
+          puckData: {
+            root: { props: { title: "Puck Doğrulama Sayfası" } },
+            content: [
+              {
+                type: "Hero",
+                props: {
+                  id: "hero-live-fixture-1",
+                  title: "Harika Puck Canlı Başlığı",
+                  subtitle: "Canlı E2E test ile oluşturulan ve yayınlanan Puck sayfası.",
+                  align: "center",
+                  primaryButtonText: "Alışverişe Başla",
+                  primaryButtonHref: "/urunler",
+                },
+              },
+            ],
+            zones: {},
+          },
+        }),
+      });
+
+      const createJson = await createRes.json();
+      const pageId = createJson.doc?.id;
+
+      // Now publish via /api/puck/save endpoint as editor
+      const saveRes = await fetch(`${STORE_URL}/api/puck/save`, {
+        method: "POST",
+        headers: editorAuth.headers,
+        body: JSON.stringify({
+          id: pageId,
+          publish: true,
+          puckData: {
+            root: { props: { title: "Puck Doğrulama Sayfası" } },
+            content: [
+              {
+                type: "Hero",
+                props: {
+                  id: "hero-live-fixture-1",
+                  title: "Harika Puck Canlı Başlığı",
+                  subtitle: "Canlı E2E test ile oluşturulan ve yayınlanan Puck sayfası.",
+                  align: "center",
+                  primaryButtonText: "Alışverişe Başla",
+                  primaryButtonHref: "/urunler",
+                },
+              },
+            ],
+            zones: {},
+          },
+        }),
+      });
+
+      const saveOk = saveRes.status === 200;
+
+      // Verify on storefront: /sayfa/<slug> returns 200 and title in HTML
+      const viewRes = await fetch(`${STORE_URL}/sayfa/${testSlug}`);
+      const viewStatus = viewRes.status;
+      const viewHtml = await viewRes.text();
+      const titleVisible = viewHtml.includes("Harika Puck Canlı Başlığı");
+
+      const stepPassed =
+        (createRes.status === 201 || createRes.status === 200) &&
+        saveOk &&
+        viewStatus === 200 &&
+        titleVisible;
+
+      recordStep(
+        9,
+        "Live HTTP Puck Page Creation & Publishing",
+        stepPassed,
+        `Create HTTP ${createRes.status}, /api/puck/save HTTP ${saveRes.status}, Storefront HTTP ${viewStatus}, Title rendered in HTML: ${titleVisible}`,
+      );
+
+      // Clean up test page
+      if (pageId) {
+        const adminAuth = await loginUser("admin@example.test", "test-admin-password-123");
+        await fetch(`${STORE_URL}/api/pages/${pageId}`, {
+          method: "DELETE",
+          headers: adminAuth?.headers || editorAuth.headers,
+        });
+      }
+    }
+  } catch (err: any) {
+    recordStep(
+      9,
+      "Live HTTP Puck Page Creation & Publishing",
+      false,
+      `Live Puck error: ${err.message}`,
+    );
+  }
+
+  // STEP 10: Anonymous /onizleme/:id Draft Preview Rejection
   try {
     const previewRes = await fetch(`${STORE_URL}/onizleme/1`, { redirect: "manual" });
     const previewBlocked =
@@ -386,16 +535,16 @@ async function run() {
       previewRes.status === 307;
 
     recordStep(
-      9,
+      10,
       "Anonymous /onizleme/:id Rejected",
       previewBlocked,
-      `/onizleme/1 returned HTTP ${previewRes.status} (expected non-200 / redirect)`,
+      `/onizleme/1 returned HTTP ${previewRes.status} (strictly non-200 / redirect)`,
     );
   } catch (err: any) {
-    recordStep(9, "Anonymous /onizleme/:id", false, `Preview error: ${err.message}`);
+    recordStep(10, "Anonymous /onizleme/:id", false, `Preview error: ${err.message}`);
   }
 
-  // STEP 10: Sitemap & Robots Validation
+  // STEP 11: Sitemap & Robots Validation
   try {
     const sitemapRes = await fetch(`${STORE_URL}/sitemap.xml`);
     const sitemapXml = await sitemapRes.text();
@@ -403,8 +552,8 @@ async function run() {
       sitemapRes.status === 200 &&
       sitemapXml.includes("<urlset") &&
       sitemapXml.includes("/sayfa/hakkimizda") &&
-      !sitemapXml.includes("mesafeli-satis-sozlesmesi") &&
-      !sitemapXml.includes("kvkk");
+      !sitemapXml.includes("ozel-taslak-sayfa-test") &&
+      !sitemapXml.includes("mesafeli-satis-sozlesmesi");
 
     const robotsRes = await fetch(`${STORE_URL}/robots.txt`);
     const robotsTxt = await robotsRes.text();
@@ -417,16 +566,16 @@ async function run() {
       robotsTxt.includes("sitemap.xml");
 
     recordStep(
-      10,
+      11,
       "Sitemap & Robots (No Drafts, Disallow Rules)",
       sitemapValid && robotsValid,
-      `Sitemap HTTP ${sitemapRes.status} (drafts excluded: ${!sitemapXml.includes("mesafeli-satis-sozlesmesi")}). Robots HTTP ${robotsRes.status} (rules valid: ${robotsValid}).`,
+      `Sitemap HTTP ${sitemapRes.status} (drafts excluded: ${!sitemapXml.includes("ozel-taslak-sayfa-test")}). Robots HTTP ${robotsRes.status} (rules valid: ${robotsValid}).`,
     );
   } catch (err: any) {
-    recordStep(10, "Sitemap & Robots", false, `Sitemap/Robots error: ${err.message}`);
+    recordStep(11, "Sitemap & Robots", false, `Sitemap/Robots error: ${err.message}`);
   }
 
-  // STEP 11: Bundle Audit (@puckeditor isolated from storefront)
+  // STEP 12: Bundle Audit (@puckeditor isolated from storefront)
   try {
     const chunksDir = path.resolve(process.cwd(), "apps/web/.next/static/chunks");
     let puckFoundInChunks = false;
@@ -446,7 +595,7 @@ async function run() {
     }
 
     recordStep(
-      11,
+      12,
       "Bundle Audit (Zero Puck in Storefront Client Chunks)",
       !puckFoundInChunks,
       puckFoundInChunks
@@ -454,12 +603,12 @@ async function run() {
         : "PASS: Exactly 0 storefront client chunks contain @puckeditor.",
     );
   } catch (err: any) {
-    recordStep(11, "Bundle Audit", false, `Bundle audit error: ${err.message}`);
+    recordStep(12, "Bundle Audit", false, `Bundle audit error: ${err.message}`);
   }
 
   // SUMMARY TABLE
   console.log("\n================================================================================");
-  console.log("📊 FAZ 5.1 VERIFICATION SUMMARY TABLE");
+  console.log("📊 FAZ 5.2 VERIFICATION SUMMARY TABLE");
   console.log("================================================================================");
   console.table(
     results.map((r) => ({
@@ -472,7 +621,9 @@ async function run() {
 
   const allPassed = results.every((r) => r.passed);
   if (allPassed) {
-    console.log("\n🎉 ALL 11/11 VERIFICATION STEPS PASSED SUCCESSFULLY!");
+    console.log(
+      `\n🎉 ALL ${results.length}/${results.length} VERIFICATION STEPS PASSED SUCCESSFULLY!`,
+    );
     process.exit(0);
   } else {
     console.error("\n❌ VERIFICATION FAILED: One or more steps did not pass.");
