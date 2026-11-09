@@ -21,6 +21,8 @@ export default function robots(): MetadataRoute.Robots {
           "/onizleme/",
           "/ara",
           "/ara/",
+          "/siparis-takip",
+          "/siparis-takip/",
         ],
       },
     ],

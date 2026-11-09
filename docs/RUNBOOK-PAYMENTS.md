@@ -88,3 +88,17 @@ PayTR tarafında genel bir kesinti veya acil bir güvenlik durumu meydana gelirs
 2. `PayTR ile Ödeme Aktif` anahtarını kapatın.
 3. `Ayarları Kaydet` butonuna basın.
 4. Vitrin, sunucuyu yeniden başlatmaya gerek kalmadan 1 saniye içinde PayTR seçeneğini gizleyecek ve yeni ödeme alımını durduracaktır.
+
+---
+
+## 5. İptal Edilen Siparişlerde PayTR İadesi (FAZ 6C)
+
+Yönetici tarafından kargolanmamış bir sipariş iptal edildiğinde:
+
+1. Kart ile ödenmiş siparişlerde sistem **otomatik olarak bankaya/PayTR'a geri ödeme talimatı göndermez**. Bu güvenlik kuralı, mükerrer iadeleri ve yetkisiz para çıkışlarını önlemek amacıyla katıdır.
+2. Sipariş veritabanında `status = 'canceled'` ve `needs_manual_refund = true` olarak işaretlenir.
+3. Yönetici aşağıdaki adımları izlemelidir:
+   - Medusa Admin -> Ödeme Ayarları -> "Elle İade Bekleyenler" listesini veya Sipariş Detayını açın.
+   - İptal edilen siparişin tutarını ve PayTR İşlem Referansını not edin.
+   - PayTR Mağaza Paneli (`https://www.paytr.com/magaza/islemler`) üzerinden ilgili işlemi bulun ve **"İptal / İade Et"** butonuna basarak iadeyi başlatın.
+   - İade tamamlandıktan sonra Medusa Admin üzerindeki ilgili kaydı "İade Edildi" olarak işaretleyin.
