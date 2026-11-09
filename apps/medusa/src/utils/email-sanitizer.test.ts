@@ -58,7 +58,7 @@ describe("email-sanitizer utilities", () => {
 
   describe("isValidEmail", () => {
     it("accepts valid email addresses", () => {
-      expect(isValidEmail("siparis@altebutik.com")).toBe(true);
+      expect(isValidEmail("siparis@example.test")).toBe(true);
       expect(isValidEmail("admin.user+test@example.test")).toBe(true);
     });
 
