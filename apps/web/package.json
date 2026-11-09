@@ -11,13 +11,15 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
-    "create-admin": "tsx src/scripts/create-first-admin.ts"
+    "create-admin": "tsx src/scripts/create-first-admin.ts",
+    "seed:content": "tsx src/scripts/seed-content.ts"
   },
   "dependencies": {
     "@alte/shared": "workspace:*",
     "@payloadcms/db-postgres": "3.93.0",
     "@payloadcms/next": "3.93.0",
     "@payloadcms/richtext-lexical": "3.93.0",
+    "@puckeditor/core": "0.23.0",
     "dotenv": "16.4.7",
     "graphql": "16.10.0",
     "lucide-react": "1.70.0",

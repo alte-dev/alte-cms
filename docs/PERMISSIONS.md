@@ -1,67 +1,38 @@
-# Roller ve İzin Matrisi (PERMISSIONS.md)
+# Rol ve Yetki Matrisi (Permissions Matrix)
 
-Bu doküman, platformun personel rolleri ile yönetim modülleri arasındaki yetki matrisini ve bu matrisin Payload CMS 3 ile Medusa v2 üzerinde nasıl karşılandığını detaylandırır.
+Alte CMS monoreposunda Payload CMS 3 tarafında uygulanan rol bazlı yetkilendirme modeli aşağıda özetlenmiştir.
 
-> **Önemli Tasarım İlkesi (Personel vs Müşteri Ayrımı):**  
-> Payload CMS 3 `Users` koleksiyonu **yalnızca personel ve yönetim kadrosu içindir** (5 rol: `super-admin`, `admin`, `shop-manager`, `editor`, `author`).  
-> Müşteri hesapları, oturumları, sepet ve sipariş geçmişi **Medusa v2** altyapısında tutulur. `customer` rolü Payload'dan ve `@alte/shared` rol sabitlerinden tamamen kaldırılmıştır.
-
----
-
-## 1. Rol x Modül İzin Matrisi
-
-İşaret Açıklamaları:
-
-- **Tam (CRUD):** Oluşturma, Okuma, Güncelleme, Silme ve Yayınlama yetkisi.
-- **Yönet (RW):** Okuma ve Güncelleme yetkisi.
-- **Gör (R):** Yalnızca Okuma (Görüntüleme) yetkisi.
-- **Kendi (Own):** Yalnızca kendi oluşturduğu içeriği düzenleme yetkisi.
-- **Yok (-):** Erişim tamamen kapalı.
-
-| Modül                           | super-admin |    admin     | shop-manager |   editor   |       author       | Müşteri (Medusa Storefront) |
-| :------------------------------ | :---------: | :----------: | :----------: | :--------: | :----------------: | :-------------------------: |
-| **1. Ürünler (Katalog)**        |     Tam     |     Tam      |     Tam      |  Gör (R)   |         -          |      Gör (Storefront)       |
-| **2. Siparişler**               |     Tam     |     Tam      |     Tam      |  Gör (R)   |         -          |       Kendi (Medusa)        |
-| **3. Müşteriler**               |     Tam     |     Tam      |  Yönet (RW)  |     -      |         -          |       Kendi (Medusa)        |
-| **4. Ödemeler & Finans**        |     Tam     |     Tam      |  Yönet (RW)  |     -      |         -          |              -              |
-| **5. Mağaza Ayarları**          |     Tam     |     Tam      |   Gör (R)    |     -      |         -          |              -              |
-| **6. Sayfa Oluşturucu (Puck)**  |     Tam     |     Tam      |      -       |    Tam     | Kendi (Own Taslak) |              -              |
-| **7. Tema & Menü Ayarları**     |     Tam     |     Tam      |      -       | Yönet (RW) |         -          |              -              |
-| **8. Analitik & Raporlar**      |     Tam     |     Tam      |     Tam      |     -      |         -          |              -              |
-| **9. Eklentiler & Entegrasyon** |     Tam     |  Yönet (RW)  |      -       |     -      |         -          |              -              |
-| **10. Personel & Roller**       |     Tam     | Yönet (RW)\* |      -       |     -      |         -          |              -              |
-
-_\* Not: `admin` rolü yeni personel kullanıcısı açabilir ve rolleri düzenleyebilir, ancak başka bir kullanıcıyı `super-admin` yapamaz. Anonim kullanıcı oluşturma kapalıdır._
+> [!IMPORTANT]
+> Tüm izin kuralları `apps/web/src/tests/content-permissions.test.ts` ve `apps/web/src/tests/users-access.test.ts` altında **vitest unit testleri ile kanıtlanmıştır**.
 
 ---
 
-## 2. Payload CMS 3 Tarafında Uygulama (Yalnızca Personel)
+## 1. Yetki Matrisi Tablosu
 
-Payload CMS'te yetkiler her koleksiyonun `access` nesnesi ve alan seviyesindeki `access` fonksiyonları ile denetlenir:
+| İşlem / Kaynak                                 |   `super-admin`    |      `admin`       |             `editor`              |     `anonymous` (Ziyaretçi)      |
+| ---------------------------------------------- | :----------------: | :----------------: | :-------------------------------: | :------------------------------: |
+| **Sayfalar & Blog: Okuma (Published)**         |     ✅ İzinli      |     ✅ İzinli      |             ✅ İzinli             |            ✅ İzinli             |
+| **Sayfalar & Blog: Okuma (Drafts)**            |     ✅ İzinli      |     ✅ İzinli      |             ✅ İzinli             | ❌ **ENGEL** (Zero Leakage, 404) |
+| **Sayfalar & Blog: Oluşturma & Düzenleme**     |     ✅ İzinli      |     ✅ İzinli      |             ✅ İzinli             |             ❌ ENGEL             |
+| **Sayfalar & Blog: Silme**                     |     ✅ İzinli      |     ✅ İzinli      |    ❌ **ENGEL** (Silme yasak)     |             ❌ ENGEL             |
+| **Görsel Düzenleyici (Puck /admin/puck/[id])** |     ✅ İzinli      |     ✅ İzinli      |             ✅ İzinli             |      ❌ **ENGEL** (401/403)      |
+| **Medya Yükleme (JPEG, PNG, WebP, AVIF)**      |     ✅ İzinli      |     ✅ İzinli      |             ✅ İzinli             |             ❌ ENGEL             |
+| **Medya Silme**                                |     ✅ İzinli      |     ✅ İzinli      |    ❌ **ENGEL** (Silme yasak)     |             ❌ ENGEL             |
+| **SVG Medya Yükleme**                          | ❌ **YASAK** (XSS) | ❌ **YASAK** (XSS) |        ❌ **YASAK** (XSS)         |             ❌ YASAK             |
+| **Site Ayarları & Menü Düzenleme (Globals)**   |     ✅ İzinli      |     ✅ İzinli      |    ❌ **ENGEL** (Değiştiremez)    |             ❌ ENGEL             |
+| **Yönlendirme Ekleme & Düzenleme (Redirects)** |     ✅ İzinli      |     ✅ İzinli      |           ❌ **ENGEL**            |             ❌ ENGEL             |
+| **Kullanıcı Yönetimi (Staff Accounts)**        |     ✅ İzinli      |    ✅ İzinli\*     | ❌ ENGEL (Yalnızca kendi profili) |             ❌ ENGEL             |
+| **Yazar E-postası Görüntüleme**                |     ✅ İzinli      |     ✅ İzinli      |             ✅ İzinli             |   ❌ **ENGEL** (Sıfır sızıntı)   |
 
-1. **Users Koleksiyonu (Yalnızca Personel):**
-   - `create`: Anonim kayıt kapalıdır. Yalnızca `admin` ve `super-admin` yeni personel kullanıcısı oluşturabilir (`admin` kullanıcıları `super-admin` oluşturamaz). İlk süper admin kurulumu için CLI bootstrap scripti (`pnpm create-admin`) kullanılır. Üretimde önce `pnpm create-admin` çalıştırılmadan /admin dışarı açılmaz.
-   - `read`: Anonim engelli. Personel kullanıcılar kendi profilini veya admin/super-admin tüm personeli görebilir.
-   - `update`: Personel kendi ad/soyad ve şifresini günceller. `role` alanı alan-seviyesi `canAssignRole` kontrolüyle denetlenir: yalnızca `super-admin` rolü `super-admin` atayabilir; `admin` rolü `super-admin` kullanıcıları düzenleyemez ve kendi rolünü yükseltemez.
-   - `delete`: Yalnızca `super-admin` tüm personeli silebilir. `admin` kullanıcıları `super-admin` hesaplarını silemez.
-   - `admin`: Panel erişimi (`access.admin`) Users koleksiyonundaki tüm geçerli personel rollerine (`super-admin`, `admin`, `shop-manager`, `editor`, `author`) açıktır.
-2. **Media Koleksiyonu:**
-   - `read`: Genel (Storefront görselleri için `true`).
-   - `create` / `update`: `editor`, `shop-manager`, `admin`, `super-admin`. Dosya boyutu sınırı: 5 MB (SVG engelli, yalnızca raster görseller).
-   - `delete`: Yalnızca `shop-manager`, `admin`, `super-admin`.
-3. **Pages & Blog Koleksiyonları (Faz 2-3):**
-   - `author`: Yalnızca `author === user.id` olan dokümanları güncelleyebilir ve yayınlayamaz (yalnızca `draft` durumunda kaydeder).
-   - `editor`: Tüm taslakları onaylayıp `published` durumuna geçirebilir.
+_\* `admin` rolü `super-admin` kullanıcı oluşturamaz, güncelleyemez veya silemez._
 
 ---
 
-## 3. Medusa v2 Admin Tarafında Uygulama
+## 2. Özel Güvenlik Korumaları
 
-Medusa v2 mimarisinde mağaza operasyonları için yönetim yetkileri:
-
-1. **Medusa Admin Kullanıcıları (`/app`):**
-   - `super-admin` ve `admin` tam mağaza erişimine sahiptir.
-   - `shop-manager` kullanıcıları katalog, envanter, sipariş karşılama ve kargo etiketlerini yönetir.
-2. **Publishable API Keys:**
-   - Storefront, Medusa API isteklerinde yalnızca okuma yetkili publishable anahtarını kullanır.
-   - Müşteri oturumu (Bearer token) yalnızca müşterinin kendi sepeti (`cart_id`) ve siparişleri ile ilişkilendirilir; başka bir müşterinin verisi okunamaz.
+1. **Taslak Koruması (`canReadPublishedOnlyOrStaff`)**:
+   Ziyaretçi veya arama motoru isteğinde Payload `_status: { equals: "published" }` filtre sorgusunu zorunlu kılar. REST ve vitrin üzerinden taslaklara erişim imkansızdır.
+2. **Yazar E-posta Gizliliği (`canReadUserEmail`)**:
+   `Users` koleksiyonunun `email` alanında field-level read access tanımlıdır. Ziyaretçi bir blog yazısını okurken veya API'den çekerken `author.name` döner; `author.email` ise `undefined` olarak filtrelenir.
+3. **SVG Engellemesi (`ALLOWED_MIME_TYPES`)**:
+   SVG formatı içerebileceği zararlı JavaScript ve XML entity saldırıları (XXE/XSS) nedeniyle dosya uzantısı ve MIME tipi bazında tamamen yasaklanmıştır.

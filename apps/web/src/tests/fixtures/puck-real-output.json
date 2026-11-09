@@ -1,0 +1,142 @@
+{
+  "root": {
+    "props": {
+      "title": "Örnek Sayfa"
+    }
+  },
+  "content": [
+    {
+      "type": "Hero",
+      "props": {
+        "id": "Hero-1715000000001",
+        "title": "Yeni Koleksiyon",
+        "subtitle": "Modern ve minimalist parçalar",
+        "align": "center",
+        "bgColor": "gray",
+        "primaryButtonText": "Keşfet",
+        "primaryButtonHref": "/urunler",
+        "secondaryButtonText": "İletişim",
+        "secondaryButtonHref": "/sayfa/iletisim"
+      }
+    },
+    {
+      "type": "RichText",
+      "props": {
+        "id": "RichText-1715000000002",
+        "content": "Sürdürülebilir ve kaliteli materyaller ile üretilen zamansız tasarımlar.",
+        "maxWidth": "prose"
+      }
+    },
+    {
+      "type": "ImageBlock",
+      "props": {
+        "id": "ImageBlock-1715000000003",
+        "src": "https://images.unsplash.com/photo-1441986300917-64674bd600d8",
+        "alt": "Mağaza vitrini",
+        "caption": "Yeni sezon mağaza konseptimiz",
+        "align": "center",
+        "linkHref": "/urunler"
+      }
+    },
+    {
+      "type": "Columns",
+      "props": {
+        "id": "Columns-1715000000004",
+        "columns": "3",
+        "col1Title": "Hızlı Kargo",
+        "col1Content": "Siparişleriniz aynı gün kargoya verilir.",
+        "col2Title": "Güvenli Ödeme",
+        "col2Content": "PayTR 256-bit SSL koruması.",
+        "col3Title": "Kolay İade",
+        "col3Content": "14 gün içinde koşulsuz iade imkanı."
+      }
+    },
+    {
+      "type": "Spacer",
+      "props": {
+        "id": "Spacer-1715000000005",
+        "height": "medium"
+      }
+    },
+    {
+      "type": "Divider",
+      "props": {
+        "id": "Divider-1715000000006",
+        "style": "solid"
+      }
+    },
+    {
+      "type": "Accordion",
+      "props": {
+        "id": "Accordion-1715000000007",
+        "q1": "Kargo ücreti ne kadar?",
+        "a1": "1000 TL ve üzeri siparişlerde kargo ücretsizdir.",
+        "q2": "İade süreci nasıl işler?",
+        "a2": "Hesabım panelinden kolayca iade kodu oluşturabilirsiniz.",
+        "q3": "Kapıda ödeme var mı?",
+        "a3": "Evet, kapıda nakit veya kartla ödeme seçeneğimiz mevcuttur."
+      }
+    },
+    {
+      "type": "Banner",
+      "props": {
+        "id": "Banner-1715000000008",
+        "text": "Tüm ürünlerde geçerli %15 indirim fırsatını kaçırmayın!",
+        "style": "accent",
+        "linkText": "İncele",
+        "linkHref": "/urunler"
+      }
+    },
+    {
+      "type": "ContactInfo",
+      "props": {
+        "id": "ContactInfo-1715000000009",
+        "title": "Müşteri Destek",
+        "email": "destek@example.com",
+        "phone": "+90 212 555 0000",
+        "address": "Örnek Mah. Tasarım Cad. No: 1, İstanbul",
+        "workingHours": "Hafta içi 09:00 - 18:00"
+      }
+    },
+    {
+      "type": "ProductGrid",
+      "props": {
+        "id": "ProductGrid-1715000000010",
+        "title": "Çok Satanlar",
+        "limit": 4
+      }
+    },
+    {
+      "type": "FeaturedProducts",
+      "props": {
+        "id": "FeaturedProducts-1715000000011",
+        "title": "Sezonun Öne Çıkanları",
+        "subtitle": "Editörlerimizin sizler için seçtiği özel parçalar"
+      }
+    },
+    {
+      "type": "CategoryList",
+      "props": {
+        "id": "CategoryList-1715000000012",
+        "title": "Kategorilere Göz Atın"
+      }
+    },
+    {
+      "type": "FreeShippingBar",
+      "props": {
+        "id": "FreeShippingBar-1715000000013",
+        "threshold": 1000,
+        "message": "1000 TL ve üzeri alışverişlerinizde kargo bizden!"
+      }
+    },
+    {
+      "type": "LatestPosts",
+      "props": {
+        "id": "LatestPosts-1715000000014",
+        "title": "Blogumuzdan Yazılar",
+        "limit": 3
+      }
+    }
+  ],
+  "zones": {}
+}

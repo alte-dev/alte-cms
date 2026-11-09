@@ -15,7 +15,7 @@ Bu doküman, projenin mimari, altyapı, operasyonel ve güvenlik risklerini; bu 
   - PostgreSQL `shared_buffers = 64MB`, Redis `maxmemory = 64mb` ile sınırlandırılmıştır.
   - Docker üretimde kullanılmayacak, doğrudan hafif Linux servisleri çalıştırılacaktır.
 
-### 1.2 Canlı Siteye (`cisemelifboz.com`) ve Posta Servislerine Etki Riski
+### 1.2 Canlı Siteye ve Posta Servislerine Etki Riski
 
 - **Risk:** Mevcut canlı WooCommerce mağazasının DNS, e-posta (MX/SPF/DKIM) veya sunucu yapılandırmasına yapılacak hatalı bir müdahale ticari kayba ve iletişim kesintisine yol açabilir.
 - **Azaltma Stratejisi:**

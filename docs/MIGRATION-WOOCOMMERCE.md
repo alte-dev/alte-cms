@@ -2,7 +2,7 @@
 
 Bu doküman, Faz 9'da hayata geçirilecek olan canlı WooCommerce mağazasından yeni platforma geçiş stratejisini, veri eşleme modelini, 301 yönlendirme haritasını, geçiş/geri dönüş (rollback) adımlarını ve canlı siteyi koruma ilkelerini tanımlar.
 
-> ⚠️ **UYARI:** Bu doküman ileriye dönük bir tasarım taslağıdır. Faz 0'da **kesinlikle kodlama yapılmaz** ve canlı siteye (`cisemelifboz.com`) hiçbir şekilde dokunulmaz.
+> ⚠️ **UYARI:** Bu doküman ileriye dönük bir tasarım taslağıdır. Faz 0'da **kesinlikle kodlama yapılmaz** ve canlı siteye hiçbir şekilde dokunulmaz.
 
 ---
 

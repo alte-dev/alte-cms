@@ -3,7 +3,13 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [".next/**", "dist/**", "node_modules/**"],
+    ignores: [
+      ".next/**",
+      "dist/**",
+      "node_modules/**",
+      "src/app/(payload)/admin/importMap.js",
+      "src/payload-types.ts",
+    ],
   },
   ...tseslint.configs.recommended,
   {

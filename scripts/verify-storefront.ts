@@ -124,7 +124,7 @@ async function main() {
   try {
     const res = await fetch(`${WEB_URL}/`);
     const html = await res.text();
-    const hasBrand = html.includes("Çisem Elif Boz");
+    const hasBrand = html.includes("Demo Mağaza") || html.includes("Mağaza");
     const hasCurrency = html.includes("₺") || html.includes("TL");
     const hasHero = html.includes("Yeni Sezon") || html.includes("Yeni Gelenler");
 

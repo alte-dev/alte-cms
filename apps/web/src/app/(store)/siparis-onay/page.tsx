@@ -6,10 +6,8 @@ import { CheckCircle2, Package, ArrowRight, MapPin, Receipt, Mail } from "lucide
 import { getOrder } from "@/lib/medusa/cart";
 import { getOrderConfirmation } from "@/lib/medusa/cookies";
 import { formatTRY } from "@/lib/medusa/format";
-import { STORE_NAME } from "@/lib/constants/store-config";
-
 export const metadata: Metadata = {
-  title: `Siparişiniz Alındı | ${STORE_NAME}`,
+  title: "Siparişiniz Alındı | Mağaza",
   description: "Sipariş onay ve detay sayfası",
 };
 

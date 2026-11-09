@@ -13,7 +13,7 @@ describe("store-defaults", () => {
       expect(normalizeTurkishSlug("Üst Giyim")).toBe("ust-giyim");
       expect(normalizeTurkishSlug("Alt Giyim")).toBe("alt-giyim");
       expect(normalizeTurkishSlug("Ev & Yaşam")).toBe("ev-yasam");
-      expect(normalizeTurkishSlug("Çisem Elif Boz")).toBe("cisem-elif-boz");
+      expect(normalizeTurkishSlug("Örnek Mağaza")).toBe("ornek-magaza");
       expect(normalizeTurkishSlug("Şık & Özgün Ürünler!")).toBe("sik-ozgun-urunler");
       expect(normalizeTurkishSlug("   Çok---Acil   Şeyler!   ")).toBe("cok-acil-seyler");
     });

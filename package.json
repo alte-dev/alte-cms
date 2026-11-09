@@ -26,6 +26,8 @@
     "verify:storefront": "tsx scripts/verify-storefront.ts",
     "verify:checkout": "tsx scripts/verify-checkout.ts",
     "verify:payments": "tsx scripts/verify-payments.ts",
+    "verify:content": "tsx scripts/verify-content.ts",
+    "seed:content": "pnpm --filter @alte/web seed:content",
     "seed:fake": "tsx scripts/seed-fake-catalog.ts",
     "create-admin": "pnpm --filter @alte/web create-admin",
     "prepare": "lefthook install"

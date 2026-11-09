@@ -32,13 +32,12 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
   return {
     title: product.title,
-    description:
-      product.description || `${product.title} - Çisem Elif Boz Mağazası. KDV dahil fiyatlar.`,
+    description: product.description || `${product.title} - Mağaza. KDV dahil fiyatlar.`,
     openGraph: {
       title: product.title,
       description: product.description || undefined,
       type: "website",
-      siteName: "Çisem Elif Boz",
+      siteName: "Mağaza",
       locale: "tr_TR",
       ...(product.thumbnail ? { images: [{ url: product.thumbnail }] } : {}),
     },
@@ -87,7 +86,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
       availability: isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       seller: {
         "@type": "Organization",
-        name: "Çisem Elif Boz",
+        name: "Mağaza",
       },
     },
   };

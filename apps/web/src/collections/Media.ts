@@ -1,6 +1,8 @@
 import type { CollectionConfig, Access } from "payload";
 import type { UserRole } from "@alte/shared";
 import path from "path";
+import { ALLOWED_MIME_TYPES, sanitizeUploadFilename } from "../lib/media-utils";
+import { canDeleteContent } from "../access/content";
 
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -13,12 +15,6 @@ const isStaffOrAdmin: Access = ({ req: { user } }) => {
   if (!user) return false;
   const role = user.role as UserRole;
   return ["super-admin", "admin", "shop-manager", "editor"].includes(role);
-};
-
-const isAdminOrShopManager: Access = ({ req: { user } }) => {
-  if (!user) return false;
-  const role = user.role as UserRole;
-  return ["super-admin", "admin", "shop-manager"].includes(role);
 };
 
 // Resolve media upload path from environment variable or default to relative path
@@ -34,25 +30,22 @@ export const Media: CollectionConfig = {
   slug: "media",
   upload: {
     staticDir: getMediaUploadDir(),
-    // Strictly whitelist safe raster formats. NO SVG allowed (XSS prevention).
-    mimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    // Strictly whitelist safe raster formats: JPEG, PNG, WebP, AVIF. NO SVG allowed (XSS prevention).
+    mimeTypes: [...ALLOWED_MIME_TYPES],
     imageSizes: [
       {
         name: "thumbnail",
-        width: 300,
-        height: 300,
+        width: 400,
         position: "centre",
       },
       {
-        name: "card",
-        width: 768,
-        height: 512,
+        name: "medium",
+        width: 800,
         position: "centre",
       },
       {
-        name: "hero",
-        width: 1920,
-        height: 1080,
+        name: "large",
+        width: 1600,
         position: "centre",
       },
     ],
@@ -61,12 +54,27 @@ export const Media: CollectionConfig = {
   access: {
     // Media files are publicly viewable on the storefront
     read: () => true,
-    // Only staff and admins can upload or modify media
+    // Staff and editors can upload media
     create: isStaffOrAdmin,
     update: isStaffOrAdmin,
-    delete: isAdminOrShopManager,
+    // ONLY super-admin and admin can delete media (Editor CANNOT delete!)
+    delete: canDeleteContent,
   },
   hooks: {
+    beforeOperation: [
+      ({ req, operation }) => {
+        if (operation === "create" && req.file) {
+          if (!validateFileSize(req.file.size)) {
+            throw new Error(
+              `Dosya boyutu 5 MB sınırını aşamaz (Yüklenen boyut: ${(req.file.size / (1024 * 1024)).toFixed(2)} MB).`,
+            );
+          }
+          if (req.file.name) {
+            req.file.name = sanitizeUploadFilename(req.file.name);
+          }
+        }
+      },
+    ],
     beforeChange: [
       ({ req, data }) => {
         const file = (req as any)?.file;
