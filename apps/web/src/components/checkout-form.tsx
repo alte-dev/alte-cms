@@ -295,7 +295,11 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
       <form onSubmit={handleSubmit} className="lg:col-span-8 space-y-8">
         {/* Global Error Notice */}
         {errorMsg && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800">
+          <div
+            role="alert"
+            aria-live="polite"
+            className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800"
+          >
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Lütfen formu kontrol ediniz:</p>

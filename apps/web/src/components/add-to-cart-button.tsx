@@ -128,8 +128,9 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
                 <button
                   key={val.id}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => handleOptionChange(option.id, val.value)}
-                  className={`px-4 py-2 text-sm font-medium rounded-md border transition ${
+                  className={`px-4 py-2 text-sm font-medium rounded-md border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 ${
                     isSelected
                       ? "border-stone-900 bg-stone-900 text-white"
                       : "border-stone-300 bg-white text-stone-700 hover:border-stone-400"
@@ -182,7 +183,11 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
 
       {/* Error Message */}
       {errorMsg && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800"
+        >
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
@@ -190,14 +195,18 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
 
       {/* Success Notice */}
       {addedSuccess && (
-        <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-md text-sm text-emerald-800">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-md text-sm text-emerald-800"
+        >
           <div className="flex items-center gap-2">
             <Check className="w-5 h-5 text-emerald-600" />
             <span>Ürün sepete başarıyla eklendi!</span>
           </div>
           <Link
             href="/sepet"
-            className="font-semibold underline underline-offset-4 hover:text-emerald-950"
+            className="font-semibold underline underline-offset-4 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 rounded"
           >
             Sepete Git →
           </Link>
