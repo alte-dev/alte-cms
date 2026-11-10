@@ -6,7 +6,10 @@ describe("WCAG 2.1 AA Accessibility Automated Audits (Axe-Core)", () => {
   let browser: Browser;
 
   beforeAll(async () => {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
   });
 
   afterAll(async () => {
