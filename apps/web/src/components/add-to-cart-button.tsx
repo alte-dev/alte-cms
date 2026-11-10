@@ -91,10 +91,10 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
         <div className="flex items-baseline gap-3">
           <span className="text-3xl font-bold text-stone-900">{formatTRY(currentPrice)}</span>
           {isDiscounted && (
-            <span className="text-lg text-stone-400 line-through">{formatTRY(originalPrice)}</span>
+            <span className="text-lg text-stone-600 line-through">{formatTRY(originalPrice)}</span>
           )}
         </div>
-        <p className="text-xs text-stone-500 mt-1">Fiyatlarımıza KDV dahildir.</p>
+        <p className="text-xs text-stone-600 mt-1">Fiyatlarımıza KDV dahildir.</p>
       </div>
 
       {/* Stock Status Badge */}

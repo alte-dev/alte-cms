@@ -14,14 +14,19 @@ export const CACHE_TAGS = {
 } as const;
 
 /**
- * Safely invalidates a Next.js cache tag.
- * Catches errors if called outside an active Next.js request context (e.g., in Payload CLI or scripts).
+ * Invalidates a Next.js cache tag.
+ * Re-throws unexpected errors so callers can handle them appropriately.
+ * Ignores missing static generation store when running in standalone CLI/seed scripts.
  */
-export function revalidateContentTag(tag: string): boolean {
+export function revalidateContentTag(tag: string): void {
   try {
     revalidateTag(tag);
-    return true;
-  } catch {
-    return false;
+  } catch (err: any) {
+    if (err?.message?.includes("static generation store missing")) {
+      // Expected when executing inside standalone scripts or Payload CLI outside Next.js request store
+      return;
+    }
+    console.error(`[Cache] revalidateTag failed for tag: ${tag}`, (err as Error).name);
+    throw err;
   }
 }

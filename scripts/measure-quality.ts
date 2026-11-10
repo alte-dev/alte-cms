@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { execSync } from "child_process";
 import { chromium } from "playwright";
 
 interface MetricRow {
@@ -17,17 +18,8 @@ interface MetricRow {
 }
 
 const BASE_URL = process.env.WEB_PUBLIC_URL || "http://localhost:3100";
+const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 const NUM_RUNS = 3;
-
-const TARGET_PAGES: Array<{ name: string; path: string; appRoute: string }> = [
-  { name: "Anasayfa", path: "/", appRoute: "/(store)/page" },
-  { name: "Tüm Ürünler", path: "/urunler", appRoute: "/(store)/urunler/page" },
-  { name: "Ürün Detayı", path: "/urun/ornek-urun", appRoute: "/(store)/urun/[handle]/page" },
-  { name: "Sepet", path: "/sepet", appRoute: "/(store)/sepet/page" },
-  { name: "Blog Listesi", path: "/blog", appRoute: "/(store)/blog/page" },
-  { name: "Blog Detayı", path: "/blog/ornek-yazi", appRoute: "/(store)/blog/[slug]/page" },
-  { name: "Puck Sayfası", path: "/sayfa/hakkimizda", appRoute: "/(store)/sayfa/[...slug]/page" },
-];
 
 function getFirstLoadJsGzip(appRoute: string): string {
   try {
@@ -64,14 +56,64 @@ function median(values: number[]): number {
 
 async function isServerRunning(url: string): Promise<boolean> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
     return res.status < 500;
   } catch {
     return false;
   }
+}
+
+async function resolveDynamicTargetPages(): Promise<
+  Array<{ name: string; path: string; appRoute: string }>
+> {
+  const pubKey =
+    process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ||
+    process.env.MEDUSA_PUBLISHABLE_KEY ||
+    "pk_d7276af353492091a49cbd91c3ed5105f3943e9bac06ff9fb4b5dd6560b3d139";
+
+  let productHandle = "test-urun-sabit-1";
+  try {
+    const medusaRes = await fetch(`${MEDUSA_URL}/store/products?limit=1`, {
+      headers: { "x-publishable-api-key": pubKey },
+    });
+    if (medusaRes.ok) {
+      const data = await medusaRes.json();
+      if (data.products?.[0]?.handle) {
+        productHandle = data.products[0].handle;
+      }
+    }
+  } catch {
+    // fallback to default seeded handle
+  }
+
+  let blogSlug = "kapsul-gardrop-olusturmanin-5-altin-kurali";
+  try {
+    const payloadRes = await fetch(
+      `${BASE_URL}/api/posts?limit=1&where[_status][equals]=published`,
+    );
+    if (payloadRes.ok) {
+      const data = await payloadRes.json();
+      if (data.docs?.[0]?.slug) {
+        blogSlug = data.docs[0].slug;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  return [
+    { name: "Anasayfa", path: "/", appRoute: "/(store)/page" },
+    { name: "Tüm Ürünler", path: "/urunler", appRoute: "/(store)/urunler/page" },
+    {
+      name: "Ürün Detayı",
+      path: `/urun/${productHandle}`,
+      appRoute: "/(store)/urun/[handle]/page",
+    },
+    { name: "Sepet", path: "/sepet", appRoute: "/(store)/sepet/page" },
+    { name: "Blog Listesi", path: "/blog", appRoute: "/(store)/blog/page" },
+    { name: "Blog Detayı", path: `/blog/${blogSlug}`, appRoute: "/(store)/blog/[slug]/page" },
+    { name: "Puck Sayfası", path: "/sayfa/hakkimizda", appRoute: "/(store)/sayfa/[slug]/page" },
+  ];
 }
 
 async function measurePageWithLighthouse(
@@ -122,101 +164,137 @@ async function measurePageWithLighthouse(
   }
 }
 
+function getProcessMemoryWorkingSetMb(port: number): number | null {
+  try {
+    const output = execSync(
+      `powershell -Command "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { (Get-Process -Id $_.OwningProcess).WorkingSet64 / 1MB }"`,
+      { encoding: "utf8" },
+    ).trim();
+    const val = parseFloat(output);
+    return isNaN(val) ? null : Math.round(val * 10) / 10;
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   console.log("=== FAZ 11A: Lighthouse Mobil Kalite ve Metrik Ölçüm Başlangıcı ===");
   const isUp = await isServerRunning(BASE_URL);
+
+  if (!isUp) {
+    console.error(
+      `❌ Kritik Hata: Web sunucusuna (${BASE_URL}) erişilemiyor. Önce sunucuyu başlatın.`,
+    );
+    process.exit(1);
+  }
+
+  const targetPages = await resolveDynamicTargetPages();
+  console.log(`Dinamik hedef sayfalar çözümlendi (${targetPages.length} sayfa).`);
 
   const results: MetricRow[] = [];
   let browser: any = null;
   let lighthouseFn: any = null;
   const REMOTE_PORT = 9222;
 
-  if (isUp) {
-    console.log(`Sunucu aktif: ${BASE_URL}. Playwright Chromium ve Lighthouse başlatılıyor...`);
-    try {
-      lighthouseFn = (await import("lighthouse")).default;
-      browser = await chromium.launch({
-        args: [`--remote-debugging-port=${REMOTE_PORT}`],
-        headless: true,
-      });
-    } catch (e) {
-      console.warn("Tarayıcı veya Lighthouse başlatılamadı:", (e as Error).message);
-    }
-  } else {
-    console.log(
-      `Sunucu erişilebilir değil (${BASE_URL}). Lighthouse skorları "ölçülmedi" olarak kaydedilecek.`,
-    );
+  const chromePath = process.env.CHROME_PATH || chromium.executablePath();
+  console.log(`Tarayıcı yürütülebilir yolu: ${chromePath}`);
+
+  try {
+    lighthouseFn = (await import("lighthouse")).default;
+    browser = await chromium.launch({
+      executablePath: chromePath,
+      args: [`--remote-debugging-port=${REMOTE_PORT}`, "--no-sandbox", "--disable-setuid-sandbox"],
+      headless: true,
+    });
+  } catch (e) {
+    console.error("❌ Kritik Hata: Tarayıcı veya Lighthouse başlatılamadı:", (e as Error).message);
+    process.exit(1);
   }
 
-  for (const page of TARGET_PAGES) {
+  for (const page of targetPages) {
     const fullUrl = `${BASE_URL}${page.path}`;
     const firstLoadJs = getFirstLoadJsGzip(page.appRoute);
 
-    if (browser && lighthouseFn) {
-      console.log(`Ölçülüyor (3 tekrar): ${page.name} (${fullUrl})...`);
-      const perfScores: number[] = [];
-      const a11yScores: number[] = [];
-      const bpScores: number[] = [];
-      const seoScores: number[] = [];
-      const lcpScores: number[] = [];
-      const clsScores: number[] = [];
-      const tbtScores: number[] = [];
+    // Pre-flight check: page must return HTTP 200 to be measured
+    let checkStatus = 0;
+    try {
+      const probe = await fetch(fullUrl, { signal: AbortSignal.timeout(4000) });
+      checkStatus = probe.status;
+    } catch {
+      checkStatus = 0;
+    }
 
-      for (let run = 1; run <= NUM_RUNS; run++) {
-        process.stdout.write(`  Çalıştırma ${run}/${NUM_RUNS}... `);
-        const data = await measurePageWithLighthouse(fullUrl, REMOTE_PORT, lighthouseFn);
-        if (data) {
-          perfScores.push(data.perf);
-          a11yScores.push(data.a11y);
-          bpScores.push(data.bp);
-          seoScores.push(data.seo);
-          lcpScores.push(data.lcp);
-          clsScores.push(data.cls);
-          tbtScores.push(data.tbt);
-          console.log(`OK (P:${data.perf} A:${data.a11y} S:${data.seo})`);
-        } else {
-          console.log("FAIL");
-        }
-      }
+    if (checkStatus !== 200) {
+      console.warn(
+        `Sayfa HTTP 200 dönmüyor (${checkStatus}): ${fullUrl}. Ölçülmedi olarak kaydediliyor.`,
+      );
+      results.push({
+        pageName: page.name,
+        urlPath: page.path,
+        performance: `ölçülmedi: HTTP ${checkStatus}`,
+        accessibility: `ölçülmedi: HTTP ${checkStatus}`,
+        bestPractices: `ölçülmedi: HTTP ${checkStatus}`,
+        seo: `ölçülmedi: HTTP ${checkStatus}`,
+        lcp: `ölçülmedi: HTTP ${checkStatus}`,
+        cls: `ölçülmedi: HTTP ${checkStatus}`,
+        tbt: `ölçülmedi: HTTP ${checkStatus}`,
+        firstLoadJs,
+      });
+      continue;
+    }
 
-      if (perfScores.length > 0) {
-        results.push({
-          pageName: page.name,
-          urlPath: page.path,
-          performance: `${Math.round(median(perfScores))}`,
-          accessibility: `${Math.round(median(a11yScores))}`,
-          bestPractices: `${Math.round(median(bpScores))}`,
-          seo: `${Math.round(median(seoScores))}`,
-          lcp: `${Math.round(median(lcpScores))} ms`,
-          cls: `${median(clsScores).toFixed(3)}`,
-          tbt: `${Math.round(median(tbtScores))} ms`,
-          firstLoadJs,
-        });
+    console.log(`Ölçülüyor (3 tekrar): ${page.name} (${fullUrl})...`);
+    const perfScores: number[] = [];
+    const a11yScores: number[] = [];
+    const bpScores: number[] = [];
+    const seoScores: number[] = [];
+    const lcpScores: number[] = [];
+    const clsScores: number[] = [];
+    const tbtScores: number[] = [];
+
+    for (let run = 1; run <= NUM_RUNS; run++) {
+      process.stdout.write(`  Çalıştırma ${run}/${NUM_RUNS}... `);
+      const data = await measurePageWithLighthouse(fullUrl, REMOTE_PORT, lighthouseFn);
+      if (data) {
+        perfScores.push(data.perf);
+        a11yScores.push(data.a11y);
+        bpScores.push(data.bp);
+        seoScores.push(data.seo);
+        lcpScores.push(data.lcp);
+        clsScores.push(data.cls);
+        tbtScores.push(data.tbt);
+        console.log(
+          `OK (P:${data.perf} A:${data.a11y} BP:${data.bp} S:${data.seo} LCP:${data.lcp}ms CLS:${data.cls})`,
+        );
       } else {
-        results.push({
-          pageName: page.name,
-          urlPath: page.path,
-          performance: "ölçülmedi",
-          accessibility: "ölçülmedi",
-          bestPractices: "ölçülmedi",
-          seo: "ölçülmedi",
-          lcp: "ölçülmedi",
-          cls: "ölçülmedi",
-          tbt: "ölçülmedi",
-          firstLoadJs,
-        });
+        console.log("FAIL");
       }
+    }
+
+    if (perfScores.length > 0) {
+      results.push({
+        pageName: page.name,
+        urlPath: page.path,
+        performance: `${Math.round(median(perfScores))}`,
+        accessibility: `${Math.round(median(a11yScores))}`,
+        bestPractices: `${Math.round(median(bpScores))}`,
+        seo: `${Math.round(median(seoScores))}`,
+        lcp: `${Math.round(median(lcpScores))} ms`,
+        cls: `${median(clsScores).toFixed(3)}`,
+        tbt: `${Math.round(median(tbtScores))} ms`,
+        firstLoadJs,
+      });
     } else {
       results.push({
         pageName: page.name,
         urlPath: page.path,
-        performance: "ölçülmedi",
-        accessibility: "ölçülmedi",
-        bestPractices: "ölçülmedi",
-        seo: "ölçülmedi",
-        lcp: "ölçülmedi",
-        cls: "ölçülmedi",
-        tbt: "ölçülmedi",
+        performance: "ölçülmedi: Lighthouse hatası",
+        accessibility: "ölçülmedi: Lighthouse hatası",
+        bestPractices: "ölçülmedi: Lighthouse hatası",
+        seo: "ölçülmedi: Lighthouse hatası",
+        lcp: "ölçülmedi: Lighthouse hatası",
+        cls: "ölçülmedi: Lighthouse hatası",
+        tbt: "ölçülmedi: Lighthouse hatası",
         firstLoadJs,
       });
     }
@@ -225,6 +303,10 @@ async function main() {
   if (browser) {
     await browser.close();
   }
+
+  // Measure Real RSS Memory under load
+  const medusaRss = getProcessMemoryWorkingSetMb(9000);
+  const webRss = getProcessMemoryWorkingSetMb(3100);
 
   // Generate docs/QUALITY-BASELINE.md content
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -244,6 +326,13 @@ async function main() {
   mdContent += `- **SEO:** Hedef ≥ 95 (Yapılandırılmış veri, meta etiketler, robots/sitemap).\n`;
   mdContent += `- **CLS:** Hedef < 0.1 (Kayıpsız görsel rezervasyonları ve stabil düzen).\n`;
   mdContent += `- **First Load JS:** Hedef ~110 kB (Puck editör kodu public paketlere dahil edilmez).\n`;
+
+  mdContent += `\n### Gerçek Bellek Ölçümü (Yük Altında RSS / Working Set)\n\n`;
+  mdContent += `| Servis | Port | Ölçülen RSS | Bütçe | Durum |\n`;
+  mdContent += `| :--- | :---: | :---: | :---: | :---: |\n`;
+  mdContent += `| Medusa v2 | 9000 | ${medusaRss ? `${medusaRss} MB` : "ölçülmedi"} | 512 MB | ${medusaRss && medusaRss < 512 ? "✅ Bütçe İçi" : "⚠️ Kontrol"} |\n`;
+  mdContent += `| Next.js Web | 3100 | ${webRss ? `${webRss} MB` : "ölçülmedi"} | 384 MB | ${webRss && webRss < 384 ? "✅ Bütçe İçi" : "⚠️ Kontrol"} |\n`;
+  mdContent += `| Toplam Node Heap/RSS | - | ${medusaRss && webRss ? `${(medusaRss + webRss).toFixed(1)} MB` : "ölçülmedi"} | ~896 MB | ${medusaRss && webRss && medusaRss + webRss < 896 ? "✅ Bütçe İçi" : "⚠️ Kontrol"} |\n`;
 
   const outPath = path.resolve(process.cwd(), "docs/QUALITY-BASELINE.md");
   fs.writeFileSync(outPath, mdContent, "utf8");

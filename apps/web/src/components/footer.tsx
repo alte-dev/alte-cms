@@ -39,7 +39,7 @@ export async function Footer() {
                 </a>
               </p>
             )}
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-stone-400">
               Mağazamızdaki tüm ürün fiyatlarına yasal KDV oranları (%20 standart, %10 ve %1
               indirimli) dahildir.
             </p>
@@ -135,7 +135,7 @@ export async function Footer() {
           )}
         </div>
 
-        <div className="mt-8 pt-8 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-4">
+        <div className="mt-8 pt-8 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-400 gap-4">
           <p>
             © {new Date().getFullYear()} {storeName}. Tüm hakları saklıdır.
           </p>

@@ -1,34 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
+import crypto from "crypto";
+
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const secret = req.headers.get("x-revalidate-secret") || req.nextUrl.searchParams.get("secret");
+    const authHeader = req.headers.get("authorization");
+    const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    const headerSecret = req.headers.get("x-revalidate-secret") || bearerSecret;
+
     const expectedSecret = process.env.REVALIDATE_SECRET || process.env.PAYLOAD_SECRET;
 
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (!headerSecret || !expectedSecret || !safeCompare(headerSecret, expectedSecret)) {
       return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const tag = body.tag || req.nextUrl.searchParams.get("tag");
+    const body = await req.json().catch(() => null);
+    const tag = body?.tag;
 
     if (!tag || typeof tag !== "string") {
       return NextResponse.json({ error: "Geçersiz veya eksik etiket (tag)" }, { status: 400 });
     }
 
-    try {
-      revalidateTag(tag);
-    } catch (e) {
-      // Catch when running in test runners without Next.js server context
-      console.warn(
-        "revalidateTag store warning (expected in test/non-server context):",
-        (e as Error).message,
-      );
-    }
+    revalidateTag(tag);
 
     return NextResponse.json({ revalidated: true, tag, timestamp: Date.now() }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error("[Revalidate API] Hata:", (error as Error).name);
+    return NextResponse.json({ error: "Etiket yenileme başarısız oldu" }, { status: 500 });
   }
 }

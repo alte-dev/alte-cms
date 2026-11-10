@@ -130,8 +130,8 @@ export default async function BlogCategoryPage({ params, searchParams }: Props) 
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-zinc-400 bg-zinc-100">
-                      <span className="text-xs">Görsel Yok</span>
+                    <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-100">
+                      <span className="text-xs font-medium">Görsel Yok</span>
                     </div>
                   )}
                 </Link>

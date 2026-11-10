@@ -1,9 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CACHE_TAGS, revalidateContentTag } from "../lib/cache-tags";
 import { POST } from "../app/api/revalidate/route";
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
+
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
+}));
 
 describe("Cache Strategy & Revalidation (revalidateTag)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("must define standard cache tags for products, categories, blog, and pages", () => {
     expect(CACHE_TAGS.products).toBe("products");
     expect(CACHE_TAGS.product("ipek-elbise")).toBe("product-ipek-elbise");
@@ -15,18 +24,39 @@ describe("Cache Strategy & Revalidation (revalidateTag)", () => {
     expect(CACHE_TAGS.page("hakkimizda")).toBe("page-hakkimizda");
   });
 
-  it("safely handles revalidation outside request context", () => {
-    // Calling revalidateContentTag in test environment without active request should not throw
-    expect(() => revalidateContentTag("test-tag")).not.toThrow();
+  it("calls revalidateTag and throws when next/cache fails", () => {
+    revalidateContentTag("test-tag");
+    expect(revalidateTag).toHaveBeenCalledWith("test-tag");
+
+    vi.mocked(revalidateTag).mockImplementationOnce(() => {
+      throw new Error("Store error");
+    });
+    expect(() => revalidateContentTag("error-tag")).toThrow("Store error");
   });
 
-  it("POST /api/revalidate rejects requests without valid secret", async () => {
+  it("POST /api/revalidate rejects requests without valid secret header", async () => {
     process.env.PAYLOAD_SECRET = "test-secret-value-123456";
 
     const req = new NextRequest("http://localhost:3100/api/revalidate", {
       method: "POST",
       body: JSON.stringify({ tag: "products" }),
     });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/revalidate rejects secret in query parameters (must only accept header)", async () => {
+    process.env.PAYLOAD_SECRET = "test-secret-value-123456";
+
+    // Secret in query parameter should be ignored and rejected with 401
+    const req = new NextRequest(
+      "http://localhost:3100/api/revalidate?secret=test-secret-value-123456",
+      {
+        method: "POST",
+        body: JSON.stringify({ tag: "products" }),
+      },
+    );
 
     const res = await POST(req);
     expect(res.status).toBe(401);
@@ -62,8 +92,31 @@ describe("Cache Strategy & Revalidation (revalidateTag)", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.revalidated).toBe(true);
-    expect(json.tag).toBe("pages");
+    const data = await res.json();
+    expect(data.revalidated).toBe(true);
+    expect(data.tag).toBe("pages");
+    expect(revalidateTag).toHaveBeenCalledWith("pages");
+  });
+
+  it("POST /api/revalidate returns 500 without leaking error.message when revalidateTag throws", async () => {
+    process.env.PAYLOAD_SECRET = "test-secret-value-123456";
+    vi.mocked(revalidateTag).mockImplementationOnce(() => {
+      throw new Error("Internal secret database error details");
+    });
+
+    const req = new NextRequest("http://localhost:3100/api/revalidate", {
+      method: "POST",
+      headers: {
+        "x-revalidate-secret": "test-secret-value-123456",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tag: "products" }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.error).toBe("Etiket yenileme başarısız oldu");
+    expect(data.error).not.toContain("Internal secret database error details");
   });
 });

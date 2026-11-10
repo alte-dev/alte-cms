@@ -75,10 +75,11 @@ export default async function BlogIndexPage({ searchParams }: Props) {
         </div>
 
         {/* Search */}
-        <form method="GET" action="/blog" className="w-full sm:w-64">
+        <form method="GET" action="/blog" className="w-full sm:w-64" role="search">
           <input
             type="search"
             name="q"
+            aria-label="Blogda ara"
             defaultValue={q || ""}
             placeholder="Blogda ara..."
             className="w-full px-3 py-1.5 text-xs rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900"
@@ -124,8 +125,8 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-zinc-400 bg-zinc-100">
-                      <span className="text-xs">Görsel Yok</span>
+                    <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-100">
+                      <span className="text-xs font-medium">Görsel Yok</span>
                     </div>
                   )}
                 </Link>

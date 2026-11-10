@@ -553,12 +553,29 @@ async function run() {
   try {
     const sitemapRes = await fetch(`${STORE_URL}/sitemap.xml`);
     const sitemapXml = await sitemapRes.text();
+    let allSitemapContent = sitemapXml;
+
+    if (sitemapRes.status === 200 && sitemapXml.includes("<sitemapindex")) {
+      const [sub0, sub1, sub2] = await Promise.all([
+        fetch(`${STORE_URL}/sitemap/0.xml`)
+          .then((r) => r.text())
+          .catch(() => ""),
+        fetch(`${STORE_URL}/sitemap/1.xml`)
+          .then((r) => r.text())
+          .catch(() => ""),
+        fetch(`${STORE_URL}/sitemap/2.xml`)
+          .then((r) => r.text())
+          .catch(() => ""),
+      ]);
+      allSitemapContent = sitemapXml + sub0 + sub1 + sub2;
+    }
+
     const sitemapValid =
       sitemapRes.status === 200 &&
-      sitemapXml.includes("<urlset") &&
-      sitemapXml.includes("/sayfa/hakkimizda") &&
-      !sitemapXml.includes("ozel-taslak-sayfa-test") &&
-      !sitemapXml.includes("mesafeli-satis-sozlesmesi");
+      (sitemapXml.includes("<urlset") || sitemapXml.includes("<sitemapindex")) &&
+      allSitemapContent.includes("/sayfa/hakkimizda") &&
+      !allSitemapContent.includes("ozel-taslak-sayfa-test") &&
+      !allSitemapContent.includes("mesafeli-satis-sozlesmesi");
 
     const robotsRes = await fetch(`${STORE_URL}/robots.txt`);
     const robotsTxt = await robotsRes.text();
@@ -574,7 +591,7 @@ async function run() {
       11,
       "Sitemap & Robots (No Drafts, Disallow Rules)",
       sitemapValid && robotsValid,
-      `Sitemap HTTP ${sitemapRes.status} (drafts excluded: ${!sitemapXml.includes("ozel-taslak-sayfa-test")}). Robots HTTP ${robotsRes.status} (rules valid: ${robotsValid}).`,
+      `Sitemap HTTP ${sitemapRes.status} (drafts excluded: ${!allSitemapContent.includes("ozel-taslak-sayfa-test")}). Robots HTTP ${robotsRes.status} (rules valid: ${robotsValid}).`,
     );
   } catch (err: any) {
     recordStep(11, "Sitemap & Robots", false, `Sitemap/Robots error: ${err.message}`);

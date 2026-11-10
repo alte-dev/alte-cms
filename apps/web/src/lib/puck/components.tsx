@@ -414,7 +414,7 @@ export function ProductGridComponent({ title = "Öne Çıkan Ürünler", limit =
             <div className="aspect-square bg-zinc-100 rounded-lg mb-3 flex items-center justify-center text-zinc-400">
               <span className="text-xs">Ürün Görseli</span>
             </div>
-            <h4 className="text-sm font-medium text-zinc-900 truncate">Örnek Ürün {idx + 1}</h4>
+            <h3 className="text-sm font-medium text-zinc-900 truncate">Örnek Ürün {idx + 1}</h3>
             <p className="text-sm font-semibold text-zinc-900 mt-1">499,00 TL</p>
           </div>
         ))}

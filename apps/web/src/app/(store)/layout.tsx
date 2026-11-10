@@ -1,14 +1,23 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [
+    {
+      path: "../../fonts/inter-latin.woff2",
+      style: "normal",
+    },
+    {
+      path: "../../fonts/inter-latin-ext.woff2",
+      style: "normal",
+    },
+  ],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
