@@ -112,6 +112,11 @@ async function run() {
 
   // STEP 2: Real Database Table Seed Idempotency
   try {
+    console.log("Running seed:content (Run 1)...");
+    execSync("pnpm --filter @alte/web seed:content", { stdio: "pipe" });
+
+    await new Promise((r) => setTimeout(r, 1000));
+
     const [pages1, posts1, cats1, reds1] = await Promise.all([
       fetch(`${STORE_URL}/api/pages?limit=100`).then((r) => r.json()),
       fetch(`${STORE_URL}/api/posts?limit=100`).then((r) => r.json()),
@@ -126,7 +131,7 @@ async function run() {
       redirects: reds1.totalDocs ?? 0,
     };
 
-    console.log("Running seed:content for idempotency check...");
+    console.log("Running seed:content (Run 2 - Idempotency check)...");
     execSync("pnpm --filter @alte/web seed:content", { stdio: "pipe" });
 
     await new Promise((r) => setTimeout(r, 1000));

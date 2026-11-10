@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { getPublishedPostBySlug, getSiteSettings } from "@/lib/payload/content";
 import { LexicalRenderer } from "@/components/blog/LexicalRenderer";
@@ -143,8 +144,15 @@ export default async function BlogPostPage({ params }: Props) {
 
       {/* Cover Image */}
       {coverUrl && (
-        <figure className="mb-10 rounded-2xl overflow-hidden border border-zinc-200 shadow-sm">
-          <img src={coverUrl} alt={coverAlt} className="w-full object-cover max-h-[550px]" />
+        <figure className="mb-10 rounded-2xl overflow-hidden border border-zinc-200 shadow-sm relative w-full h-[350px] sm:h-[450px] lg:h-[550px]">
+          <Image
+            src={coverUrl}
+            alt={coverAlt || post.title}
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+            className="object-cover"
+          />
         </figure>
       )}
 

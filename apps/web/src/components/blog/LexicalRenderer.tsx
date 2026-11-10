@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { safeHref } from "@/lib/safe-href";
 
 interface LexicalNode {
@@ -161,13 +162,17 @@ function renderNode(node: LexicalNode, index: number): React.ReactNode {
     case "upload": {
       const media = node.value;
       if (!media || !media.url) return null;
+      const width = Number(media.width) || 1200;
+      const height = Number(media.height) || 675;
       return (
         <figure key={index} className="my-8">
-          <img
+          <Image
             src={media.url}
             alt={media.alt || "Görsel"}
-            className="w-full rounded-xl object-cover max-h-[500px]"
-            loading="lazy"
+            width={width}
+            height={height}
+            sizes="(max-width: 768px) 100vw, 800px"
+            className="w-full h-auto rounded-xl object-cover max-h-[500px]"
           />
           {media.caption && (
             <figcaption className="text-center text-xs text-zinc-500 mt-2">

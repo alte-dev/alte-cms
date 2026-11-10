@@ -1,9 +1,52 @@
 import { withPayload } from "@payloadcms/next/withPayload";
 import type { NextConfig } from "next";
 
+const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL;
+const remotePatterns: Array<{
+  protocol: "http" | "https";
+  hostname: string;
+  port?: string;
+  pathname: string;
+}> = [
+  {
+    protocol: "http",
+    hostname: "localhost",
+    port: "3100",
+    pathname: "/api/media/file/**",
+  },
+  {
+    protocol: "http",
+    hostname: "127.0.0.1",
+    port: "3100",
+    pathname: "/api/media/file/**",
+  },
+];
+
+if (serverUrl) {
+  try {
+    const parsed = new URL(serverUrl);
+    const proto = parsed.protocol.replace(":", "") as "http" | "https";
+    if (
+      !remotePatterns.some(
+        (p) => p.hostname === parsed.hostname && (p.port || "") === (parsed.port || ""),
+      )
+    ) {
+      remotePatterns.push({
+        protocol: proto,
+        hostname: parsed.hostname,
+        port: parsed.port || undefined,
+        pathname: "/api/media/file/**",
+      });
+    }
+  } catch {}
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns,
+  },
   // Ensure standalone build support for memory optimization and lightweight deployment
   output: process.env.NEXT_OUTPUT_STANDALONE === "true" ? "standalone" : undefined,
   // Transpile shared monorepo packages
