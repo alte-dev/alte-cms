@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreShippingOption } from "../lib/medusa/types";
 import { PaymentOptionsResult } from "../lib/medusa/cart";
+import {
+  getDefaultShippingOptionId,
+  sortShippingOptions,
+  calculateCheckoutTotals,
+} from "../lib/medusa/checkout-pricing";
 import {
   Tag,
   X,
@@ -73,9 +78,21 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
   const [billingAddressLine2, setBillingAddressLine2] = useState("");
   const [billingPostalCode, setBillingPostalCode] = useState("");
 
-  // Shipping Option Selection
-  const defaultOptionId =
-    cart.shipping_methods?.[0]?.shipping_option_id || shippingOptions[0]?.id || "";
+  // Shipping Options: prioritize free shipping option at the top
+  const sortedShippingOptions = useMemo(
+    () => sortShippingOptions(shippingOptions),
+    [shippingOptions],
+  );
+
+  // Shipping Option Selection: auto-select "Ücretsiz Kargo" when eligible instead of paid standard shipping
+  const defaultOptionId = useMemo(
+    () =>
+      getDefaultShippingOptionId(
+        sortedShippingOptions,
+        cart.shipping_methods?.[0]?.shipping_option_id,
+      ),
+    [sortedShippingOptions, cart.shipping_methods],
+  );
   const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string>(defaultOptionId);
 
   // Legal Consents
@@ -87,16 +104,15 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isCouponPending, setIsCouponPending] = useState(false);
 
-  const rawCodFee = paymentOptions?.cod?.fee ?? 100;
-  const codFee = rawCodFee > 500 ? rawCodFee / 100 : rawCodFee;
-  const codFeeAmount = paymentMethod === "cod" ? codFee : 0;
+  const selectedOption = sortedShippingOptions.find((o) => o.id === selectedShippingOptionId);
+  const totals = calculateCheckoutTotals(
+    cart,
+    selectedOption,
+    paymentOptions?.cod?.fee ?? 100,
+    paymentMethod,
+  );
 
-  const subtotal = cart.item_subtotal ?? cart.subtotal ?? 0;
-  const taxTotal = cart.tax_total ?? 0;
-  const discountTotal = cart.discount_total ?? 0;
-  const selectedOption = shippingOptions.find((o) => o.id === selectedShippingOptionId);
-  const shippingCost = selectedOption?.amount ?? cart.shipping_total ?? 0;
-  const total = Math.max(0, subtotal - discountTotal + shippingCost + codFeeAmount);
+  const { subtotalNet, taxTotal, discountTotal, shippingCost, codFee, total } = totals;
   const promotions = cart.promotions || [];
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -697,7 +713,7 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
           </div>
 
           <div className="space-y-2">
-            {shippingOptions.map((opt) => (
+            {sortedShippingOptions.map((opt) => (
               <label
                 key={opt.id}
                 className={`flex items-center justify-between p-3.5 border rounded-lg cursor-pointer transition ${
@@ -948,7 +964,11 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
                 <span className="text-stone-500 ml-1.5">x {item.quantity}</span>
               </div>
               <span className="font-bold text-stone-900 flex-shrink-0">
-                {formatTRY(item.subtotal || item.total)}
+                {formatTRY(
+                  (item.unit_price ? item.unit_price * item.quantity : 0) ||
+                    item.total ||
+                    item.subtotal,
+                )}
               </span>
             </div>
           ))}
@@ -1008,9 +1028,7 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
         <div className="space-y-2 text-xs pt-3 border-t border-stone-100">
           <div className="flex justify-between text-stone-600">
             <span>Ara Toplam (KDV Hariç)</span>
-            <span className="font-medium text-stone-900">
-              {formatTRY(Math.max(0, subtotal - taxTotal))}
-            </span>
+            <span className="font-medium text-stone-900">{formatTRY(subtotalNet)}</span>
           </div>
 
           <div className="flex justify-between text-stone-600">

@@ -120,7 +120,13 @@ export default async function OrderConfirmationPage() {
                 <p className="text-xs text-stone-500 mt-0.5">Adet: {item.quantity}</p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="font-bold text-stone-900">{formatTRY(item.subtotal || item.total)}</p>
+                <p className="font-bold text-stone-900">
+                  {formatTRY(
+                    (item.unit_price ? item.unit_price * item.quantity : 0) ||
+                      item.total ||
+                      item.subtotal,
+                  )}
+                </p>
                 <p className="text-[11px] text-stone-500">Birim: {formatTRY(item.unit_price)}</p>
               </div>
             </div>
@@ -132,9 +138,7 @@ export default async function OrderConfirmationPage() {
       <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 space-y-3">
         <div className="flex justify-between text-sm text-stone-600">
           <span>Ara Toplam (KDV Hariç)</span>
-          <span className="font-medium text-stone-900">
-            {formatTRY(Math.max(0, subtotal - taxTotal))}
-          </span>
+          <span className="font-medium text-stone-900">{formatTRY(subtotal)}</span>
         </div>
 
         <div className="flex justify-between text-sm text-stone-600">

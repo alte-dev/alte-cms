@@ -10,6 +10,7 @@ import {
   updateCartItemAction,
 } from "../app/(store)/actions";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
+import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
 import { PlaceholderImage } from "./placeholder-image";
 
@@ -102,12 +103,10 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
     );
   }
 
-  // Calculate dynamic free shipping progress using current cart subtotal
-  const subtotal = cart.item_subtotal ?? cart.subtotal ?? 0;
-  const taxTotal = cart.tax_total ?? 0;
+  // Accurate pricing breakdown complying with Turkish tax-inclusive pricing
+  const totals = calculateCheckoutTotals(cart, null, 0, "card");
+  const { subtotalNet, taxTotal, discountTotal, total } = totals;
   const shippingTotal = cart.shipping_total ?? 0;
-  const discountTotal = cart.discount_total ?? 0;
-  const total = cart.total ?? subtotal;
   const promotions = cart.promotions || [];
 
   return (
@@ -197,7 +196,11 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
               {/* Line Total */}
               <div className="text-right min-w-[5rem]">
                 <span className="text-sm font-bold text-stone-900">
-                  {formatTRY(item.subtotal || item.total)}
+                  {formatTRY(
+                    (item.unit_price ? item.unit_price * item.quantity : 0) ||
+                      item.total ||
+                      item.subtotal,
+                  )}
                 </span>
               </div>
 
@@ -276,9 +279,7 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
           {/* Subtotal */}
           <div className="flex justify-between text-stone-600">
             <span>Ara Toplam (KDV Hariç)</span>
-            <span className="font-medium text-stone-900">
-              {formatTRY(Math.max(0, subtotal - taxTotal))}
-            </span>
+            <span className="font-medium text-stone-900">{formatTRY(subtotalNet)}</span>
           </div>
 
           {/* Tax Line */}
@@ -299,7 +300,11 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
           <div className="flex justify-between text-stone-600">
             <span>Kargo Tutarı</span>
             <span className="font-medium text-stone-900">
-              {shippingTotal > 0 ? formatTRY(shippingTotal) : "Hesaplanacak (Ödeme Adımında)"}
+              {shippingProgress.isEligible
+                ? "Ücretsiz"
+                : shippingTotal > 0
+                  ? formatTRY(shippingTotal)
+                  : "Hesaplanacak (Ödeme Adımında)"}
             </span>
           </div>
 
