@@ -18,6 +18,20 @@ jobs:
   security-and-quality:
     name: Security Scan, Quality & Build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: payload_user
+          POSTGRES_PASSWORD: dev-only-payload-password
+          POSTGRES_DB: payload_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       NEXT_PUBLIC_SERVER_URL: "http://localhost:3100"
       DATABASE_URI: "postgres://payload_user:dev-only-payload-password@127.0.0.1:5432/payload_db"
@@ -82,10 +96,27 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Verify Payload Generated Types are In Sync
+      - name: Run Payload Database Migrations on Clean DB
+        run: |
+          pnpm --filter @alte/web migrate
+          pnpm --filter @alte/web migrate:status
+          if command -v psql >/dev/null 2>&1; then
+            TABLE_COUNT=$(PGPASSWORD=dev-only-payload-password psql -h 127.0.0.1 -U payload_user -d payload_db -t -A -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';")
+            echo "Verified $TABLE_COUNT tables created in public schema."
+            if [ "$TABLE_COUNT" -le 0 ]; then
+              echo "Error: Expected table count > 0 after migration"
+              exit 1
+            fi
+          fi
+          echo "Testing migration idempotency..."
+          pnpm --filter @alte/web migrate
+
+      - name: Verify Payload Generated Types & Schema Sync
         run: |
           pnpm --filter @alte/web exec payload generate:types
           git diff --exit-code apps/web/src/payload-types.ts
+          pnpm --filter @alte/web exec payload generate:db-schema
+          git diff --exit-code apps/web/src/payload-generated-schema.ts
 
       - name: Typecheck
         run: pnpm typecheck

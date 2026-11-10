@@ -12,7 +12,11 @@
     "lint": "eslint src/",
     "test": "vitest run",
     "create-admin": "tsx src/scripts/create-first-admin.ts",
-    "seed:content": "tsx src/scripts/seed-content.ts"
+    "seed:content": "tsx src/scripts/seed-content.ts",
+    "payload": "payload",
+    "migrate": "payload migrate",
+    "migrate:create": "payload migrate:create",
+    "migrate:status": "payload migrate:status"
   },
   "dependencies": {
     "@alte/shared": "workspace:*",
