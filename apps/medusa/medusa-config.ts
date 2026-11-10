@@ -16,10 +16,14 @@ module.exports = defineConfig({
       jwtSecret: env.JWT_SECRET,
       cookieSecret: env.COOKIE_SECRET,
     },
+    cookieOptions: {
+      secure: process.env.COOKIE_SECURE === "true" || (process.env.API_PUBLIC_URL?.startsWith("https://") ?? false),
+      sameSite: "lax",
+    },
   },
   admin: {
     disable: false,
-    backendUrl: process.env.MEDUSA_ADMIN_BACKEND_URL || `http://${env.HOST}:${env.PORT}`,
+    backendUrl: process.env.MEDUSA_ADMIN_BACKEND_URL,
   },
   modules: [
     {
