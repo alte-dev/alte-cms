@@ -1,70 +1,43 @@
 import React from "react";
 import Link from "next/link";
-import { PackageX, ArrowRight, Home } from "lucide-react";
+import { ArrowLeft, ShoppingBag, BookOpen } from "lucide-react";
 
 export default function StoreNotFound() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-      <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-stone-100 text-stone-400">
-        <PackageX className="w-10 h-10" />
-      </div>
-
-      <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 mb-3">
-        Sayfa veya Ürün Bulunamadı
+    <div className="max-w-2xl mx-auto px-4 py-20 sm:py-28 text-center space-y-6">
+      <span className="inline-block text-xs font-bold uppercase tracking-wider text-stone-500 bg-stone-200/60 px-3 py-1 rounded-full">
+        404 — Sayfa Bulunamadı
+      </span>
+      <h1 className="text-3xl sm:text-5xl font-extrabold text-stone-900 tracking-tight">
+        Aradığınız sayfayı bulamadık
       </h1>
-
-      <p className="text-base text-stone-600 mb-8 max-w-md mx-auto">
-        Aradığınız ürün yayından kaldırılmış, bağlantı değişmiş veya hatalı yazılmış olabilir.
+      <p className="text-base text-stone-600 max-w-md mx-auto">
+        Ulaşmaya çalıştığınız sayfa kaldırılmış, adı değiştirilmiş veya geçici olarak erişilemiyor
+        olabilir.
       </p>
 
-      <div className="flex flex-wrap items-center justify-center gap-4 mb-12">
+      <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-lg text-sm font-semibold hover:bg-stone-800 transition"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-stone-900 text-white font-medium text-sm rounded-lg hover:bg-stone-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
         >
-          <Home className="w-4 h-4" />
-          Ana Sayfaya Dön
+          <ArrowLeft className="w-4 h-4" />
+          Anasayfaya Dön
         </Link>
         <Link
           href="/urunler"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-stone-300 text-stone-800 rounded-lg text-sm font-semibold hover:bg-stone-50 transition"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-stone-300 text-stone-800 font-medium text-sm rounded-lg hover:bg-stone-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
         >
-          Tüm Ürünleri İncele
-          <ArrowRight className="w-4 h-4" />
+          <ShoppingBag className="w-4 h-4 text-stone-600" />
+          Tüm Ürünler
         </Link>
-      </div>
-
-      {/* Suggested Categories */}
-      <div className="pt-8 border-t border-stone-200">
-        <p className="text-xs uppercase tracking-wider font-semibold text-stone-400 mb-4">
-          Popüler Kategoriler
-        </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Link
-            href="/kategori/giyim"
-            className="px-4 py-2 rounded-lg bg-stone-100 text-xs font-semibold text-stone-700 hover:bg-stone-200"
-          >
-            Giyim
-          </Link>
-          <Link
-            href="/kategori/ust-giyim"
-            className="px-4 py-2 rounded-lg bg-stone-100 text-xs font-semibold text-stone-700 hover:bg-stone-200"
-          >
-            Üst Giyim
-          </Link>
-          <Link
-            href="/kategori/alt-giyim"
-            className="px-4 py-2 rounded-lg bg-stone-100 text-xs font-semibold text-stone-700 hover:bg-stone-200"
-          >
-            Alt Giyim
-          </Link>
-          <Link
-            href="/kategori/aksesuar"
-            className="px-4 py-2 rounded-lg bg-stone-100 text-xs font-semibold text-stone-700 hover:bg-stone-200"
-          >
-            Aksesuar
-          </Link>
-        </div>
+        <Link
+          href="/blog"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-stone-300 text-stone-800 font-medium text-sm rounded-lg hover:bg-stone-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+        >
+          <BookOpen className="w-4 h-4 text-stone-600" />
+          Blog
+        </Link>
       </div>
     </div>
   );

@@ -16,11 +16,12 @@ Bu dosya `AGENTS.md` içinden referanslanır ve ihtiyaç olunca okunur. Her faz 
 | 6B               | E-posta bildirimleri (SMTP, admin ayarı)                                     | Şifreli SMTP parolası, idempotent gönderim, maskeli günlük, kişisel veri saklanmaz.                                                                                                                       |
 | 6C               | Sipariş yönetimi, kargo takibi                                               | Takip kodu + HTTPS bağlantı doğrulaması, `/siparis-takip` anti-enumeration + hız sınırı, COD tahsil, güvenli iptal, PII'siz CSV.                                                                          |
 | 6.1, 6.2         | 6A/6B/6C düzeltmeleri                                                        | Marka sabitleri temizlendi, e-posta tabloları migration'a taşındı, `payload_json` kaldırıldı.                                                                                                             |
-| 6.3              | Payload üretim migration'ları                                                | PR #19. `payload migrate`, üretimde `push: false`, CI'da boş DB'de migrate + şema senkron kontrolü. **İnsan doğrulaması ve merge bekliyor.**                                                              |
+| 6.3              | Payload üretim migration'ları                                                | PR #19. `payload migrate`, üretimde `push: false`, CI'da boş DB'de migrate + şema senkron kontrolü. Merge edildi.                                                                                         |
+| 11.0             | Taşınan düzeltmeler                                                          | PR #20. `sharp` pinli, gerçek görsel boyutları (400/800/1600), `next/image`, `verify-content` Adım 2 düzeltmesi.                                                                                          |
 
 ## B. Kalan fazlar (öneri sırası)
 
-Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. Sıra değişebilir, ama canlıya çıkmadan önce 7 ve 8 tamamlanmış olmalı.
+Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme sırası: 11 → 12 → 10 → 7 → 8 → 9 → 13 → 14.** Numaralar eski raporlarla karışmasın diye korundu, sıra bu satırdır. Canlıya çıkmadan önce 7, 8 ve 9 tamamlanmış olmalı. Faz 10 (WooCommerce geçişi) Faz 12'ye bağlıdır (hesap ve şifre taşıma).
 
 ### Faz 7 — Üretim altyapısı (eski adıyla Faz 0B). Yalnızca insan açıkça isterse başla.
 
@@ -47,24 +48,40 @@ Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. Sıra değişebilir, a
 ### Faz 10 — WooCommerce geçişi ve katalog araçları
 
 - `docs/MIGRATION-WOOCOMMERCE.md` esas alınarak ürün/kategori/müşteri/sipariş içe aktarma betikleri (CSV), kuru çalıştırma modu, hata raporu.
+- Müşteri şifreleri: WP hash'i şifreli alanda saklanır, ilk girişte doğrulanıp Medusa biçimine çevrilir (tembel taşıma). Hash'ler repoya, loga, teste girmez, testlerde sahte hash kullanılır. Gerçek örnek hash biçimi insandan (yalnızca ilk karakterler) teyit edilir. Hiç girmeyenler için şifremi unuttum akışı yedektir.
+- Eski siparişler geçmiş kayıt olarak içe aktarılır (ödeme/kargo/stok/e-posta tetiklenmez), tutar ve KDV birebir korunur.
 - Toplu ürün içe/dışa aktarma, varyant görselleri, düşük stok uyarı e-postası.
 - 301 yönlendirme listesi eski URL'ler için (Payload `redirects`).
 
 ### Faz 11 — Performans, erişilebilirlik, SEO cilası
 
-- Lighthouse ölçümleri (gerçek), `<img>` uyarılarının `next/image` ile giderilmesi, görsel boyutlandırma.
-- WCAG kontrolü, klavye gezinmesi, odak yönetimi.
-- Önbellek stratejisi ve `revalidateTag` kapsamı, sitemap bölme, yapılandırılmış veri genişletme.
+- 11.0 tamamlandı (PR #20).
+- 11A–11D tamamlandı (dal: `phase-11-quality`).
+- Medya yüklemede SVG ve 5 MB üzeri dosyalarda HTTP 400 `ValidationError` dönüşü sağlandı.
+- Lighthouse mobil ölçüm altyapısı (`scripts/measure-quality.ts`) ve temel metrik tablosu (`docs/QUALITY-BASELINE.md`) oluşturuldu.
+- WCAG 2.1 AA erişilebilirlik gereksinimleri (`@axe-core/playwright` ile 0 kritik/ciddi ihlal, Türkçe skip-link `#main-content`, klavye gezintisi ve odak yönetimi) tamamlandı.
+- `next/font` ile yerel Inter font optimizasyonu (`display: swap`), ~110 kB First Load JS bütçesi korundu, Puck editör kodunun genel pakete girmemesi garanti altına alındı.
+- Etiket tabanlı önbellekleme (`revalidateTag`, `POST /api/revalidate`, `CACHE_TAGS`) ve Payload içerik kancaları entegre edildi.
+- SEO şemaları (`Product`, `BreadcrumbList`, `Article`, `Organization`) dinamik mağaza verileriyle genişletildi; sitemap index 50.000 URL sınırına göre bölümlendirildi; Türkçe özel 404 ve 500 sayfaları eklendi.
 
-### Faz 12 — Güvenlik sertleştirme
+### Faz 12 — Müşteri hesabı (Faz 11'den sonra, Faz 10'dan önce)
+
+- Kayıt, giriş, çıkış, e-posta ile şifre sıfırlama (süreli, tek kullanımlık bağlantı), profil, adres defteri, sipariş geçmişi. Medusa customer auth kullanılır.
+- Misafir siparişler, e-posta doğrulandıktan sonra hesaba bağlanır. Başkasının siparişi görülemez (yetki testi).
+- Güvenlik: giriş ve şifre sıfırlama hız sınırı, kullanıcı numaralandırma koruması (tek tip yanıt ve süre), httpOnly + SameSite oturum çerezi, parola kuralları.
+- KVKK: açık rıza kaydı, hesap silme/anonimleştirme, PII loga yazılmaz. Misafir checkout çalışmaya devam eder.
+- Şifre doğrulama, birden çok hash biçimini destekleyen **doğrulayıcı listesi** olarak tasarlanır. Şimdilik yalnızca Medusa biçimi vardır. Hesap kaydında "eski hash" için şifreli, API'de asla dönmeyen bir alan hazır tutulur. WooCommerce hash doğrulayıcıları (phpass `$P$` ve WP 6.8+ `$wp$2y$`) Faz 10'da eklenir. Giriş başarılıysa şifre Medusa biçimine yeniden hash'lenir ve eski hash silinir.
+- Kendi `verify-accounts` betiği: canlı HTTP ile kayıt, giriş, yanlış şifre, hız sınırı, yetkisiz sipariş erişimi, şifre sıfırlama, silme.
+
+### Faz 13 — Güvenlik sertleştirme
 
 - Admin için 2FA, denetim günlüğü (kim neyi değiştirdi), oturum süreleri.
 - Hız sınırlarının Redis'e taşınması (çoklu süreç), CSP nonce'a geçiş (`unsafe-inline`/`unsafe-eval` azaltma).
 - Bağımlılık güncelleme akışı (Dependabot PR'ları, major güncelleme planı), bağımsız güvenlik gözden geçirme.
 
-### Faz 13 — İsteğe bağlı büyüme özellikleri (insan öncelik verirse)
+### Faz 14 — İsteğe bağlı büyüme özellikleri (insan öncelik verirse)
 
-- Müşteri hesabı, adres defteri, sipariş geçmişi, favoriler.
+- Favoriler.
 - Ürün yorumları (moderasyonlu), bülten (açık rıza ile), kampanya/kupon yönetimi arayüzü.
 - Kargo firması API entegrasyonu (etiket, otomatik takip), çoklu dil/para birimi.
 

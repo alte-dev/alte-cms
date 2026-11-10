@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { getProductByHandle } from "@/lib/medusa/products";
 import { AddToCartForm } from "@/components/add-to-cart-button";
 import { PlaceholderImage } from "@/components/placeholder-image";
+import { getSiteSettings } from "@/lib/payload/content";
+import { generateJsonLdProduct, generateJsonLdBreadcrumbs } from "@/lib/seo/json-ld";
 
 interface ProductPageProps {
   params: Promise<{ handle: string }>;
@@ -30,14 +32,17 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     defaultVariant?.inventory_quantity !== undefined &&
     defaultVariant.inventory_quantity <= 0;
 
+  const settings = await getSiteSettings().catch(() => null);
+  const storeName = settings?.storeName || "Mağaza";
+
   return {
     title: product.title,
-    description: product.description || `${product.title} - Mağaza. KDV dahil fiyatlar.`,
+    description: product.description || `${product.title} - ${storeName}. KDV dahil fiyatlar.`,
     openGraph: {
       title: product.title,
       description: product.description || undefined,
       type: "website",
-      siteName: "Mağaza",
+      siteName: storeName,
       locale: "tr_TR",
       ...(product.thumbnail ? { images: [{ url: product.thumbnail }] } : {}),
     },
@@ -69,38 +74,42 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     primaryVariant?.inventory_quantity !== undefined &&
     primaryVariant.inventory_quantity <= 0;
 
-  // schema.org Product JSON-LD structured data
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
+  const settings = await getSiteSettings().catch(() => null);
+  const storeName = settings?.storeName || "Mağaza";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SERVER_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3100";
+  const productUrl = `${baseUrl}/urun/${product.handle}`;
+
+  const productJsonLd = generateJsonLdProduct({
     name: product.title,
     description: product.description || product.title,
-    image: product.thumbnail || undefined,
-    sku: primaryVariant?.sku || product.handle,
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "TRY",
-      price: primaryPrice,
-      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      itemCondition: "https://schema.org/NewCondition",
-      availability: isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-      seller: {
-        "@type": "Organization",
-        name: "Mağaza",
-      },
-    },
-  };
+    url: productUrl,
+    imageUrl: product.thumbnail || undefined,
+    price: primaryPrice,
+    currency: "TRY",
+    inStock: !isOutOfStock,
+    brandName: storeName,
+  });
+
+  const breadcrumbsJsonLd = generateJsonLdBreadcrumbs([
+    { name: "Anasayfa", item: baseUrl },
+    { name: "Ürünler", item: `${baseUrl}/urunler` },
+    { name: product.title, item: productUrl },
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
-      {/* JSON-LD Script */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {/* JSON-LD Scripts */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: breadcrumbsJsonLd }} />
 
       {/* Breadcrumb Navigation */}
-      <nav className="flex items-center gap-2 text-xs text-stone-500">
+      <nav
+        aria-label="Ekmek kırıntısı gezinimi"
+        className="flex items-center gap-2 text-xs text-stone-500"
+      >
         <Link href="/" className="hover:text-stone-900">
           Anasayfa
         </Link>

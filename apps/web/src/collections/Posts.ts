@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { slugify, validateSlugField } from "../lib/slugify";
 import { calculateReadingTime } from "../lib/reading-time";
 import { seoGroup } from "../fields/seo";
+import { revalidateContentTag, CACHE_TAGS } from "../lib/cache-tags";
 import {
   canReadPublishedOnlyOrStaff,
   canCreateContent,
@@ -51,6 +52,22 @@ export const Posts: CollectionConfig = {
           }
         }
         return data;
+      },
+    ],
+    afterChange: [
+      ({ doc }) => {
+        revalidateContentTag(CACHE_TAGS.blog);
+        if (doc?.slug) {
+          revalidateContentTag(CACHE_TAGS.post(doc.slug));
+        }
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        revalidateContentTag(CACHE_TAGS.blog);
+        if (doc?.slug) {
+          revalidateContentTag(CACHE_TAGS.post(doc.slug));
+        }
       },
     ],
   },
