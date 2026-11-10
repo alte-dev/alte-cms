@@ -9,6 +9,8 @@ import {
   removePromotionCode,
   updateCartItem,
 } from "../../lib/medusa/cart";
+import { getProducts, getCategories } from "../../lib/medusa/products";
+import { StoreProduct } from "../../lib/medusa/types";
 import { mapMedusaError } from "../../lib/medusa/format";
 import {
   AddToCartSchema,
@@ -169,6 +171,60 @@ export async function removeCouponAction(code: string): Promise<ActionResult> {
     return {
       success: false,
       error: err?.message || "Kupon kaldırılamadı.",
+    };
+  }
+}
+
+/**
+ * Server Action: Fetch additional products for infinite scroll.
+ */
+export async function fetchMoreProductsAction(params: {
+  page: number;
+  limit?: number;
+  category?: string;
+  sort?: "created_at" | "price_asc" | "price_desc";
+}): Promise<{
+  success: boolean;
+  products: StoreProduct[];
+  hasMore: boolean;
+  totalPages: number;
+  currentPage: number;
+  error?: string;
+}> {
+  try {
+    let categoryId: string | undefined = undefined;
+    if (params.category) {
+      const categories = await getCategories();
+      const matched = categories.find(
+        (c) => c.handle === params.category || c.id === params.category,
+      );
+      if (matched) {
+        categoryId = matched.id;
+      }
+    }
+
+    const result = await getProducts({
+      page: params.page,
+      limit: params.limit || 12,
+      category_id: categoryId,
+      sort: params.sort,
+    });
+
+    return {
+      success: true,
+      products: result.products,
+      hasMore: result.currentPage < result.totalPages,
+      totalPages: result.totalPages,
+      currentPage: result.currentPage,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      products: [],
+      hasMore: false,
+      totalPages: 1,
+      currentPage: params.page,
+      error: err?.message || "Ürünler yüklenirken bir hata oluştu.",
     };
   }
 }

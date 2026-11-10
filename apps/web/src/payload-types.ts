@@ -642,6 +642,10 @@ export interface SiteSetting {
   address?: string | null;
   logo?: (number | null) | Media;
   favicon?: (number | null) | Media;
+  /**
+   * Vitrin ürünler ve kategori sayfalarında ürünlerin nasıl listeleneceğini belirler.
+   */
+  catalogListingMode?: ('pagination' | 'infinite') | null;
   socialMedia?: {
     instagram?: string | null;
     facebook?: string | null;
@@ -705,6 +709,7 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   address?: T;
   logo?: T;
   favicon?: T;
+  catalogListingMode?: T;
   socialMedia?:
     | T
     | {

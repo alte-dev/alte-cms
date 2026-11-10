@@ -37,7 +37,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   return (
     <html lang="tr">
       <body
-        className={`${inter.className} min-h-screen flex flex-col bg-stone-50 text-stone-900 antialiased selection:bg-stone-200`}
+        className={`${inter.className} min-h-screen flex flex-col bg-stone-50 text-stone-900 antialiased selection:bg-stone-200 overflow-x-hidden max-w-full w-full`}
       >
         <a
           href="#main-content"
@@ -46,7 +46,11 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           İçeriğe geç
         </a>
         <Navbar />
-        <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 focus:outline-none w-full max-w-full overflow-x-hidden"
+        >
           {children}
         </main>
         <Footer />
