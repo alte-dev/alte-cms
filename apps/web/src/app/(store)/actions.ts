@@ -222,9 +222,7 @@ export async function fetchMoreProductsAction(params: {
     let categoryId: string | undefined = undefined;
     if (category) {
       const categories = await getCategories();
-      const matched = categories.find(
-        (c) => c.handle === category || c.id === category,
-      );
+      const matched = categories.find((c) => c.handle === category || c.id === category);
       if (matched) {
         categoryId = matched.id;
       }

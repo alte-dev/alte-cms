@@ -17,7 +17,9 @@ module.exports = defineConfig({
       cookieSecret: env.COOKIE_SECRET,
     },
     cookieOptions: {
-      secure: process.env.COOKIE_SECURE === "true" || (process.env.API_PUBLIC_URL?.startsWith("https://") ?? false),
+      secure:
+        process.env.COOKIE_SECURE === "true" ||
+        (process.env.API_PUBLIC_URL?.startsWith("https://") ?? false),
       sameSite: "lax",
     },
   },
