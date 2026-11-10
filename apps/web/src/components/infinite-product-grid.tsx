@@ -13,6 +13,7 @@ interface InfiniteProductGridProps {
   category?: string;
   sort?: "created_at" | "price_asc" | "price_desc";
   limit?: number;
+  autoLoadPages?: number;
 }
 
 export function InfiniteProductGrid({
@@ -22,12 +23,14 @@ export function InfiniteProductGrid({
   category,
   sort,
   limit = 12,
+  autoLoadPages = 3,
 }: InfiniteProductGridProps) {
   const [products, setProducts] = useState<StoreProduct[]>(initialProducts);
   const [page, setPage] = useState<number>(initialPage);
   const [hasMore, setHasMore] = useState<boolean>(initialPage < totalPages);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [autoLoadLimit, setAutoLoadLimit] = useState<number>(autoLoadPages);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -37,7 +40,8 @@ export function InfiniteProductGrid({
     setPage(initialPage);
     setHasMore(initialPage < totalPages);
     setErrorMsg(null);
-  }, [initialProducts, initialPage, totalPages, category, sort]);
+    setAutoLoadLimit(autoLoadPages);
+  }, [initialProducts, initialPage, totalPages, category, sort, autoLoadPages]);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -73,14 +77,22 @@ export function InfiniteProductGrid({
     setIsLoading(false);
   }, [isLoading, hasMore, page, limit, category, sort]);
 
+  // Anti-exhaustion guard: pause auto-scroll once page reaches the threshold
+  const isPausedForManual = hasMore && page >= autoLoadLimit;
+
+  const handleManualLoadMore = useCallback(() => {
+    setAutoLoadLimit((prev) => prev + autoLoadPages);
+    loadMore();
+  }, [autoLoadPages, loadMore]);
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore) return;
+    if (!sentinel || !hasMore || isPausedForManual) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const first = entries[0];
-        if (first.isIntersecting && !isLoading && hasMore) {
+        if (first.isIntersecting && !isLoading && hasMore && !isPausedForManual) {
           loadMore();
         }
       },
@@ -91,7 +103,7 @@ export function InfiniteProductGrid({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadMore, hasMore, isLoading]);
+  }, [loadMore, hasMore, isLoading, isPausedForManual]);
 
   return (
     <div className="w-full">
@@ -133,6 +145,22 @@ export function InfiniteProductGrid({
         </div>
       )}
 
+      {/* Anti-Exhaustion Guard & Manual Load More Button */}
+      {hasMore && !isLoading && isPausedForManual && (
+        <div className="flex flex-col items-center justify-center py-10 gap-3 border-t border-stone-200 mt-10">
+          <p className="text-xs text-stone-600 font-medium">
+            {products.length} ürün listelendi. Daha fazla ürün keşfetmek için:
+          </p>
+          <button
+            type="button"
+            onClick={handleManualLoadMore}
+            className="px-6 py-2.5 text-xs font-semibold bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition active:scale-95 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900 focus:ring-offset-2"
+          >
+            Daha Fazla Ürün Göster
+          </button>
+        </div>
+      )}
+
       {/* End of catalog indicator */}
       {!hasMore && products.length > 0 && (
         <div className="text-center py-12 border-t border-stone-200 mt-12">
@@ -142,8 +170,10 @@ export function InfiniteProductGrid({
         </div>
       )}
 
-      {/* Observer target sentinel */}
-      <div ref={sentinelRef} className="h-4 w-full" aria-hidden="true" />
+      {/* Observer target sentinel (only active when not paused) */}
+      {hasMore && !isPausedForManual && (
+        <div ref={sentinelRef} className="h-4 w-full" aria-hidden="true" />
+      )}
     </div>
   );
 }

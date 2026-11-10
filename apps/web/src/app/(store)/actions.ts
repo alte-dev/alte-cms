@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import {
   addItemToCart,
   applyPromotionCode,
@@ -175,8 +176,19 @@ export async function removeCouponAction(code: string): Promise<ActionResult> {
   }
 }
 
+const FetchMoreProductsSchema = z.object({
+  page: z
+    .number()
+    .int("Sayfa tam sayı olmalıdır.")
+    .min(1, "Sayfa numarası en az 1 olmalıdır.")
+    .max(100, "Geçersiz sayfa numarası: Maksimum 100. sayfa yüklenebilir."),
+  limit: z.number().int().min(1).max(24).optional().default(12),
+  category: z.string().max(100).optional(),
+  sort: z.enum(["created_at", "price_asc", "price_desc"]).optional(),
+});
+
 /**
- * Server Action: Fetch additional products for infinite scroll.
+ * Server Action: Fetch additional products for infinite scroll with DoS & offset exhaustion guards.
  */
 export async function fetchMoreProductsAction(params: {
   page: number;
@@ -192,11 +204,26 @@ export async function fetchMoreProductsAction(params: {
   error?: string;
 }> {
   try {
+    const parseResult = FetchMoreProductsSchema.safeParse(params);
+    if (!parseResult.success) {
+      const firstIssue = parseResult.error.issues?.[0];
+      return {
+        success: false,
+        products: [],
+        hasMore: false,
+        totalPages: 1,
+        currentPage: typeof params?.page === "number" ? params.page : 1,
+        error: firstIssue?.message || "Geçersiz sayfalama parametresi.",
+      };
+    }
+
+    const { page, limit, category, sort } = parseResult.data;
+
     let categoryId: string | undefined = undefined;
-    if (params.category) {
+    if (category) {
       const categories = await getCategories();
       const matched = categories.find(
-        (c) => c.handle === params.category || c.id === params.category,
+        (c) => c.handle === category || c.id === category,
       );
       if (matched) {
         categoryId = matched.id;
@@ -204,10 +231,10 @@ export async function fetchMoreProductsAction(params: {
     }
 
     const result = await getProducts({
-      page: params.page,
-      limit: params.limit || 12,
+      page,
+      limit,
       category_id: categoryId,
-      sort: params.sort,
+      sort,
     });
 
     return {
@@ -223,7 +250,7 @@ export async function fetchMoreProductsAction(params: {
       products: [],
       hasMore: false,
       totalPages: 1,
-      currentPage: params.page,
+      currentPage: typeof params?.page === "number" ? params.page : 1,
       error: err?.message || "Ürünler yüklenirken bir hata oluştu.",
     };
   }
