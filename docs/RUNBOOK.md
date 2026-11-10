@@ -32,7 +32,19 @@ pnpm --filter @alte/medusa db:migrate
 pnpm migrate:medusa
 ```
 
-_Bu adım e-ticaret tablolarını, ödeme sağlayıcılarını (`payment_setting`), e-posta bildirim tablolarını (`email_setting`, `email_log`) ve ilgili indeksleri oluşturur._
+_Bu adım e-ticaret tablolarını, ödeme sağlayıcılarını (`payment_setting`), e-posta bildirim tablolarını (`email_setting`, `email_log`) ve arama indekslerini (`search-indexes` modülü: `idx_product_title_trgm`, `idx_product_subtitle_trgm`, `idx_product_status`) oluşturur._
+
+> **Önemli — `pg_trgm` ve `unaccent` Eklenti Yetkileri (Non-Superuser DB Kullanıcısı):**
+> PostgreSQL'de `CREATE EXTENSION` komutu varsayılan olarak veritabanı sahibi (`CREATE` yetkili) veya `SUPERUSER` rolü gerektirir. Üretim ortamında uygulama kullanıcısı (`medusa_user`) kısıtlı yetkiye sahipse:
+>
+> 1. Migrasyon (`apps/medusa/src/modules/search-indexes/migrations/Migration20261110120000.ts`) ve açılış yükleyicisi (`apps/medusa/src/loaders/search-indexes.ts`) `insufficient_privilege` hatasını yakalar, süreci çökertmeden uyarı/hata logu (`Runbook: docs/RUNBOOK.md`) üretir.
+> 2. Dağıtımdan (`medusa db:migrate`) **önce** veritabanı yöneticisi (DBA / `postgres` superuser) hedef veritabanında eklentileri bir kez manuel oluşturmalıdır:
+>    ```sql
+>    -- Superuser (postgres) olarak medusa_db üzerinde çalıştırın:
+>    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+>    CREATE EXTENSION IF NOT EXISTS unaccent;
+>    ```
+> 3. Eklentiler önceden kurulduğunda `CREATE EXTENSION IF NOT EXISTS` adımı yetki hatası vermez ve `medusa_user` kendi sahibi olduğu `product` tablosu üzerinde `idx_product_title_trgm`, `idx_product_subtitle_trgm` ve `idx_product_status` indekslerini sorunsuz oluşturur.
 
 #### 3. Payload CMS Migrasyonları:
 

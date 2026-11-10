@@ -99,6 +99,7 @@ export const Pages: CollectionConfig = {
     afterChange: [
       ({ doc }) => {
         revalidateContentTag(CACHE_TAGS.pages);
+        revalidateContentTag(CACHE_TAGS.sitemap);
         if (doc?.slug) {
           revalidateContentTag(CACHE_TAGS.page(doc.slug));
         }
@@ -107,6 +108,7 @@ export const Pages: CollectionConfig = {
     afterDelete: [
       ({ doc }) => {
         revalidateContentTag(CACHE_TAGS.pages);
+        revalidateContentTag(CACHE_TAGS.sitemap);
         if (doc?.slug) {
           revalidateContentTag(CACHE_TAGS.page(doc.slug));
         }

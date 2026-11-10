@@ -390,16 +390,80 @@ async function main() {
     const sub2Xml = await sub2.text();
 
     const subSitemapsOk = sub0.status === 200 && sub1.status === 200 && sub2.status === 200;
+    const isNotStaticFrozen = sub2.headers.get("x-nextjs-cache") !== "HIT";
     const hasPublished = sub0Xml.includes("/urunler") && sub2Xml.includes("/sayfa/hakkimizda");
     const noDrafts =
       !sub2Xml.includes("ozel-taslak-sayfa-test") && !sub2Xml.includes("mesafeli-satis-sozlesmesi");
 
-    const pass = isSitemapIndex && subSitemapsOk && hasPublished && noDrafts;
+    // Dynamic publish -> appears in /sitemap/2.xml -> draft -> disappears from /sitemap/2.xml
+    let dynamicLifecycleOk = false;
+    const loginAttempt = async (email: string, password: string) => {
+      const r = await fetch(`${WEB_URL}/api/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d?.token as string | null;
+    };
+
+    const token =
+      (await loginAttempt("admin@example.test", "test-admin-password-123")) ||
+      (await loginAttempt("editor@example.test", "test-editor-password-123"));
+
+    if (token) {
+      const authHeaders = {
+        "Content-Type": "application/json",
+        Authorization: `JWT ${token}`,
+      };
+      const dynSlug = `sitemap-dinamik-test-${Date.now()}`;
+      const createRes = await fetch(`${WEB_URL}/api/pages`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          title: "Sitemap Dinamik Test Sayfası",
+          slug: dynSlug,
+          _status: "published",
+        }),
+      });
+      const created = await createRes.json().catch(() => null);
+      const docId = created?.doc?.id;
+
+      if (docId) {
+        const afterPubXml = await fetch(`${WEB_URL}/sitemap/2.xml`).then((r) => r.text());
+        const appearedOnPublish = afterPubXml.includes(`/sayfa/${dynSlug}`);
+
+        await fetch(`${WEB_URL}/api/pages/${docId}`, {
+          method: "PATCH",
+          headers: authHeaders,
+          body: JSON.stringify({ _status: "draft" }),
+        });
+
+        const afterDraftXml = await fetch(`${WEB_URL}/sitemap/2.xml`).then((r) => r.text());
+        const disappearedOnDraft = !afterDraftXml.includes(`/sayfa/${dynSlug}`);
+
+        await fetch(`${WEB_URL}/api/pages/${docId}`, {
+          method: "DELETE",
+          headers: authHeaders,
+        });
+
+        dynamicLifecycleOk = appearedOnPublish && disappearedOnDraft;
+      }
+    }
+
+    const pass =
+      isSitemapIndex &&
+      subSitemapsOk &&
+      isNotStaticFrozen &&
+      hasPublished &&
+      noDrafts &&
+      dynamicLifecycleOk;
     recordStep(
       11,
-      "Sitemap Index & Alt Bölümler Canlı HTTP Doğrulaması",
+      "Sitemap Index, Dinamik Yayın/Taslak Geçişi & Önbellek Doğrulaması",
       pass,
-      `/sitemap.xml index: ${isSitemapIndex}, Alt sitemapler HTTP: ${sub0.status}/${sub1.status}/${sub2.status}, Taslak sızıntısı yok: ${noDrafts}`,
+      `/sitemap.xml index: ${isSitemapIndex}, Alt HTTP: ${sub0.status}/${sub1.status}/${sub2.status}, Statik donma yok: ${isNotStaticFrozen}, Dinamik yayın/taslak: ${dynamicLifecycleOk}`,
     );
   } catch (err) {
     recordStep(11, "Sitemap Index Doğrulaması", false, (err as Error).message);
@@ -450,6 +514,41 @@ async function main() {
     );
   } catch (err) {
     recordStep(13, "404 Hata Sayfası Doğrulaması", false, (err as Error).message);
+  }
+
+  // Adım 14: Sınır Dışı Sayfalama (?page=999, ?page=0, ?page=-1, ?page=abc) Yönlendirme Doğrulaması
+  try {
+    const [res999, res0, resNeg, resAbc] = await Promise.all([
+      fetch(`${WEB_URL}/urunler?page=999`, { redirect: "manual" }),
+      fetch(`${WEB_URL}/urunler?page=0`, { redirect: "manual" }),
+      fetch(`${WEB_URL}/urunler?page=-1`, { redirect: "manual" }),
+      fetch(`${WEB_URL}/urunler?page=abc`, { redirect: "manual" }),
+    ]);
+
+    const isRedirect = (s: number) => s === 307 || s === 308 || s === 302 || s === 301;
+    const loc999 = res999.headers.get("location") || "";
+    const loc0 = res0.headers.get("location") || "";
+    const locNeg = resNeg.headers.get("location") || "";
+    const locAbc = resAbc.headers.get("location") || "";
+
+    const pass =
+      isRedirect(res999.status) &&
+      !loc999.includes("page=999") &&
+      isRedirect(res0.status) &&
+      loc0.endsWith("/urunler") &&
+      isRedirect(resNeg.status) &&
+      locNeg.endsWith("/urunler") &&
+      isRedirect(resAbc.status) &&
+      locAbc.endsWith("/urunler");
+
+    recordStep(
+      14,
+      "Sınır Dışı Sayfalama (?page=999, 0, -1, abc) Yönlendirme Doğrulaması",
+      pass,
+      `page=999 -> ${res999.status} (${loc999}), page=0 -> ${res0.status} (${loc0}), page=-1 -> ${resNeg.status}, page=abc -> ${resAbc.status}`,
+    );
+  } catch (err) {
+    recordStep(14, "Sınır Dışı Sayfalama Doğrulaması", false, (err as Error).message);
   }
 
   console.log("\n==================================================================");

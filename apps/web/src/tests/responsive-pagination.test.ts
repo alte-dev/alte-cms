@@ -9,7 +9,7 @@ describe("Responsive Pagination & Mobile Overflow Prevention", () => {
 
   beforeAll(async () => {
     try {
-      const probeRes = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(1500) });
+      const probeRes = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) });
       isServerAvailable = probeRes.status === 200;
     } catch {
       isServerAvailable = false;
@@ -32,10 +32,22 @@ describe("Responsive Pagination & Mobile Overflow Prevention", () => {
     if (browser) await browser.close();
   });
 
-  it("must prevent horizontal page overflow on mobile viewport (375x667)", async () => {
-    if (!isServerAvailable || !browser) return;
+  function ensureBrowserOrSkip(ctx: { skip: () => void }): Browser {
+    if (!isServerAvailable || !browser) {
+      if (process.env.REQUIRE_LIVE_SERVER === "true") {
+        expect.fail(
+          `[Pagination Test] Canlı Web sunucusu (${BASE_URL}) erişilemez durumda! REQUIRE_LIVE_SERVER=true iken test atlanamaz.`,
+        );
+      }
+      ctx.skip();
+    }
+    return browser!;
+  }
 
-    const context = await browser.newContext({
+  it("must prevent horizontal page overflow on mobile viewport (375x667)", async (ctx) => {
+    const activeBrowser = ensureBrowserOrSkip(ctx);
+
+    const context = await activeBrowser.newContext({
       viewport: { width: 375, height: 667 },
       userAgent:
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
@@ -60,10 +72,10 @@ describe("Responsive Pagination & Mobile Overflow Prevention", () => {
     await context.close();
   }, 15000);
 
-  it("must render sliding window pagination buttons on desktop without overflowing", async () => {
-    if (!isServerAvailable || !browser) return;
+  it("must render sliding window pagination buttons on desktop without overflowing", async (ctx) => {
+    const activeBrowser = ensureBrowserOrSkip(ctx);
 
-    const context = await browser.newContext({
+    const context = await activeBrowser.newContext({
       viewport: { width: 1280, height: 800 },
     });
     const page: Page = await context.newPage();

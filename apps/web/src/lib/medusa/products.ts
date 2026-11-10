@@ -31,7 +31,7 @@ export async function getDefaultRegion(): Promise<StoreRegion | null> {
 
   try {
     const data = await medusaFetch<StoreRegionListResponse>("/store/regions", {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     const turkeyRegion =
       data.regions.find((r) => r.currency_code === "try" || r.name.includes("Türkiye")) ||
@@ -50,14 +50,20 @@ export async function getDefaultRegion(): Promise<StoreRegion | null> {
 /**
  * Retrieves all product categories.
  */
-export async function getCategories(): Promise<StoreProductCategory[]> {
+export async function getCategories(options?: {
+  throwOnError?: boolean;
+  noStore?: boolean;
+}): Promise<StoreProductCategory[]> {
   try {
     const data = await medusaFetch<StoreCategoryListResponse>(
       "/store/product-categories?fields=*category_children&limit=50",
-      { next: { revalidate: 300 } },
+      options?.noStore ? { cache: "no-store" } : { next: { revalidate: 300 } },
     );
     return data.product_categories || [];
-  } catch {
+  } catch (err) {
+    if (options?.throwOnError) {
+      throw err;
+    }
     return [];
   }
 }
@@ -115,7 +121,10 @@ export interface GetProductsParams {
 /**
  * Lists products from Medusa Store API with region-specific calculated pricing.
  */
-export async function getProducts(params: GetProductsParams = {}): Promise<{
+export async function getProducts(
+  params: GetProductsParams = {},
+  options?: { throwOnError?: boolean },
+): Promise<{
   products: StoreProduct[];
   count: number;
   totalPages: number;
@@ -195,7 +204,10 @@ export async function getProducts(params: GetProductsParams = {}): Promise<{
       totalPages,
       currentPage: page,
     };
-  } catch {
+  } catch (err) {
+    if (options?.throwOnError) {
+      throw err;
+    }
     return {
       products: [],
       count: 0,

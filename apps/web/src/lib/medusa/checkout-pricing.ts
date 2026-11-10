@@ -127,3 +127,11 @@ export function calculateCheckoutTotals(
     total,
   };
 }
+
+/**
+ * Determines whether the COD service fee badge (`+₺100,00 Hizmet Bedeli`) should be displayed
+ * on the COD payment option card. Hides the badge when COD is disabled or fee is 0.
+ */
+export function shouldShowCodFeeBadge(codEnabled?: boolean, configuredCodFee: number = 0): boolean {
+  return Boolean(codEnabled) && configuredCodFee > 0;
+}

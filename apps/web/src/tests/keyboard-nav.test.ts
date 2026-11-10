@@ -11,8 +11,11 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
 
   beforeAll(async () => {
     try {
-      const probeRes = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(1500) });
-      isServerAvailable = probeRes.status === 200;
+      const [probeWeb, probeMedusa] = await Promise.all([
+        fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) }),
+        fetch(`${MEDUSA_URL}/health`, { signal: AbortSignal.timeout(5000) }),
+      ]);
+      isServerAvailable = probeWeb.status === 200 && probeMedusa.ok;
     } catch {
       isServerAvailable = false;
     }
@@ -24,7 +27,7 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
       return;
     }
     try {
-      const pRes = await fetch(`${MEDUSA_URL}/store/products?limit=1`, {
+      const pRes = await fetch(`${MEDUSA_URL}/store/products?handle=test-urun-sabit-1`, {
         headers: {
           "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_test_alte",
         },
@@ -32,7 +35,24 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
       });
       if (pRes.ok) {
         const pData = await pRes.json();
-        if (pData.products?.[0]?.handle) productHandle = pData.products[0].handle;
+        if (pData.products?.[0]?.handle) {
+          productHandle = pData.products[0].handle;
+        } else {
+          const listRes = await fetch(`${MEDUSA_URL}/store/products?limit=10`, {
+            headers: {
+              "x-publishable-api-key":
+                process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_test_alte",
+            },
+            signal: AbortSignal.timeout(3000),
+          });
+          if (listRes.ok) {
+            const listData = await listRes.json();
+            const valid = (listData.products || []).find(
+              (p: { handle?: string }) => p.handle && p.handle !== "kapida-odeme-hizmet-bedeli",
+            );
+            if (valid?.handle) productHandle = valid.handle;
+          }
+        }
       }
     } catch {
       // Fallback
@@ -48,12 +68,18 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
     if (browser) await browser.close();
   });
 
-  it("must support skip link navigation to #main-content using keyboard Tab and Enter on live page", async () => {
-    if (!isServerAvailable || !browser) return;
+  it("must support skip link navigation to #main-content using keyboard Tab and Enter on live page", async (ctx) => {
+    if (!isServerAvailable || !browser) {
+      if (process.env.REQUIRE_LIVE_SERVER === "true") {
+        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
+      }
+      ctx.skip();
+      return;
+    }
     const context = await browser.newContext();
     const page: Page = await context.newPage();
 
-    await page.goto(`${BASE_URL}/`, { waitUntil: "domcontentloaded", timeout: 10000 });
+    await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle", timeout: 10000 });
 
     // Press Tab from initial page load to land on skip link
     await page.keyboard.press("Tab");
@@ -71,17 +97,27 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
     await context.close();
   });
 
-  it("must open search suggestions and close on Escape key using keyboard on live page", async () => {
-    if (!isServerAvailable || !browser) return;
+  it("must open search suggestions and close on Escape key using keyboard on live page", async (ctx) => {
+    if (!isServerAvailable || !browser) {
+      if (process.env.REQUIRE_LIVE_SERVER === "true") {
+        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
+      }
+      ctx.skip();
+      return;
+    }
     const context = await browser.newContext();
     const page: Page = await context.newPage();
 
-    await page.goto(`${BASE_URL}/`, { waitUntil: "domcontentloaded", timeout: 10000 });
+    await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle", timeout: 10000 });
 
     // Focus search input and type query
-    await page.focus("#store-search-input");
-    await page.keyboard.type("ipek");
-    await page.waitForTimeout(600);
+    const searchInput = page.locator("#store-search-input");
+    await searchInput.focus();
+    await page.keyboard.type("urun", { delay: 50 });
+    await page.waitForFunction(
+      () => document.getElementById("store-search-input")?.getAttribute("aria-expanded") === "true",
+      { timeout: 5000 },
+    );
 
     const isOpenBefore = await page.evaluate(() => {
       return document.getElementById("store-search-input")?.getAttribute("aria-expanded");
@@ -100,13 +136,19 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
     await context.close();
   });
 
-  it("must support adding a product to cart using keyboard navigation on live product page", async () => {
-    if (!isServerAvailable || !browser) return;
+  it("must support adding a product to cart using keyboard navigation on live product page", async (ctx) => {
+    if (!isServerAvailable || !browser) {
+      if (process.env.REQUIRE_LIVE_SERVER === "true") {
+        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
+      }
+      ctx.skip();
+      return;
+    }
     const context = await browser.newContext();
     const page: Page = await context.newPage();
 
     await page.goto(`${BASE_URL}/urun/${productHandle}`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 10000,
     });
 
@@ -122,24 +164,30 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
     await context.close();
   }, 15000);
 
-  it("must navigate checkout form with keyboard and trigger validation error on invalid input", async () => {
-    if (!isServerAvailable || !browser) return;
+  it("must navigate checkout form with keyboard and trigger validation error on invalid input", async (ctx) => {
+    if (!isServerAvailable || !browser) {
+      if (process.env.REQUIRE_LIVE_SERVER === "true") {
+        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
+      }
+      ctx.skip();
+      return;
+    }
     const context = await browser.newContext();
     const page: Page = await context.newPage();
 
     // 1. Add item to cart first so checkout form is accessible
     await page.goto(`${BASE_URL}/urun/${productHandle}`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 10000,
     });
     const addBtn = page.locator("button:has-text('Sepete Ekle')").first();
     await addBtn.focus();
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
 
     // 2. Navigate to checkout page
     await page.goto(`${BASE_URL}/odeme`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 10000,
     });
 

@@ -1,6 +1,6 @@
 import path from "path";
 import { defineConfig, Modules } from "@medusajs/framework/utils";
-import { validateMedusaEnv } from "./src/env";
+import { validateMedusaEnv, resolveCookieSecure } from "./src/env";
 
 const env = validateMedusaEnv();
 
@@ -17,9 +17,7 @@ module.exports = defineConfig({
       cookieSecret: env.COOKIE_SECRET,
     },
     cookieOptions: {
-      secure:
-        process.env.COOKIE_SECURE === "true" ||
-        (process.env.API_PUBLIC_URL?.startsWith("https://") ?? false),
+      secure: resolveCookieSecure(process.env),
       sameSite: "lax",
     },
   },
@@ -37,6 +35,10 @@ module.exports = defineConfig({
     {
       resolve: path.resolve(__dirname, "src/modules/payment-guard"),
       dependencies: [Modules.PAYMENT, Modules.LINK],
+    },
+    {
+      resolve: path.resolve(__dirname, "src/modules/search-indexes"),
+      dependencies: [Modules.PRODUCT],
     },
     {
       resolve: "@medusajs/medusa/payment",

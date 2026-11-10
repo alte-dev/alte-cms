@@ -194,7 +194,7 @@ async function main() {
   const results: MetricRow[] = [];
   let browser: any = null;
   let lighthouseFn: any = null;
-  const REMOTE_PORT = 9222;
+  const REMOTE_PORT = Number(process.env.LIGHTHOUSE_PORT) || 9390;
 
   const chromePath = process.env.CHROME_PATH || chromium.executablePath();
   console.log(`Tarayıcı yürütülebilir yolu: ${chromePath}`);

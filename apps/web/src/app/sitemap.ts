@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
-import { getProducts, getCategories } from "@/lib/medusa/products";
-import { getPayloadClient } from "@/lib/payload/content";
+import { getProducts, getCategories } from "../lib/medusa/products";
+import { getPayloadClient } from "../lib/payload/content";
+
+export const dynamic = "force-dynamic";
 
 export const RESERVED_SLUGS = [
   "urunler",
@@ -19,6 +21,10 @@ export const RESERVED_SLUGS = [
 ];
 
 export async function generateSitemaps() {
+  // Prevent Next.js from baking static empty sitemaps during `next build`
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return [];
+  }
   // Splits sitemap into dedicated index partitions, each respecting the 50,000 URL limit:
   // 0: Main storefront routes & categories
   // 1: Product catalog
@@ -37,7 +43,7 @@ export default async function sitemap(props: {
   // Resolve id safely across Next.js 15 variations
   let partitionId = 0;
   if (typeof props === "object" && props !== null) {
-    const raw = (props as any).id;
+    const raw = (props as { id?: unknown }).id;
     if (typeof raw === "number") {
       partitionId = raw;
     } else if (typeof raw === "string") {
@@ -71,7 +77,7 @@ export default async function sitemap(props: {
     );
 
     try {
-      const categories = await getCategories();
+      const categories = await getCategories({ throwOnError: true, noStore: true });
       for (const cat of categories) {
         if (cat.handle && !RESERVED_SLUGS.includes(cat.handle)) {
           urls.push({
@@ -82,8 +88,9 @@ export default async function sitemap(props: {
           });
         }
       }
-    } catch {
-      // Graceful fallback if service is offline
+    } catch (err) {
+      console.error("[Sitemap] Partition 0 generation failed:", (err as Error)?.name || "Error");
+      throw err;
     }
 
     return urls;
@@ -92,12 +99,11 @@ export default async function sitemap(props: {
   // Partition 1: Medusa Products
   if (partitionId === 1) {
     try {
-      const productsRes = await getProducts({ limit: 100 });
+      const productsRes = await getProducts({ limit: 100 }, { throwOnError: true });
       for (const prod of productsRes.products) {
         if (prod.handle && !RESERVED_SLUGS.includes(prod.handle)) {
-          const prodDate = (prod as any).updated_at
-            ? new Date((prod as any).updated_at)
-            : new Date();
+          const updatedAt = (prod as { updated_at?: string }).updated_at;
+          const prodDate = updatedAt ? new Date(updatedAt) : new Date();
           urls.push({
             url: `${baseUrl}/urun/${prod.handle}`,
             lastModified: prodDate,
@@ -106,8 +112,9 @@ export default async function sitemap(props: {
           });
         }
       }
-    } catch {
-      // Graceful fallback if service is offline
+    } catch (err) {
+      console.error("[Sitemap] Partition 1 generation failed:", (err as Error)?.name || "Error");
+      throw err;
     }
 
     return urls;
@@ -130,7 +137,7 @@ export default async function sitemap(props: {
 
       for (const page of pagesRes.docs) {
         const isHome = Boolean(page.isHome || page.slug === "index");
-        const noIndex = Boolean((page as any)?.seo?.noIndex);
+        const noIndex = Boolean((page as { seo?: { noIndex?: boolean } })?.seo?.noIndex);
 
         if (!isHome && !noIndex && page.slug && !RESERVED_SLUGS.includes(page.slug)) {
           urls.push({
@@ -153,7 +160,7 @@ export default async function sitemap(props: {
       });
 
       for (const post of postsRes.docs) {
-        const noIndex = Boolean((post as any)?.seo?.noIndex);
+        const noIndex = Boolean((post as { seo?: { noIndex?: boolean } })?.seo?.noIndex);
         if (!noIndex && post.slug && !RESERVED_SLUGS.includes(post.slug)) {
           urls.push({
             url: `${baseUrl}/blog/${post.slug}`,
@@ -181,8 +188,9 @@ export default async function sitemap(props: {
           });
         }
       }
-    } catch {
-      // Graceful fallback if service is offline
+    } catch (err) {
+      console.error("[Sitemap] Partition 2 generation failed:", (err as Error)?.name || "Error");
+      throw err;
     }
 
     return urls;

@@ -1,8 +1,10 @@
 import React from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getProducts, getCategories } from "@/lib/medusa/products";
 import { ProductQuerySchema } from "@/lib/medusa/validation";
+import { resolveCatalogPageRedirect } from "@/lib/pagination";
 import { ProductCard } from "@/components/product-card";
 import { Pagination } from "@/components/pagination";
 import { InfiniteProductGrid } from "@/components/infinite-product-grid";
@@ -25,6 +27,28 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
 
   const query = parsed.success ? parsed.data : { page: 1, limit: 12, sort: "created_at" as const };
 
+  const buildUrl = (newParams: Record<string, string | number | undefined>) => {
+    const params = new URLSearchParams();
+    if (query.category) params.set("category", query.category);
+    if (query.sort && query.sort !== "created_at") params.set("sort", query.sort);
+    if (query.page && query.page > 1) params.set("page", String(query.page));
+
+    for (const [key, value] of Object.entries(newParams)) {
+      if (value === undefined || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    }
+
+    const qs = params.toString();
+    return qs ? `/urunler?${qs}` : "/urunler";
+  };
+
+  if (resolveCatalogPageRedirect(rawParams.page) === 1) {
+    redirect(buildUrl({ page: undefined }));
+  }
+
   const [categories, settings] = await Promise.all([getCategories(), getSiteSettings()]);
   const isInfinite = settings?.catalogListingMode === "infinite";
 
@@ -45,23 +69,10 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
     q: query.q,
   });
 
-  const buildUrl = (newParams: Record<string, string | number | undefined>) => {
-    const params = new URLSearchParams();
-    if (query.category) params.set("category", query.category);
-    if (query.sort && query.sort !== "created_at") params.set("sort", query.sort);
-    if (query.page && query.page > 1) params.set("page", String(query.page));
-
-    for (const [key, value] of Object.entries(newParams)) {
-      if (value === undefined || value === "") {
-        params.delete(key);
-      } else {
-        params.set(key, String(value));
-      }
-    }
-
-    const qs = params.toString();
-    return qs ? `/urunler?${qs}` : "/urunler";
-  };
+  const targetPageRedirect = resolveCatalogPageRedirect(rawParams.page, totalPages);
+  if (targetPageRedirect !== null) {
+    redirect(buildUrl({ page: targetPageRedirect > 1 ? targetPageRedirect : undefined }));
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-x-hidden">

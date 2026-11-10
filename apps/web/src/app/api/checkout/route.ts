@@ -20,7 +20,11 @@ import { mapMedusaError } from "../../../lib/medusa/format";
 import { StoreAddress } from "../../../lib/medusa/types";
 import { CheckoutFormSchema } from "../../../lib/medusa/validation";
 
+const inFlightCartCheckouts = new Set<string>();
+const completedCartOrders = new Map<string, string>();
+
 export async function POST(req: Request) {
+  let lockedCartId: string | null = null;
   try {
     const existingOrderId = await getOrderConfirmation();
 
@@ -49,14 +53,15 @@ export async function POST(req: Request) {
     }
 
     // Check if cart was already completed (idempotency / double-submit guard)
-    if (cart.completed_at) {
+    if (cart.completed_at || completedCartOrders.has(cartId)) {
+      const recordedOrderId = completedCartOrders.get(cartId) || existingOrderId || undefined;
       return NextResponse.json(
         {
           success: false,
           code: "CART_ALREADY_COMPLETED",
           error: "Bu sepet için sipariş zaten oluşturuldu.",
-          orderId: existingOrderId || undefined,
-          redirectUrl: existingOrderId ? "/siparis-onay" : undefined,
+          orderId: recordedOrderId,
+          redirectUrl: recordedOrderId ? "/siparis-onay" : undefined,
         },
         { status: 409 },
       );
@@ -74,6 +79,24 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    // Concurrency & idempotency guard for parallel checkout submissions on the same cart
+    if (inFlightCartCheckouts.has(cartId) || completedCartOrders.has(cartId)) {
+      const recordedOrderId = completedCartOrders.get(cartId) || existingOrderId || undefined;
+      return NextResponse.json(
+        {
+          success: false,
+          code: "CART_ALREADY_COMPLETED",
+          error: "Bu sepet için sipariş zaten oluşturuldu.",
+          orderId: recordedOrderId,
+          redirectUrl: recordedOrderId ? "/siparis-onay" : undefined,
+        },
+        { status: 409 },
+      );
+    }
+
+    inFlightCartCheckouts.add(cartId);
+    lockedCartId = cartId;
 
     const {
       email,
@@ -255,15 +278,31 @@ export async function POST(req: Request) {
 
       const completionResult = await completeCart(cart.id, "pp_cod_cod");
       if (!completionResult.success || !completionResult.order) {
+        const refreshedCart = await getCart(cart.id).catch(() => null);
+        if (
+          refreshedCart?.completed_at ||
+          completedCartOrders.has(cart.id) ||
+          /completed|already|conflict/i.test(completionResult.error || "")
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "CART_ALREADY_COMPLETED",
+              error: "Bu sepet için sipariş zaten oluşturuldu.",
+            },
+            { status: 409 },
+          );
+        }
         return NextResponse.json(
           {
             success: false,
-            error: completionResult.error || "Kapıda ödeme siparişi oluşturulamadı.",
+            error: "Kapıda ödeme siparişi oluşturulamadı.",
           },
           { status: 400 },
         );
       }
 
+      completedCartOrders.set(cart.id, completionResult.order.id);
       await setOrderConfirmation(completionResult.order.id);
       await deleteCartId();
 
@@ -288,15 +327,31 @@ export async function POST(req: Request) {
 
       const completionResult = await completeCart(cart.id, "pp_system_default");
       if (!completionResult.success || !completionResult.order) {
+        const refreshedCart = await getCart(cart.id).catch(() => null);
+        if (
+          refreshedCart?.completed_at ||
+          completedCartOrders.has(cart.id) ||
+          /completed|already|conflict/i.test(completionResult.error || "")
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "CART_ALREADY_COMPLETED",
+              error: "Bu sepet için sipariş zaten oluşturuldu.",
+            },
+            { status: 409 },
+          );
+        }
         return NextResponse.json(
           {
             success: false,
-            error: completionResult.error || "Sipariş tamamlanırken bir hata oluştu.",
+            error: "Sipariş tamamlanırken bir hata oluştu.",
           },
           { status: 400 },
         );
       }
 
+      completedCartOrders.set(cart.id, completionResult.order.id);
       await setOrderConfirmation(completionResult.order.id);
       await deleteCartId();
 
@@ -343,5 +398,9 @@ export async function POST(req: Request) {
       : mapped;
 
     return NextResponse.json({ success: false, error: userFriendly }, { status: 400 });
+  } finally {
+    if (lockedCartId) {
+      inFlightCartCheckouts.delete(lockedCartId);
+    }
   }
 }

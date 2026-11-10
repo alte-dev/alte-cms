@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCategoryBySlug, getProducts } from "@/lib/medusa/products";
 import { ProductQuerySchema } from "@/lib/medusa/validation";
+import { resolveCatalogPageRedirect } from "@/lib/pagination";
 import { ProductCard } from "@/components/product-card";
 import { Pagination } from "@/components/pagination";
 import { InfiniteProductGrid } from "@/components/infinite-product-grid";
@@ -46,20 +47,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const parsed = ProductQuerySchema.safeParse(rawParams);
   const query = parsed.success ? parsed.data : { page: 1, limit: 12, sort: "created_at" as const };
 
-  const [productsRes, settings] = await Promise.all([
-    getProducts({
-      page: query.page,
-      limit: query.limit,
-      sort: query.sort,
-      category_id: category.id,
-      q: query.q,
-    }),
-    getSiteSettings(),
-  ]);
-
-  const { products, count, totalPages, currentPage } = productsRes;
-  const isInfinite = settings?.catalogListingMode === "infinite";
-
   const buildUrl = (newParams: Record<string, string | number | undefined>) => {
     const p = new URLSearchParams();
     if (query.sort && query.sort !== "created_at") p.set("sort", query.sort);
@@ -76,6 +63,29 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     const qs = p.toString();
     return qs ? `/kategori/${slug}?${qs}` : `/kategori/${slug}`;
   };
+
+  if (resolveCatalogPageRedirect(rawParams.page) === 1) {
+    redirect(buildUrl({ page: undefined }));
+  }
+
+  const [productsRes, settings] = await Promise.all([
+    getProducts({
+      page: query.page,
+      limit: query.limit,
+      sort: query.sort,
+      category_id: category.id,
+      q: query.q,
+    }),
+    getSiteSettings(),
+  ]);
+
+  const { products, count, totalPages, currentPage } = productsRes;
+  const isInfinite = settings?.catalogListingMode === "infinite";
+
+  const targetPageRedirect = resolveCatalogPageRedirect(rawParams.page, totalPages);
+  if (targetPageRedirect !== null) {
+    redirect(buildUrl({ page: targetPageRedirect > 1 ? targetPageRedirect : undefined }));
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-x-hidden">

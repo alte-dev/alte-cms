@@ -10,6 +10,7 @@ import {
   getDefaultShippingOptionId,
   sortShippingOptions,
   calculateCheckoutTotals,
+  shouldShowCodFeeBadge,
 } from "../lib/medusa/checkout-pricing";
 import {
   Tag,
@@ -829,9 +830,11 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
-                +{formatTRY(configuredCodFee)} Hizmet Bedeli
-              </span>
+              {shouldShowCodFeeBadge(paymentOptions?.cod?.enabled, configuredCodFee) && (
+                <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
+                  +{formatTRY(configuredCodFee)} Hizmet Bedeli
+                </span>
+              )}
             </label>
 
             {/* Dev Dummy Option */}

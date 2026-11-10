@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { slugify } from "../lib/slugify";
+import { revalidateContentTag, CACHE_TAGS } from "../lib/cache-tags";
 import { canCreateContent, canUpdateContent, canDeleteContent } from "../access/content";
 
 export const PostCategories: CollectionConfig = {
@@ -23,6 +24,18 @@ export const PostCategories: CollectionConfig = {
           data.slug = slugify(data.slug);
         }
         return data;
+      },
+    ],
+    afterChange: [
+      () => {
+        revalidateContentTag(CACHE_TAGS.blog);
+        revalidateContentTag(CACHE_TAGS.sitemap);
+      },
+    ],
+    afterDelete: [
+      () => {
+        revalidateContentTag(CACHE_TAGS.blog);
+        revalidateContentTag(CACHE_TAGS.sitemap);
       },
     ],
   },

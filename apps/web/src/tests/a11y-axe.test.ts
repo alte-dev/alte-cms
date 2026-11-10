@@ -12,10 +12,13 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
   let blogSlug = "yeni-sezon-hikayesi-ege-esintisi";
 
   beforeAll(async () => {
-    // Check if live web server is running
+    // Check if both live web server and Medusa backend are running
     try {
-      const probeRes = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(1500) });
-      isServerAvailable = probeRes.status === 200;
+      const [probeWeb, probeMedusa] = await Promise.all([
+        fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) }),
+        fetch(`${MEDUSA_URL}/health`, { signal: AbortSignal.timeout(5000) }),
+      ]);
+      isServerAvailable = probeWeb.status === 200 && probeMedusa.ok;
     } catch {
       isServerAvailable = false;
     }
@@ -26,9 +29,9 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
       );
       return;
     }
-    // Resolve live product handle from Medusa if available
+    // Resolve live product handle from Medusa if available (prefer test-urun-sabit-1, exclude COD service item)
     try {
-      const pRes = await fetch(`${MEDUSA_URL}/store/products?limit=1`, {
+      const pRes = await fetch(`${MEDUSA_URL}/store/products?limit=20`, {
         headers: {
           "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_test_alte",
         },
@@ -36,7 +39,11 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
       });
       if (pRes.ok) {
         const pData = await pRes.json();
-        if (pData.products?.[0]?.handle) productHandle = pData.products[0].handle;
+        const products: Array<{ handle?: string }> = pData.products || [];
+        const preferred =
+          products.find((p) => p.handle === "test-urun-sabit-1") ||
+          products.find((p) => p.handle && p.handle !== "kapida-odeme-hizmet-bedeli");
+        if (preferred?.handle) productHandle = preferred.handle;
       }
     } catch {
       // Fallback to default seeded test product
@@ -77,8 +84,12 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
   ];
 
   for (const route of routesToAudit) {
-    it(`must pass WCAG 2.1 AA audit on live route: ${route.name}`, async () => {
+    it(`must pass WCAG 2.1 AA audit on live route: ${route.name}`, async (ctx) => {
       if (!isServerAvailable || !browser) {
+        if (process.env.REQUIRE_LIVE_SERVER === "true") {
+          expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; WCAG denetimi gerçekleştirilemedi.`);
+        }
+        ctx.skip();
         return;
       }
       const targetPath = route.getPath ? route.getPath() : route.path!;

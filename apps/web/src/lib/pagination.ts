@@ -31,3 +31,30 @@ export function getPaginationRange(currentPage: number, totalPages: number): Pag
   // In the middle: 1, "...", safeCurrent - 1, safeCurrent, safeCurrent + 1, "...", safeTotal
   return [1, "...", safeCurrent - 1, safeCurrent, safeCurrent + 1, "...", safeTotal];
 }
+
+/**
+ * Evaluates raw `page` query parameter and `totalPages` to determine if a redirect is required:
+ * - If `rawPage` is provided (`!== undefined`) and is invalid (`"0"`, `"-1"`, `"abc"`, `""`, non-positive integer) -> returns `1` (redirect to page 1).
+ * - If parsed `page > totalPages` (and `totalPages >= 1`) -> returns `totalPages` (redirect to last valid page).
+ * - Otherwise -> returns `null` (no redirect needed).
+ */
+export function resolveCatalogPageRedirect(
+  rawPage: string | string[] | undefined,
+  totalPages?: number,
+): number | null {
+  if (rawPage === undefined) {
+    return null;
+  }
+  const pageStr = Array.isArray(rawPage) ? rawPage[0] : rawPage;
+  if (!pageStr || !/^[1-9]\d*$/.test(pageStr.trim())) {
+    return 1;
+  }
+  const parsedPage = Number(pageStr.trim());
+  if (!Number.isSafeInteger(parsedPage) || parsedPage < 1) {
+    return 1;
+  }
+  if (typeof totalPages === "number" && totalPages >= 1 && parsedPage > totalPages) {
+    return totalPages;
+  }
+  return null;
+}

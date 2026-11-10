@@ -11,6 +11,7 @@ export const CACHE_TAGS = {
   page: (slug: string) => `page-${slug}`,
   navigation: "navigation",
   settings: "site-settings",
+  sitemap: "sitemap",
 } as const;
 
 /**

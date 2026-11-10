@@ -57,6 +57,7 @@ export const Posts: CollectionConfig = {
     afterChange: [
       ({ doc }) => {
         revalidateContentTag(CACHE_TAGS.blog);
+        revalidateContentTag(CACHE_TAGS.sitemap);
         if (doc?.slug) {
           revalidateContentTag(CACHE_TAGS.post(doc.slug));
         }
@@ -65,6 +66,7 @@ export const Posts: CollectionConfig = {
     afterDelete: [
       ({ doc }) => {
         revalidateContentTag(CACHE_TAGS.blog);
+        revalidateContentTag(CACHE_TAGS.sitemap);
         if (doc?.slug) {
           revalidateContentTag(CACHE_TAGS.post(doc.slug));
         }

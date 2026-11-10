@@ -67,6 +67,7 @@ Arama sistemi üç ana bileşenden oluşur:
 
 - **`unaccent`**: Aksanları, şapkaları ve aksanlı harfleri normalize eder (ör. `ö` -> `o`, `ç` -> `c`).
 - **`pg_trgm`**: Trigram benzerlik araması ve GIN indeksi sağlar. Hem kelime içi aramalarda (`LIKE '%term%'`) hem de yazım hatalarında (ör. "elbse" -> "elbise") milisaniye altı hız sunar.
+- **Yetkisiz (Non-Superuser) DB Kullanıcısı Davranışı**: `search-indexes` modül migrasyonu (`apps/medusa/src/modules/search-indexes/migrations/Migration20261110120000.ts`) ve `apps/medusa/src/loaders/search-indexes.ts`, `CREATE EXTENSION` yetkisi olmayan bir DB kullanıcısıyla çalıştırıldığında `insufficient_privilege` durumunu yakalayarak açık bir Runbook logu yazar. Kısıtlı yetkili üretim veritabanlarında `pg_trgm` ve `unaccent` eklentileri migrasyon öncesinde DBA (`postgres` superuser) tarafından `CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS unaccent;` komutlarıyla etkinleştirilmelidir (bkz. `docs/RUNBOOK.md`).
 
 ---
 
