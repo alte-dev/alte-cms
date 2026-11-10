@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { getPublishedPosts, getAllPostCategories, getSiteSettings } from "@/lib/payload/content";
 import { safeHref } from "@/lib/safe-href";
@@ -115,11 +116,12 @@ export default async function BlogIndexPage({ searchParams }: Props) {
                   className="aspect-[16/9] bg-zinc-100 relative overflow-hidden block"
                 >
                   {coverUrl ? (
-                    <img
+                    <Image
                       src={coverUrl}
-                      alt={coverAlt}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
+                      alt={coverAlt || post.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-zinc-400 bg-zinc-100">

@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { safeHref } from "../safe-href";
 
 // 1. Hero
@@ -134,13 +135,18 @@ export function ImageBlockComponent({
     right: "ml-auto",
   }[align];
 
+  const isExternal = src.startsWith("http://") || src.startsWith("https://");
+
   const content = (
     <figure className={`max-w-4xl px-4 py-6 ${alignClass}`}>
-      <img
+      <Image
         src={src}
         alt={alt || "Görsel"}
-        className="w-full rounded-xl object-cover shadow-sm border border-zinc-200"
-        loading="lazy"
+        width={1200}
+        height={675}
+        unoptimized={isExternal}
+        sizes="(max-width: 1024px) 100vw, 896px"
+        className="w-full h-auto rounded-xl object-cover shadow-sm border border-zinc-200"
       />
       {caption && (
         <figcaption className="text-center text-sm text-zinc-500 mt-2">{caption}</figcaption>

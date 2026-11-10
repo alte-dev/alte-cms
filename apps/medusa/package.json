@@ -8,6 +8,7 @@
     "dev": "medusa develop",
     "build": "medusa build && node -e \"const fs=require('fs'); if(fs.existsSync('dist/public')) fs.cpSync('dist/public', 'public', {recursive:true, force:true});\"",
     "start": "medusa start",
+    "db:migrate": "medusa db:migrate",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
