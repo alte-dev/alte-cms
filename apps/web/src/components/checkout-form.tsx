@@ -112,7 +112,8 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
     paymentMethod,
   );
 
-  const { subtotalNet, taxTotal, discountTotal, shippingCost, codFee, total } = totals;
+  const { subtotalNet, taxTotal, discountTotal, shippingCost, configuredCodFee, codFee, total } =
+    totals;
   const promotions = cart.promotions || [];
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -829,7 +830,7 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
                 </div>
               </div>
               <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
-                +{formatTRY(codFee)} Hizmet Bedeli
+                +{formatTRY(configuredCodFee)} Hizmet Bedeli
               </span>
             </label>
 

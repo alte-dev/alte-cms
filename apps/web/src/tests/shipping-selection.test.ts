@@ -120,10 +120,26 @@ describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
       // Bug had subtotal - taxTotal = 1825 - 365 = 1460 (wrong!)
       expect(totals.subtotalNet).toBe(1825);
     });
+
+    it("exposes configuredCodFee regardless of current payment method so badge shows actual fee", () => {
+      const freeOption = mockShippingOptions.find((o) => o.id === "so_free")!;
+
+      // 1. When card is selected: codFee is 0 in total, but configuredCodFee is 100
+      const cardTotals = calculateCheckoutTotals(mockCart, freeOption, 100, "card");
+      expect(cardTotals.codFee).toBe(0);
+      expect(cardTotals.configuredCodFee).toBe(100);
+      expect(cardTotals.total).toBe(2190);
+
+      // 2. When COD is selected: both codFee and configuredCodFee are 100
+      const codTotals = calculateCheckoutTotals(mockCart, freeOption, 100, "cod");
+      expect(codTotals.codFee).toBe(100);
+      expect(codTotals.configuredCodFee).toBe(100);
+      expect(codTotals.total).toBe(2290); // 2190 + 100
+    });
   });
 
   describe("Live E2E Verification on Real Checkout Page", () => {
-    it("auto-selects Free Shipping on /odeme when cart threshold is met", async () => {
+    it("auto-selects Free Shipping on /odeme and displays COD fee badge even when unselected", async () => {
       const { chromium } = await import("playwright");
       const BASE_URL = process.env.WEB_PUBLIC_URL || "http://localhost:3100";
 
@@ -169,6 +185,12 @@ describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
       const totalRow = page.locator("div:has(> span:text('Ödenecek Tutar'))");
       const totalText = await totalRow.innerText();
       expect(totalText).toContain("₺1.800,00");
+
+      // 4. Verify COD badge displays "+₺100,00 Hizmet Bedeli" when PayTR is selected (not +₺0,00)
+      const codOptionLabel = page.locator("label:has-text('Kapıda Ödeme')");
+      const codBadgeText = await codOptionLabel.innerText();
+      expect(codBadgeText).toContain("100,00");
+      expect(codBadgeText).not.toContain("+₺0,00");
 
       await browser.close();
     }, 15000);

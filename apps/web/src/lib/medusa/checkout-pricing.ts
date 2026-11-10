@@ -76,6 +76,7 @@ export interface CheckoutTotals {
   taxTotal: number;
   discountTotal: number;
   shippingCost: number;
+  configuredCodFee: number;
   codFee: number;
   total: number;
 }
@@ -107,9 +108,10 @@ export function calculateCheckoutTotals(
   // 4. shippingCost
   const shippingCost = selectedOption?.amount ?? cart.shipping_total ?? 0;
 
-  // 5. codFee
+  // 5. codFee: configured fee for display vs. applied fee based on selected payment method
   const rawCod = codFeeInput > 500 ? codFeeInput / 100 : codFeeInput;
-  const codFee = paymentMethod === "cod" ? Math.max(0, rawCod) : 0;
+  const configuredCodFee = Math.max(0, rawCod);
+  const codFee = paymentMethod === "cod" ? configuredCodFee : 0;
 
   // 6. Grand total (KDV dahil ödenecek tutar)
   const total = Math.max(0, itemTotal - discountTotal + shippingCost + codFee);
@@ -120,6 +122,7 @@ export function calculateCheckoutTotals(
     taxTotal,
     discountTotal,
     shippingCost,
+    configuredCodFee,
     codFee,
     total,
   };
