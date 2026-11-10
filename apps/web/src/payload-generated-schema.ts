@@ -40,6 +40,10 @@ export const enum__posts_v_version_status = pgEnum("enum__posts_v_version_status
   "published",
 ]);
 export const enum_redirects_type = pgEnum("enum_redirects_type", ["301", "302"]);
+export const enum_site_settings_catalog_listing_mode = pgEnum(
+  "enum_site_settings_catalog_listing_mode",
+  ["pagination", "infinite"],
+);
 
 export const users_sessions = pgTable(
   "users_sessions",
@@ -605,6 +609,8 @@ export const site_settings = pgTable(
     favicon: integer("favicon_id").references(() => media.id, {
       onDelete: "set null",
     }),
+    catalogListingMode:
+      enum_site_settings_catalog_listing_mode("catalog_listing_mode").default("pagination"),
     socialMedia_instagram: varchar("social_media_instagram"),
     socialMedia_facebook: varchar("social_media_facebook"),
     socialMedia_twitter: varchar("social_media_twitter"),
@@ -953,6 +959,7 @@ type DatabaseSchema = {
   enum_posts_status: typeof enum_posts_status;
   enum__posts_v_version_status: typeof enum__posts_v_version_status;
   enum_redirects_type: typeof enum_redirects_type;
+  enum_site_settings_catalog_listing_mode: typeof enum_site_settings_catalog_listing_mode;
   users_sessions: typeof users_sessions;
   users: typeof users;
   media: typeof media;
