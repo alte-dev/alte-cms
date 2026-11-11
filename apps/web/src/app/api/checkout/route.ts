@@ -40,33 +40,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const cart = await getCart(cartId);
-    if (!cart || !cart.items || cart.items.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Sepetiniz boş. Lütfen sepetinize ürün ekleyiniz.",
-          redirectUrl: "/sepet",
-        },
-        { status: 400 },
-      );
-    }
-
-    // Check if cart was already completed (idempotency / double-submit guard)
-    if (cart.completed_at || completedCartOrders.has(cartId)) {
-      const recordedOrderId = completedCartOrders.get(cartId) || existingOrderId || undefined;
-      return NextResponse.json(
-        {
-          success: false,
-          code: "CART_ALREADY_COMPLETED",
-          error: "Bu sepet için sipariş zaten oluşturuldu.",
-          orderId: recordedOrderId,
-          redirectUrl: recordedOrderId ? "/siparis-onay" : undefined,
-        },
-        { status: 409 },
-      );
-    }
-
     const body = await req.json();
     const parsed = CheckoutFormSchema.safeParse(body);
     if (!parsed.success) {
@@ -97,6 +70,33 @@ export async function POST(req: Request) {
 
     inFlightCartCheckouts.add(cartId);
     lockedCartId = cartId;
+
+    const cart = await getCart(cartId);
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Sepetiniz boş. Lütfen sepetinize ürün ekleyiniz.",
+          redirectUrl: "/sepet",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Check if cart was already completed (idempotency / double-submit guard)
+    if (cart.completed_at || completedCartOrders.has(cartId)) {
+      const recordedOrderId = completedCartOrders.get(cartId) || existingOrderId || undefined;
+      return NextResponse.json(
+        {
+          success: false,
+          code: "CART_ALREADY_COMPLETED",
+          error: "Bu sepet için sipariş zaten oluşturuldu.",
+          orderId: recordedOrderId,
+          redirectUrl: recordedOrderId ? "/siparis-onay" : undefined,
+        },
+        { status: 409 },
+      );
+    }
 
     const {
       email,
