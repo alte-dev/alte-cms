@@ -8,10 +8,12 @@
  * Scenario (d): PAYTR_API_BASE or DEV_PAYTR_USER_IP defined in production -> exits with code 1
  */
 
-import { spawn } from "child_process";
+import { spawn, spawnSync, type ChildProcess } from "child_process";
 import dotenv from "dotenv";
+import net from "net";
 import path from "path";
 import pg from "pg";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 
@@ -19,16 +21,64 @@ const DB_URL =
   process.env.DATABASE_URL ||
   "postgres://medusa_user:dev-only-medusa-password@127.0.0.1:5432/medusa_db";
 const pool = new pg.Pool({ connectionString: DB_URL });
+const { recordStep } = createStepRecorder({ format: "check", exitOnFail: true });
 
-function runMedusaProcess(
+async function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, "127.0.0.1", () => {
+      const port = (srv.address() as net.AddressInfo).port;
+      srv.close(() => resolve(port));
+    });
+    srv.on("error", reject);
+  });
+}
+
+function spawnMedusaStart(port: number, env: NodeJS.ProcessEnv): ChildProcess {
+  const cwd = path.resolve(process.cwd(), "apps/medusa");
+  if (process.platform === "win32") {
+    return spawn("cmd.exe", ["/c", `npx medusa start -p ${port}`], { cwd, env });
+  }
+  return spawn("npx", ["medusa", "start", "-p", String(port)], {
+    cwd,
+    env,
+    detached: true,
+  });
+}
+
+function killMedusaProc(proc: ChildProcess): void {
+  proc.stdout?.destroy();
+  proc.stderr?.destroy();
+  if (!proc.pid) return;
+  try {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      try {
+        process.kill(-proc.pid, "SIGKILL");
+      } catch {
+        proc.kill("SIGKILL");
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function runMedusaProcess(
   envOverrides: Record<string, string>,
   timeoutMs = 15000,
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  const port = await findFreePort();
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
 
-    const cleanEnv: Record<string, any> = { ...process.env, NODE_ENV: "production" };
+    const cleanEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      NODE_ENV: "production",
+      PORT: String(port),
+    };
     // Clear dev overrides unless explicitly provided in envOverrides
     delete cleanEnv.PAYTR_API_BASE;
     delete cleanEnv.DEV_PAYTR_USER_IP;
@@ -41,13 +91,10 @@ function runMedusaProcess(
       }
     }
 
-    const proc = spawn("cmd.exe", ["/c", "npx medusa start"], {
-      cwd: path.resolve(process.cwd(), "apps/medusa"),
-      env: cleanEnv,
-    });
+    const proc = spawnMedusaStart(port, cleanEnv);
 
     const timer = setTimeout(() => {
-      proc.kill();
+      killMedusaProc(proc);
       resolve({ code: proc.exitCode, stdout, stderr });
     }, timeoutMs);
 
@@ -202,18 +249,17 @@ async function main() {
     );
 
     // Start Medusa in background and poll /health
-    console.log("Medusa üretim modunda başlatılıyor (NODE_ENV=production)...");
-    const cleanEnv: Record<string, any> = {
+    const prodPort = await findFreePort();
+    console.log(`Medusa üretim modunda başlatılıyor (NODE_ENV=production, port=${prodPort})...`);
+    const cleanEnv: NodeJS.ProcessEnv = {
       ...process.env,
       NODE_ENV: "production",
+      PORT: String(prodPort),
     };
     delete cleanEnv.PAYTR_API_BASE;
     delete cleanEnv.DEV_PAYTR_USER_IP;
 
-    const prodProc = spawn("cmd.exe", ["/c", "npx medusa start"], {
-      cwd: path.resolve(process.cwd(), "apps/medusa"),
-      env: cleanEnv,
-    });
+    const prodProc = spawnMedusaStart(prodPort, cleanEnv);
 
     let procOutput = "";
     prodProc.stdout?.on("data", (d) => {
@@ -226,13 +272,13 @@ async function main() {
     let isHealthy = false;
     let guardPassed = false;
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 1000));
       if (procOutput.includes("guard PASSED")) {
         guardPassed = true;
       }
       try {
-        const hRes = await fetch("http://127.0.0.1:9000/health", {
+        const hRes = await fetch(`http://127.0.0.1:${prodPort}/health`, {
           signal: AbortSignal.timeout(2000),
         });
         if (hRes.ok && hRes.status === 200) {
@@ -244,23 +290,16 @@ async function main() {
       }
     }
 
-    if (prodProc.pid) {
-      if (process.platform === "win32") {
-        spawnSync("taskkill", ["/pid", String(prodProc.pid), "/T", "/F"]);
-      } else {
-        prodProc.kill("SIGKILL");
-      }
-    }
+    killMedusaProc(prodProc);
 
     console.log(`Guard 'guard PASSED' logu görüldü mü: ${guardPassed}`);
     console.log(`Medusa /health 200 döndü mü: ${isHealthy}`);
 
-    if (!isHealthy || !guardPassed) {
-      console.error("Medusa çıktısı:\n", procOutput);
-      throw new Error(
-        "TEST (c) BAŞARISIZ: Medusa üretimde sağlıklı açılmadı veya guard PASSED loglamadı!",
-      );
-    }
+    recordStep(
+      "Senaryo (c): PayTR + COD üretim açılışı ve /health 200",
+      isHealthy && guardPassed,
+      `guard PASSED: ${guardPassed}, /health 200: ${isHealthy}`,
+    );
 
     console.log(
       "✅ TEST (c) GEÇTİ: Medusa 'guard PASSED' logladı ve /health 200 ile başarıyla açıldı!\n",
@@ -270,25 +309,43 @@ async function main() {
     console.log(" ✅ TÜM ÜRETİM AÇILIŞ KORUMASI SENARYOLARI (a, b, c, d) BAŞARIYLA DOĞRULANDI!");
     console.log("===============================================================");
   } finally {
-    // Restore dev configuration
+    // Restore dev configuration (pp_system_default + pp_paytr_paytr + pp_cod_cod)
     try {
       const regionRes = await client.query("SELECT id FROM region LIMIT 1;");
       if (regionRes.rows.length > 0) {
         const regId = regionRes.rows[0].id;
         await client.query(
+          "UPDATE region_payment_provider SET deleted_at = NULL WHERE region_id = $1;",
+          [regId],
+        );
+        await client.query(
           `INSERT INTO region_payment_provider (id, region_id, payment_provider_id, created_at, updated_at)
-           VALUES ($1, $2, 'pp_system_default', NOW(), NOW())
+           VALUES
+             ($1, $2, 'pp_system_default', NOW(), NOW()),
+             ($3, $2, 'pp_paytr_paytr', NOW(), NOW()),
+             ($4, $2, 'pp_cod_cod', NOW(), NOW())
            ON CONFLICT (region_id, payment_provider_id) DO UPDATE SET deleted_at = NULL;`,
-          [`regpp_restore_${Date.now()}`, regId],
+          [
+            `regpp_restore_sys_${Date.now()}`,
+            regId,
+            `regpp_restore_paytr_${Date.now()}`,
+            `regpp_restore_cod_${Date.now()}`,
+          ],
         );
       }
-    } catch {}
+    } catch {
+      // ignore restore errors
+    }
     client.release();
     await pool.end();
   }
 }
 
-main().catch((err) => {
-  console.error("\n❌ HATA:", err.message);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("\n❌ HATA:", err.message);
+    process.exit(1);
+  });

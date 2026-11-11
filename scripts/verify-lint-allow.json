@@ -1,0 +1,4 @@
+{
+  "verify-content.ts": ["fs.readFileSync(fullPath, \"utf-8\")"],
+  "verify-quality.ts": ["fs.readFileSync(manifestPath, \"utf8\")", "fs.readFileSync(fp)"]
+}

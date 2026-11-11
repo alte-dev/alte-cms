@@ -23,26 +23,14 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
 dotenv.config();
 
 const STORE_URL = process.env.STOREFRONT_URL || "http://127.0.0.1:3100";
 
-interface VerificationStep {
-  step: number;
-  name: string;
-  passed: boolean;
-  details: string;
-}
-
-const results: VerificationStep[] = [];
-
-function recordStep(step: number, name: string, passed: boolean, details: string) {
-  results.push({ step, name, passed, details });
-  const status = passed ? "✅ PASS" : "❌ FAIL";
-  console.log(`[Step ${step}] ${status} - ${name}: ${details}`);
-}
+const { results, recordStep } = createStepRecorder({ format: "step" });
 
 interface AuthResult {
   token: string;

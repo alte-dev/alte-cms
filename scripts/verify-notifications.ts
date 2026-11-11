@@ -35,6 +35,7 @@ import {
 } from "../apps/medusa/src/services/email-service";
 import { decryptSetting, parseEncryptionKey } from "../apps/medusa/src/utils/crypto";
 import { sanitizeHeader } from "../apps/medusa/src/utils/email-sanitizer";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config();
@@ -48,20 +49,7 @@ const DATABASE_URL =
   process.env.DATABASE_URL ||
   "postgres://medusa_user:dev-only-medusa-password@127.0.0.1:5432/medusa_db";
 
-interface StepResult {
-  step: number;
-  name: string;
-  passed: boolean;
-  details: string;
-}
-
-const results: StepResult[] = [];
-
-function record(step: number, name: string, passed: boolean, details: string) {
-  results.push({ step, name, passed, details });
-  const status = passed ? "✅ PASS" : "❌ FAIL";
-  console.log(`[Step ${step}] ${status} - ${name}: ${details}`);
-}
+const { results, recordStep: record } = createStepRecorder({ format: "step" });
 
 async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -256,7 +244,8 @@ async function run() {
     client.release();
     await testPool.end();
 
-    const knexLib = require("knex");
+    const knexMod = await import("knex");
+    const knexLib = knexMod.default || knexMod;
     knex = knexLib({
       client: "pg",
       connection: DATABASE_URL,

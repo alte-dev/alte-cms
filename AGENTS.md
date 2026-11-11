@@ -53,11 +53,11 @@ Belirsiz bir şey varsa tahmin etme, soru sor. Kapsam dışına çıkma, ek öze
 
 Temiz klonda (`git clone` + `pnpm install --frozen-lockfile`) ve CI ile aynı ortam değişkenleriyle şunların HEPSİ geçer:
 
-`pnpm format:check` · `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build` · `pnpm audit --prod --audit-level=high` · gitleaks (tüm geçmiş)
+`pnpm format:check` · `pnpm lint` · `pnpm check:baseline` · `pnpm check:verify-scripts` · `pnpm typecheck` · `pnpm test` · `pnpm build` · `pnpm audit --prod --audit-level=high` · gitleaks (tüm geçmiş)
 
-Ek olarak ilgili canlı doğrulamalar gerçek Postgres/Redis/Medusa/web ile çalışır: `verify:store`, `verify:storefront`, `verify:checkout` (dev modunda), `verify:payments`, `verify:content`, `verify-search`, `verify-notifications`, `verify-order-ops`. Yeni özellik kendi `verify-*` betiğini getirir.
+Ek olarak tüm canlı doğrulamalar gerçek Postgres/Redis/Medusa/web ile `pnpm verify:all` komutu altında çalışır (`verify:store`, `verify:storefront`, `verify:checkout`, `verify:payments`, `verify:content`, `verify:search`, `verify:notifications`, `verify:order-ops`, `verify:quality`, `verify-production-guard`). Yeni özellik kendi `verify-*` betiğini getirir ve `verify:all`'a bağlanır.
 
-CI'nin GitHub'da yeşil olduğunu PR sayfasından/log'dan doğrula. Yerelde geçti demek yetmez. Her adımı (gitleaks, audit, build dahil) ayrı ayrı kontrol et.
+GitHub Actions'ta hem `security-and-quality` hem `live-verify` işlerinin yeşil olduğunu PR sayfasından/log'dan ve yüklenen `verify-logs` artifact'ından doğrula. Yerelde geçti demek yetmez. Her adımı ayrı ayrı kontrol et.
 
 ## 5. Dürüstlük ve kanıt kuralları (geçmiş hatalardan)
 

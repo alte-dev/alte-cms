@@ -5,6 +5,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next/**",
+      ".next-dev/**",
       "dist/**",
       "node_modules/**",
       "src/app/(payload)/admin/importMap.js",
@@ -22,6 +23,19 @@ export default tseslint.config(
       ...nextPlugin.configs["core-web-vitals"].rules,
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    files: ["src/tests/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.property.name='setContent']",
+          message:
+            "page.setContent() yasaktır (AGENTS.md §5). Testler gerçek çalışan sunucudaki canlı sayfaları ziyaret etmelidir.",
+        },
+      ],
     },
   }
 );

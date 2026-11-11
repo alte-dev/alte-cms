@@ -31,6 +31,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { TURKISH_CITIES } from "../apps/web/src/lib/constants/turkish-cities";
 import { isDevPaymentAllowed } from "../apps/web/src/lib/medusa/cart";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -42,25 +43,10 @@ const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 let PUBLISHABLE_KEY = "";
 let ADMIN_TOKEN = "";
 
-interface StepResult {
-  step: number;
-  name: string;
-  passed: boolean;
-  details: string;
-}
-
-const results: StepResult[] = [];
-
-function recordStep(step: number, name: string, passed: boolean, details: string) {
-  results.push({ step, name, passed, details });
-  const icon = passed ? "✅" : "❌";
-  console.log(`${icon} [Adım ${step}] ${name}: ${details}`);
-  if (!passed) {
-    console.error(`\n❌ FAILED: Adım ${step} (${name})`);
-    console.error(`Ayrıntı: ${details}`);
-    process.exit(1);
-  }
-}
+const { results, recordStep } = createStepRecorder({
+  format: "adim",
+  exitOnFail: true,
+});
 
 async function resolvePublishableApiKey(): Promise<string> {
   const envKey =

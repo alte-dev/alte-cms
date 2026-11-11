@@ -37,24 +37,12 @@ import {
   timingSafeEmailMatch,
   validateTrackingCode,
 } from "../apps/medusa/src/utils/shipping-carriers";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config();
 
-interface StepResult {
-  step: number;
-  name: string;
-  passed: boolean;
-  details: string;
-}
-
-const results: StepResult[] = [];
-
-function record(step: number, name: string, passed: boolean, details: string) {
-  results.push({ step, name, passed, details });
-  const status = passed ? "✅ PASS" : "❌ FAIL";
-  console.log(`[Step ${step}] ${status} - ${name}: ${details}`);
-}
+const { results, recordStep: record } = createStepRecorder({ format: "step" });
 
 async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
