@@ -19,9 +19,7 @@ import {
 import { mapMedusaError } from "../../../lib/medusa/format";
 import { StoreAddress } from "../../../lib/medusa/types";
 import { CheckoutFormSchema } from "../../../lib/medusa/validation";
-
-const inFlightCartCheckouts = new Set<string>();
-const completedCartOrders = new Map<string, string>();
+import { defaultCheckoutGuard } from "../../../lib/medusa/cart-checkout-guard";
 
 export async function POST(req: Request) {
   let lockedCartId: string | null = null;
@@ -54,8 +52,9 @@ export async function POST(req: Request) {
     }
 
     // Concurrency & idempotency guard for parallel checkout submissions on the same cart
-    if (inFlightCartCheckouts.has(cartId) || completedCartOrders.has(cartId)) {
-      const recordedOrderId = completedCartOrders.get(cartId) || existingOrderId || undefined;
+    if (defaultCheckoutGuard.isInFlight(cartId) || defaultCheckoutGuard.hasCompleted(cartId)) {
+      const recordedOrderId =
+        defaultCheckoutGuard.getCompletedOrderId(cartId) || existingOrderId || undefined;
       return NextResponse.json(
         {
           success: false,
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
       );
     }
 
-    inFlightCartCheckouts.add(cartId);
+    defaultCheckoutGuard.acquireInFlight(cartId);
     lockedCartId = cartId;
 
     const cart = await getCart(cartId);
@@ -84,8 +83,9 @@ export async function POST(req: Request) {
     }
 
     // Check if cart was already completed (idempotency / double-submit guard)
-    if (cart.completed_at || completedCartOrders.has(cartId)) {
-      const recordedOrderId = completedCartOrders.get(cartId) || existingOrderId || undefined;
+    if (cart.completed_at || defaultCheckoutGuard.hasCompleted(cartId)) {
+      const recordedOrderId =
+        defaultCheckoutGuard.getCompletedOrderId(cartId) || existingOrderId || undefined;
       return NextResponse.json(
         {
           success: false,
@@ -281,7 +281,7 @@ export async function POST(req: Request) {
         const refreshedCart = await getCart(cart.id).catch(() => null);
         if (
           refreshedCart?.completed_at ||
-          completedCartOrders.has(cart.id) ||
+          defaultCheckoutGuard.hasCompleted(cart.id) ||
           /completed|already|conflict/i.test(completionResult.error || "")
         ) {
           return NextResponse.json(
@@ -302,7 +302,7 @@ export async function POST(req: Request) {
         );
       }
 
-      completedCartOrders.set(cart.id, completionResult.order.id);
+      defaultCheckoutGuard.markCompleted(cart.id, completionResult.order.id);
       await setOrderConfirmation(completionResult.order.id);
       await deleteCartId();
 
@@ -330,7 +330,7 @@ export async function POST(req: Request) {
         const refreshedCart = await getCart(cart.id).catch(() => null);
         if (
           refreshedCart?.completed_at ||
-          completedCartOrders.has(cart.id) ||
+          defaultCheckoutGuard.hasCompleted(cart.id) ||
           /completed|already|conflict/i.test(completionResult.error || "")
         ) {
           return NextResponse.json(
@@ -351,7 +351,7 @@ export async function POST(req: Request) {
         );
       }
 
-      completedCartOrders.set(cart.id, completionResult.order.id);
+      defaultCheckoutGuard.markCompleted(cart.id, completionResult.order.id);
       await setOrderConfirmation(completionResult.order.id);
       await deleteCartId();
 
@@ -400,7 +400,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: userFriendly }, { status: 400 });
   } finally {
     if (lockedCartId) {
-      inFlightCartCheckouts.delete(lockedCartId);
+      defaultCheckoutGuard.releaseInFlight(lockedCartId);
     }
   }
 }

@@ -152,98 +152,74 @@ describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
 
   describe("Live E2E Verification on Real Checkout Page", () => {
     it("auto-selects Free Shipping on /odeme and displays COD fee badge when COD is enabled", async (ctx) => {
-      const { chromium } = await import("playwright");
-      const fs = await import("fs");
-      const path = await import("path");
-      const BASE_URL = process.env.WEB_PUBLIC_URL || "http://localhost:3100";
-      const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
-      let pubKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-      if (!pubKey) {
-        try {
-          const envFile = fs.readFileSync(path.resolve(process.cwd(), ".env"), "utf-8");
-          const match = envFile.match(/^NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=(.+)$/m);
-          if (match?.[1]) pubKey = match[1].trim();
-        } catch {
-          // ignore if .env does not exist in CI
-        }
-      }
+      const {
+        launchHeadlessChromium,
+        handleLiveServerAbsence,
+        resolveMedusaPublishableKey,
+        createLiveCartExceedingFreeShipping,
+      } = await import("./helpers/live-browser");
+
+      const BASE_URL =
+        process.env.TEST_WEB_URL || process.env.WEB_PUBLIC_URL || "http://localhost:3100";
+      const MEDUSA_URL =
+        process.env.TEST_MEDUSA_URL || process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 
       let serverOnline = false;
-      let dynamicCartId = "";
       try {
         const [probeWeb, probeMedusa] = await Promise.all([
           fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) }),
           fetch(`${MEDUSA_URL}/health`, { signal: AbortSignal.timeout(5000) }),
         ]);
         serverOnline = probeWeb.status === 200 && probeMedusa.ok;
-
-        if (serverOnline && pubKey) {
-          const headers = {
-            "Content-Type": "application/json",
-            "x-publishable-api-key": pubKey,
-          };
-          const [regRes, prodRes] = await Promise.all([
-            fetch(`${MEDUSA_URL}/store/regions`, { headers }),
-            fetch(`${MEDUSA_URL}/store/products?handle=test-urun-sabit-1`, { headers }),
-          ]);
-          const regData = await regRes.json();
-          const prodData = await prodRes.json();
-          const regionId = regData?.regions?.[0]?.id;
-          const variantId = prodData?.products?.[0]?.variants?.[0]?.id;
-
-          if (regionId && variantId) {
-            const cartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
-              method: "POST",
-              headers,
-              body: JSON.stringify({ region_id: regionId }),
-            });
-            const cartData = await cartRes.json();
-            const cId = cartData?.cart?.id;
-            if (cId) {
-              await fetch(`${MEDUSA_URL}/store/carts/${cId}/line-items`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify({ variant_id: variantId, quantity: 4 }),
-              });
-              dynamicCartId = cId;
-            }
-          }
-        }
       } catch {
         serverOnline = false;
       }
 
-      if (!serverOnline || !dynamicCartId) {
-        ctx.skip();
+      if (!serverOnline) {
+        handleLiveServerAbsence(
+          ctx,
+          `[Shipping Selection Test] Canlı sunucu (${BASE_URL} / ${MEDUSA_URL}) erişilemez durumda!`,
+        );
         return;
       }
 
-      const browser = await chromium.launch({ headless: true });
-      const context = await browser.newContext();
+      const pubKey = await resolveMedusaPublishableKey(MEDUSA_URL);
+      expect(pubKey.length).toBeGreaterThan(0);
 
-      await context.addCookies([
-        {
-          name: "alte_cart_id",
-          value: dynamicCartId,
-          domain: "localhost",
-          path: "/",
-        },
-      ]);
+      const { cartId, totalAddedAmount, threshold } = await createLiveCartExceedingFreeShipping(
+        MEDUSA_URL,
+        pubKey,
+      );
+      expect(cartId).toBeTruthy();
+      expect(totalAddedAmount).toBeGreaterThanOrEqual(threshold);
 
-      const page = await context.newPage();
-      await page.goto(`${BASE_URL}/odeme`, { waitUntil: "networkidle" });
+      const browser = await launchHeadlessChromium();
+      try {
+        const context = await browser.newContext();
 
-      // 1. Verify "Kargo Tutarı" in sidebar summary is "Ücretsiz"
-      const shippingRow = page.locator("div:has(> span:text('Kargo Tutarı'))");
-      const shippingText = await shippingRow.innerText();
-      expect(shippingText).toContain("Ücretsiz");
+        await context.addCookies([
+          {
+            name: "cart_id",
+            value: cartId,
+            url: BASE_URL,
+          },
+        ]);
 
-      // 2. Verify "Ücretsiz Kargo" radio button is checked by default
-      const freeRadio = page.locator("label:has-text('Ücretsiz Kargo') input[type='radio']");
-      const isChecked = await freeRadio.isChecked();
-      expect(isChecked).toBe(true);
+        const page = await context.newPage();
+        await page.goto(`${BASE_URL}/odeme`, { waitUntil: "networkidle" });
 
-      await browser.close();
-    }, 15000);
+        // 1. Verify "Kargo Tutarı" in sidebar summary is "Ücretsiz"
+        const shippingRow = page.locator("div:has(> span:text('Kargo Tutarı'))");
+        const shippingText = await shippingRow.innerText();
+        expect(shippingText).toContain("Ücretsiz");
+
+        // 2. Verify "Ücretsiz Kargo" radio button is checked by default
+        const freeRadio = page.locator("label:has-text('Ücretsiz Kargo') input[type='radio']");
+        const isChecked = await freeRadio.isChecked();
+        expect(isChecked).toBe(true);
+      } finally {
+        await browser.close();
+      }
+    }, 25000);
   });
 });

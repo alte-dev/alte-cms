@@ -18,6 +18,7 @@
 
 import dotenv from "dotenv";
 import path from "path";
+import { assertNoMismatchPass } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -616,6 +617,7 @@ async function main() {
 
   let allPassed = true;
   for (const r of results) {
+    assertNoMismatchPass(r.success, r.details);
     const symbol = r.success ? "✓ BAŞARILI" : "✗ BAŞARISIZ";
     console.log(`[${symbol}] ${r.step}`);
     console.log(`    -> ${r.details}`);

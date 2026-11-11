@@ -3,6 +3,7 @@ import path from "path";
 import zlib from "zlib";
 import { execSync } from "child_process";
 import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./lib/verify-step";
 
 interface MetricRow {
   pageName: string;
@@ -201,11 +202,7 @@ async function main() {
 
   try {
     lighthouseFn = (await import("lighthouse")).default;
-    browser = await chromium.launch({
-      executablePath: chromePath,
-      args: [`--remote-debugging-port=${REMOTE_PORT}`, "--no-sandbox", "--disable-setuid-sandbox"],
-      headless: true,
-    });
+    browser = await launchVerifyBrowser([`--remote-debugging-port=${REMOTE_PORT}`]);
   } catch (e) {
     console.error("❌ Kritik Hata: Tarayıcı veya Lighthouse başlatılamadı:", (e as Error).message);
     process.exit(1);

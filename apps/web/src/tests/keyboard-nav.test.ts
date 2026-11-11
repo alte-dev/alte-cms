@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
+import type { Browser, Page } from "playwright";
+import {
+  launchHeadlessChromium,
+  handleLiveServerAbsence,
+  resolveMedusaPublishableKey,
+} from "./helpers/live-browser";
 
-const BASE_URL = process.env.TEST_WEB_URL || "http://localhost:3100";
-const MEDUSA_URL = process.env.TEST_MEDUSA_URL || "http://127.0.0.1:9000";
+const BASE_URL = process.env.TEST_WEB_URL || process.env.WEB_PUBLIC_URL || "http://localhost:3100";
+const MEDUSA_URL =
+  process.env.TEST_MEDUSA_URL || process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 
 describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", () => {
   let browser: Browser | null = null;
@@ -27,9 +33,10 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
       return;
     }
     try {
+      const pubKey = (await resolveMedusaPublishableKey(MEDUSA_URL)) || "pk_test_alte";
       const pRes = await fetch(`${MEDUSA_URL}/store/products?handle=test-urun-sabit-1`, {
         headers: {
-          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_test_alte",
+          "x-publishable-api-key": pubKey,
         },
         signal: AbortSignal.timeout(3000),
       });
@@ -40,8 +47,7 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
         } else {
           const listRes = await fetch(`${MEDUSA_URL}/store/products?limit=10`, {
             headers: {
-              "x-publishable-api-key":
-                process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_test_alte",
+              "x-publishable-api-key": pubKey,
             },
             signal: AbortSignal.timeout(3000),
           });
@@ -58,10 +64,7 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
       // Fallback
     }
 
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await launchHeadlessChromium();
   });
 
   afterAll(async () => {
@@ -70,10 +73,10 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
 
   it("must support skip link navigation to #main-content using keyboard Tab and Enter on live page", async (ctx) => {
     if (!isServerAvailable || !browser) {
-      if (process.env.REQUIRE_LIVE_SERVER === "true") {
-        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
-      }
-      ctx.skip();
+      handleLiveServerAbsence(
+        ctx,
+        `Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`,
+      );
       return;
     }
     const context = await browser.newContext();
@@ -99,10 +102,10 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
 
   it("must open search suggestions and close on Escape key using keyboard on live page", async (ctx) => {
     if (!isServerAvailable || !browser) {
-      if (process.env.REQUIRE_LIVE_SERVER === "true") {
-        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
-      }
-      ctx.skip();
+      handleLiveServerAbsence(
+        ctx,
+        `Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`,
+      );
       return;
     }
     const context = await browser.newContext();
@@ -138,10 +141,10 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
 
   it("must support adding a product to cart using keyboard navigation on live product page", async (ctx) => {
     if (!isServerAvailable || !browser) {
-      if (process.env.REQUIRE_LIVE_SERVER === "true") {
-        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
-      }
-      ctx.skip();
+      handleLiveServerAbsence(
+        ctx,
+        `Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`,
+      );
       return;
     }
     const context = await browser.newContext();
@@ -166,10 +169,10 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
 
   it("must navigate checkout form with keyboard and trigger validation error on invalid input", async (ctx) => {
     if (!isServerAvailable || !browser) {
-      if (process.env.REQUIRE_LIVE_SERVER === "true") {
-        expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`);
-      }
-      ctx.skip();
+      handleLiveServerAbsence(
+        ctx,
+        `Canlı sunucu (${BASE_URL}) çalışmıyor; klavye testi gerçekleştirilemedi.`,
+      );
       return;
     }
     const context = await browser.newContext();

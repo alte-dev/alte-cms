@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
+import type { Browser, Page } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import {
+  launchHeadlessChromium,
+  handleLiveServerAbsence,
+  resolveMedusaPublishableKey,
+} from "./helpers/live-browser";
 
-const BASE_URL = process.env.TEST_WEB_URL || "http://localhost:3100";
-const MEDUSA_URL = process.env.TEST_MEDUSA_URL || "http://127.0.0.1:9000";
+const BASE_URL = process.env.TEST_WEB_URL || process.env.WEB_PUBLIC_URL || "http://localhost:3100";
+const MEDUSA_URL =
+  process.env.TEST_MEDUSA_URL || process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 
 describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () => {
   let browser: Browser | null = null;
@@ -31,9 +37,10 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
     }
     // Resolve live product handle from Medusa if available (prefer test-urun-sabit-1, exclude COD service item)
     try {
+      const pubKey = (await resolveMedusaPublishableKey(MEDUSA_URL)) || "pk_test_alte";
       const pRes = await fetch(`${MEDUSA_URL}/store/products?limit=20`, {
         headers: {
-          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_test_alte",
+          "x-publishable-api-key": pubKey,
         },
         signal: AbortSignal.timeout(3000),
       });
@@ -62,10 +69,7 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
       // Fallback to default seeded test blog post
     }
 
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await launchHeadlessChromium();
   });
 
   afterAll(async () => {
@@ -86,10 +90,10 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
   for (const route of routesToAudit) {
     it(`must pass WCAG 2.1 AA audit on live route: ${route.name}`, async (ctx) => {
       if (!isServerAvailable || !browser) {
-        if (process.env.REQUIRE_LIVE_SERVER === "true") {
-          expect.fail(`Canlı sunucu (${BASE_URL}) çalışmıyor; WCAG denetimi gerçekleştirilemedi.`);
-        }
-        ctx.skip();
+        handleLiveServerAbsence(
+          ctx,
+          `Canlı sunucu (${BASE_URL}) çalışmıyor; WCAG denetimi gerçekleştirilemedi.`,
+        );
         return;
       }
       const targetPath = route.getPath ? route.getPath() : route.path!;

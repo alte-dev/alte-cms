@@ -17,24 +17,17 @@
 
 import dotenv from "dotenv";
 import path from "path";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config();
 
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 
-interface CheckResult {
-  title: string;
-  passed: boolean;
-  details: string;
-}
-
-const results: CheckResult[] = [];
+const { results, recordStep } = createStepRecorder({ format: "check" });
 
 function recordCheck(title: string, passed: boolean, details: string) {
-  results.push({ title, passed, details });
-  const icon = passed ? "✅" : "❌";
-  console.log(`${icon} [${passed ? "GEÇTİ" : "BAŞARISIZ"}] ${title}: ${details}`);
+  recordStep(title, passed, details);
 }
 
 async function getAdminToken(): Promise<string> {

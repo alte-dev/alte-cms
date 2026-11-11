@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
+import type { Browser, Page } from "playwright";
+import { launchHeadlessChromium, handleLiveServerAbsence } from "./helpers/live-browser";
 
-const BASE_URL = process.env.TEST_WEB_URL || "http://localhost:3100";
+const BASE_URL = process.env.TEST_WEB_URL || process.env.WEB_PUBLIC_URL || "http://localhost:3100";
 
 describe("Responsive Pagination & Mobile Overflow Prevention", () => {
   let browser: Browser | null = null;
@@ -22,10 +23,7 @@ describe("Responsive Pagination & Mobile Overflow Prevention", () => {
       return;
     }
 
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await launchHeadlessChromium();
   });
 
   afterAll(async () => {
@@ -34,12 +32,10 @@ describe("Responsive Pagination & Mobile Overflow Prevention", () => {
 
   function ensureBrowserOrSkip(ctx: { skip: () => void }): Browser {
     if (!isServerAvailable || !browser) {
-      if (process.env.REQUIRE_LIVE_SERVER === "true") {
-        expect.fail(
-          `[Pagination Test] Canlı Web sunucusu (${BASE_URL}) erişilemez durumda! REQUIRE_LIVE_SERVER=true iken test atlanamaz.`,
-        );
-      }
-      ctx.skip();
+      handleLiveServerAbsence(
+        ctx,
+        `[Pagination Test] Canlı Web sunucusu (${BASE_URL}) erişilemez durumda! REQUIRE_LIVE_SERVER=true iken test atlanamaz.`,
+      );
     }
     return browser!;
   }

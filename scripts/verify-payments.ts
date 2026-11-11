@@ -27,6 +27,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import path from "path";
 import pg from "pg";
+import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -50,25 +51,10 @@ const TEST_MERCHANT_ID = "999999";
 const TEST_MERCHANT_KEY = "test_merchant_key_secret_123456789";
 const TEST_MERCHANT_SALT = "test_merchant_salt_secret_123456789";
 
-interface StepResult {
-  step: number;
-  name: string;
-  passed: boolean;
-  details: string;
-}
-
-const results: StepResult[] = [];
-
-function recordStep(step: number, name: string, passed: boolean, details: string) {
-  results.push({ step, name, passed, details });
-  const icon = passed ? "✅" : "❌";
-  console.log(`${icon} [Adım ${step}] ${name}: ${details}`);
-  if (!passed) {
-    console.error(`\n❌ FAILED: Adım ${step} (${name})`);
-    console.error(`Ayrıntı: ${details}`);
-    process.exit(1);
-  }
-}
+const { results, recordStep } = createStepRecorder({
+  format: "adim",
+  exitOnFail: true,
+});
 
 async function resolvePublishableApiKey(): Promise<string> {
   const token = await getAdminToken();

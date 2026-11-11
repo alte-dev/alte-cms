@@ -1,9 +1,9 @@
-import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import dotenv from "dotenv";
+import { createStepRecorder, launchVerifyBrowser } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -33,23 +33,7 @@ const MEDUSA_KEY =
   process.env.MEDUSA_PUBLISHABLE_KEY ||
   "pk_d7276af353492091a49cbd91c3ed5105f3943e9bac06ff9fb4b5dd6560b3d139";
 
-interface StepResult {
-  step: number;
-  name: string;
-  passed: boolean;
-  detail: string;
-}
-
-const results: StepResult[] = [];
-
-function recordStep(step: number, name: string, passed: boolean, detail: string) {
-  results.push({ step, name, passed, detail });
-  const status = passed ? "PASS" : "FAIL";
-  console.log(`[Adım ${step}] ${status}: ${name}`);
-  if (detail) {
-    console.log(`    Detay: ${detail}`);
-  }
-}
+const { results, recordStep } = createStepRecorder({ format: "quality" });
 
 async function loginPayloadAdmin(): Promise<string | null> {
   try {
@@ -152,10 +136,7 @@ async function main() {
   // Adım 4: Gerçek Sayfalarda WCAG 2.1 AA Axe-Core Erişilebilirlik Taraması (0 kritik/ciddi)
   let browser: any = null;
   try {
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await launchVerifyBrowser();
 
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -193,10 +174,7 @@ async function main() {
 
   // Adım 5: Canlı Tarayıcıda Skip Link & Odak Yönetimi Testi (Klavye Tab/Enter)
   try {
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await launchVerifyBrowser();
     const context = await browser.newContext();
     const page = await context.newPage();
 

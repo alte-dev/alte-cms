@@ -91,10 +91,10 @@ Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme s�
 
 ## C. Her faz için sabit kapanış listesi
 
-1. Temiz klon + CI ortamıyla tüm kalite adımları (AGENTS.md Bölüm 4).
-2. GitHub CI'nın adım adım yeşil olduğunun doğrulanması.
-3. Canlı HTTP doğrulama betiği boş veritabanından çalışıyor.
-4. Önceki fazların `verify-*` betikleri hâlâ geçiyor (regresyon).
+1. Temiz klon + CI ortamıyla tüm kalite adımları (`AGENTS.md` Bölüm 4).
+2. GitHub CI'da hem `security-and-quality` hem `live-verify` işlerinin adım adım yeşil olduğunun ve `verify-logs` artifact'ının yüklendiğinin doğrulanması.
+3. `pnpm verify:all` (tüm canlı HTTP doğrulama betikleri) ve `REQUIRE_LIVE_SERVER=true` canlı tarayıcı testleri boş veritabanından sıfır skipped ile çalışıyor (`verify-logs/SUMMARY.md`).
+4. Önceki fazların `verify-*` betikleri `verify:all` içinde hâlâ geçiyor (regresyon).
 5. Gerçek bellek ve First Load JS ölçümü (`medusa start`, `next start`).
-6. `docs/` güncellendi (ROADMAP, ilgili tasarım dokümanı, RUNBOOK).
-7. Rapor: yapılamayanların açık listesi dahil.
+6. `docs/` güncellendi (PHASES, ilgili tasarım dokümanı, RUNBOOK).
+7. Rapor: `.github/pull_request_template.md` kontrol listesi ve yapılamayanların açık listesi dahil.
