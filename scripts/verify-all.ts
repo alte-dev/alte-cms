@@ -78,11 +78,17 @@ export interface RunVerifyOptions {
 
 function killProcessTree(proc: ChildProcess | null): void {
   if (!proc || !proc.pid) return;
+  proc.stdout?.destroy();
+  proc.stderr?.destroy();
   try {
     if (process.platform === "win32") {
       spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
     } else {
-      proc.kill("SIGKILL");
+      try {
+        process.kill(-proc.pid, "SIGKILL");
+      } catch {
+        proc.kill("SIGKILL");
+      }
     }
   } catch {
     // ignore cleanup errors
@@ -358,6 +364,7 @@ async function main() {
               PORT: String(devPort),
             },
             stdio: "ignore",
+            detached: process.platform !== "win32",
           });
 
           let ready = false;

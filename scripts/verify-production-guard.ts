@@ -39,16 +39,26 @@ function spawnMedusaStart(port: number, env: NodeJS.ProcessEnv): ChildProcess {
   if (process.platform === "win32") {
     return spawn("cmd.exe", ["/c", `npx medusa start -p ${port}`], { cwd, env });
   }
-  return spawn("npx", ["medusa", "start", "-p", String(port)], { cwd, env });
+  return spawn("npx", ["medusa", "start", "-p", String(port)], {
+    cwd,
+    env,
+    detached: true,
+  });
 }
 
 function killMedusaProc(proc: ChildProcess): void {
+  proc.stdout?.destroy();
+  proc.stderr?.destroy();
   if (!proc.pid) return;
   try {
     if (process.platform === "win32") {
       spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
     } else {
-      proc.kill("SIGKILL");
+      try {
+        process.kill(-proc.pid, "SIGKILL");
+      } catch {
+        proc.kill("SIGKILL");
+      }
     }
   } catch {
     // ignore
@@ -331,7 +341,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("\n❌ HATA:", err.message);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("\n❌ HATA:", err.message);
+    process.exit(1);
+  });
