@@ -116,6 +116,11 @@ async function runStoreVerification() {
 
     if (turkeyRegion) {
       recordCheck(
+        "0. Kasıtlı Negatif CI Testi (FAZ 11.5 Bölüm 5)",
+        false,
+        "Beklenen PASS, gelen FAIL (CI live-verify işinin gerçekten kırmızıya düştüğünün kanıtı)",
+      );
+      recordCheck(
         "1. Region Yapılandırması",
         true,
         `Türkiye bölgesi bulundu (ID: ${turkeyRegion.id}, Para Birimi: ${turkeyRegion.currency_code.toUpperCase()})`,
