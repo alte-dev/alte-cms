@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import {
   addItemToCart,
   applyPromotionCode,
@@ -9,6 +10,8 @@ import {
   removePromotionCode,
   updateCartItem,
 } from "../../lib/medusa/cart";
+import { getProducts, getCategories } from "../../lib/medusa/products";
+import { StoreProduct } from "../../lib/medusa/types";
 import { mapMedusaError } from "../../lib/medusa/format";
 import {
   AddToCartSchema,
@@ -141,10 +144,11 @@ export async function applyCouponAction(code: string): Promise<ActionResult> {
       success: true,
       data: updatedCart,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("[Store Action] applyCouponAction failed:", (err as Error)?.name || "Error");
     return {
       success: false,
-      error: err?.message || "Geçersiz veya süresi dolmuş kupon kodu.",
+      error: "Geçersiz veya süresi dolmuş kupon kodu.",
     };
   }
 }
@@ -165,10 +169,104 @@ export async function removeCouponAction(code: string): Promise<ActionResult> {
       success: true,
       data: updatedCart,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("[Store Action] removeCouponAction failed:", (err as Error)?.name || "Error");
     return {
       success: false,
-      error: err?.message || "Kupon kaldırılamadı.",
+      error: "Kupon kaldırılamadı.",
+    };
+  }
+}
+
+const FetchMoreProductsSchema = z.object({
+  page: z
+    .number()
+    .int("Sayfa tam sayı olmalıdır.")
+    .min(1, "Sayfa numarası en az 1 olmalıdır.")
+    .max(10000, "Geçersiz sayfa numarası."),
+  limit: z.number().int().min(1).max(24).optional().default(12),
+  category: z.string().max(100).optional(),
+  sort: z.enum(["created_at", "price_asc", "price_desc"]).optional(),
+});
+
+/**
+ * Server Action: Fetch additional products for infinite scroll with DoS & dynamic catalog bounds guards.
+ */
+export async function fetchMoreProductsAction(params: {
+  page: number;
+  limit?: number;
+  category?: string;
+  sort?: "created_at" | "price_asc" | "price_desc";
+}): Promise<{
+  success: boolean;
+  products: StoreProduct[];
+  hasMore: boolean;
+  totalPages: number;
+  currentPage: number;
+  error?: string;
+}> {
+  try {
+    const parseResult = FetchMoreProductsSchema.safeParse(params);
+    if (!parseResult.success) {
+      const firstIssue = parseResult.error.issues?.[0];
+      return {
+        success: false,
+        products: [],
+        hasMore: false,
+        totalPages: 1,
+        currentPage: typeof params?.page === "number" ? params.page : 1,
+        error: firstIssue?.message || "Geçersiz sayfalama parametresi.",
+      };
+    }
+
+    const { page, limit, category, sort } = parseResult.data;
+
+    let categoryId: string | undefined = undefined;
+    if (category) {
+      const categories = await getCategories();
+      const matched = categories.find((c) => c.handle === category || c.id === category);
+      if (matched) {
+        categoryId = matched.id;
+      }
+    }
+
+    const result = await getProducts({
+      page,
+      limit,
+      category_id: categoryId,
+      sort,
+    });
+
+    if (result.totalPages > 0 && page > result.totalPages) {
+      return {
+        success: false,
+        products: [],
+        hasMore: false,
+        totalPages: result.totalPages,
+        currentPage: result.totalPages,
+        error: "İstenen sayfa katalog sınırını aşıyor.",
+      };
+    }
+
+    return {
+      success: true,
+      products: result.products,
+      hasMore: result.currentPage < result.totalPages,
+      totalPages: result.totalPages,
+      currentPage: result.currentPage,
+    };
+  } catch (err: unknown) {
+    console.error(
+      "[Store Action] fetchMoreProductsAction failed:",
+      (err as Error)?.name || "Error",
+    );
+    return {
+      success: false,
+      products: [],
+      hasMore: false,
+      totalPages: 1,
+      currentPage: typeof params?.page === "number" ? params.page : 1,
+      error: "Ürünler yüklenirken bir hata oluştu.",
     };
   }
 }

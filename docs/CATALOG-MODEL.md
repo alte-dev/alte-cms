@@ -112,3 +112,16 @@ WooCommerce'deki tekil indirim alanı yerine Medusa v2'nin `PriceList` yeteneği
     "is_calculated_price_price_list": true
   }
   ```
+
+---
+
+## 6. Sayfalama ve Sonsuz Kaydırma (Infinite Scroll) Güvenlik Sınırları
+
+Katalog listeleme sayfaları (`/urunler`, `/kategori/[slug]`) `site-settings` (`catalogListingMode`) ayarına göre **Numaralı Sayfalama** (`pagination`) veya **Sonsuz Kaydırma** (`infinite`) modunda çalışır:
+
+1. **Sınır Dışı Sayfa Yönlendirmesi (`resolveCatalogPageRedirect`):**
+   - `page=0`, `page=-1`, `page=abc` gibi geçersiz sorgu parametreleri 1. sayfaya (`/urunler` veya `/kategori/[slug]`) yönlendirilir (`HTTP 307`).
+   - Katalog toplam sayfa sayısını aşan istekler (örn. `page=999` iken `totalPages=9`) boş liste döndürmek yerine son geçerli sayfaya (`?page=9`) yönlendirilir.
+2. **Sonsuz Kaydırma Otomatik Yükleme Freni ve Dinamik Sınır (`fetchMoreProductsAction`):**
+   - İstemci tarafında (`InfiniteProductGrid`), art arda **3 sayfa** otomatik yüklendikten sonra `IntersectionObserver` duraklar ve kullanıcıdan **"Daha Fazla Ürün Göster"** düğmesine tıklaması istenir (Space tuşuna basılı tutma veya bot kaynaklı sonsuz döngü koruması).
+   - Sunucu tarafında (`fetchMoreProductsAction`), sayfa üst sınırı sabit bir sayı yerine kataloğun gerçek `totalPages` değerine dinamik olarak bağlıdır (`page <= result.totalPages`, şema düzeyinde `max(10000)` tavanı ve sayfa başına `max(24)` ürün limiti). `totalPages` değerini aşan istekler reddedilir ve iç sunucu hataları istemciye sızdırılmaz.

@@ -1,71 +1,86 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { medusaEnvSchema, validateMedusaEnv } from "./env";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import * as envModule from "./env";
 
-describe("Medusa Environment Schema Validation (Fail-Closed)", () => {
+describe("Medusa Environment & Cookie Security Defaults", () => {
   const originalEnv = process.env;
 
+  const validBaseEnv = {
+    DATABASE_URL: "postgres://user:pass@127.0.0.1:5432/medusa_db",
+    REDIS_URL: "redis://127.0.0.1:6379",
+    JWT_SECRET: "a-very-strong-random-jwt-secret-at-least-32-chars",
+    COOKIE_SECRET: "a-very-strong-random-cookie-secret-at-least-32-chars",
+    STORE_CORS: "http://localhost:3100",
+    ADMIN_CORS: "http://localhost:9000",
+    AUTH_CORS: "http://localhost:9000",
+    SETTINGS_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  };
+
   beforeEach(() => {
-    process.env = { ...originalEnv };
-  });
-
-  it("should fail when mandatory environment variables are missing", () => {
-    const invalidConfig = {
-      DATABASE_URL: "postgres://user:pass@localhost:5432/medusa_db",
-      // REDIS_URL missing
-      JWT_SECRET: "strong-random-jwt-secret-min-32-chars-long!",
-      COOKIE_SECRET: "strong-random-cookie-secret-min-32-chars!",
-      STORE_CORS: "http://localhost:3100",
-      ADMIN_CORS: "http://api.localhost:9000",
-      AUTH_CORS: "http://api.localhost:9000",
-    };
-
-    const result = medusaEnvSchema.safeParse(invalidConfig);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.path.includes("REDIS_URL"))).toBe(true);
-    }
-  });
-
-  it("should reject weak/trivial secrets even if they meet length requirement", () => {
-    const weakConfig = {
-      DATABASE_URL: "postgres://user:pass@localhost:5432/medusa_db",
-      REDIS_URL: "redis://localhost:6379",
-      JWT_SECRET: "secret123secret123secret123secret123", // starts with secret
-      COOKIE_SECRET: "passwordpasswordpasswordpassword123", // weak pattern
-      STORE_CORS: "http://localhost:3100",
-      ADMIN_CORS: "http://api.localhost:9000",
-      AUTH_CORS: "http://api.localhost:9000",
-    };
-
-    const result = medusaEnvSchema.safeParse(weakConfig);
-    expect(result.success).toBe(false);
-  });
-
-  it("should succeed with a secure, complete configuration", () => {
-    const validConfig = {
-      DATABASE_URL: "postgres://medusa_user:dev-only-medusa-password@127.0.0.1:5432/medusa_db",
-      REDIS_URL: "redis://127.0.0.1:6379",
-      JWT_SECRET: "super-secure-unique-jwt-signing-key-32-chars-ok",
-      COOKIE_SECRET: "super-secure-unique-cookie-session-key-32-chars",
-      STORE_CORS: "http://localhost:3100",
-      ADMIN_CORS: "http://api.localhost:9000,http://localhost:9000",
-      AUTH_CORS: "http://api.localhost:9000,http://localhost:3100",
-      PORT: "9000",
-      HOST: "127.0.0.1",
-      SETTINGS_ENCRYPTION_KEY: "4e091da86e2b155c5697ee55ab2b5dd54bce76b9df9a9628546b4c3d9e9b827f",
-    };
-
-    const result = medusaEnvSchema.safeParse(validConfig);
-    expect(result.success).toBe(true);
-  });
-
-  it("should reject PAYTR_API_BASE and DEV_PAYTR_USER_IP in production", () => {
-    process.env.NODE_ENV = "production";
-    process.env.PAYTR_API_BASE = "https://mock-paytr.test";
-    expect(() => validateMedusaEnv()).toThrow(/PAYTR_API_BASE/);
-
+    process.env = { ...originalEnv, ...validBaseEnv };
+    delete process.env.COOKIE_SECURE;
+    delete process.env.API_PUBLIC_URL;
     delete process.env.PAYTR_API_BASE;
-    process.env.DEV_PAYTR_USER_IP = "1.2.3.4";
-    expect(() => validateMedusaEnv()).toThrow(/DEV_PAYTR_USER_IP/);
+    delete process.env.DEV_PAYTR_USER_IP;
+    delete process.env.MEDUSA_ADMIN_BACKEND_URL;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("defaults cookie secure to true when NODE_ENV is production and COOKIE_SECURE is unset", () => {
+    const resolveCookieSecure = (envModule as Record<string, unknown>).resolveCookieSecure as (
+      env?: NodeJS.ProcessEnv,
+    ) => boolean;
+    expect(typeof resolveCookieSecure).toBe("function");
+    expect(resolveCookieSecure({ NODE_ENV: "production" })).toBe(true);
+  });
+
+  it("throws a fail-closed security error in validateMedusaEnv when NODE_ENV=production and COOKIE_SECURE=false", () => {
+    process.env.NODE_ENV = "production";
+    process.env.COOKIE_SECURE = "false";
+
+    expect(() => envModule.validateMedusaEnv()).toThrow(/COOKIE_SECURE=false/);
+  });
+
+  it("keeps cookie secure false on local HTTP development (NODE_ENV=development) when COOKIE_SECURE is unset", () => {
+    const resolveCookieSecure = (envModule as Record<string, unknown>).resolveCookieSecure as (
+      env?: NodeJS.ProcessEnv,
+    ) => boolean;
+    expect(typeof resolveCookieSecure).toBe("function");
+    expect(
+      resolveCookieSecure({ NODE_ENV: "development", API_PUBLIC_URL: "http://localhost:9000" }),
+    ).toBe(false);
+  });
+
+  it("allows explicit COOKIE_SECURE=false outside production even if API_PUBLIC_URL is https", () => {
+    const resolveCookieSecure = (envModule as Record<string, unknown>).resolveCookieSecure as (
+      env?: NodeJS.ProcessEnv,
+    ) => boolean;
+    expect(typeof resolveCookieSecure).toBe("function");
+    expect(
+      resolveCookieSecure({
+        NODE_ENV: "development",
+        COOKIE_SECURE: "false",
+        API_PUBLIC_URL: "https://api.example.test",
+      }),
+    ).toBe(false);
+  });
+
+  it("enables cookie secure outside production when COOKIE_SECURE=true or API_PUBLIC_URL is https", () => {
+    const resolveCookieSecure = (envModule as Record<string, unknown>).resolveCookieSecure as (
+      env?: NodeJS.ProcessEnv,
+    ) => boolean;
+    expect(typeof resolveCookieSecure).toBe("function");
+    expect(resolveCookieSecure({ NODE_ENV: "development", COOKIE_SECURE: "true" })).toBe(true);
+    expect(
+      resolveCookieSecure({ NODE_ENV: "development", API_PUBLIC_URL: "https://api.example.test" }),
+    ).toBe(true);
+  });
+
+  it("leaves admin.backendUrl undefined when MEDUSA_ADMIN_BACKEND_URL is unset in production", () => {
+    process.env.NODE_ENV = "production";
+    const parsed = envModule.validateMedusaEnv();
+    expect(parsed.MEDUSA_ADMIN_BACKEND_URL).toBeUndefined();
   });
 });

@@ -123,7 +123,8 @@ export function SearchBar() {
             ref={inputRef}
             id="store-search-input"
             type="search"
-            role="searchbox"
+            role="combobox"
+            aria-haspopup="listbox"
             value={query}
             onChange={handleInputChange}
             onFocus={() => {
@@ -135,21 +136,21 @@ export function SearchBar() {
             aria-autocomplete="list"
             aria-expanded={isOpen}
             aria-controls="search-suggestions-list"
-            className="w-full pl-9 pr-14 py-1.5 text-xs sm:text-sm bg-stone-100/80 hover:bg-stone-100 focus:bg-white text-stone-900 placeholder:text-stone-400 rounded-full border border-stone-200 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 outline-none transition"
+            className="w-full pl-9 pr-14 py-1.5 text-xs sm:text-sm bg-stone-100/80 hover:bg-stone-100 focus:bg-white text-stone-900 placeholder:text-stone-600 rounded-full border border-stone-200 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 outline-none transition"
           />
 
-          <Search className="absolute left-3 w-4 h-4 text-stone-400 pointer-events-none" />
+          <Search className="absolute left-3 w-4 h-4 text-stone-500 pointer-events-none" />
 
           <div className="absolute right-3 flex items-center gap-1">
             {isLoading && (
-              <Loader2 className="w-3.5 h-3.5 text-stone-400 animate-spin" aria-hidden="true" />
+              <Loader2 className="w-3.5 h-3.5 text-stone-500 animate-spin" aria-hidden="true" />
             )}
             {query.length > 0 && !isLoading && (
               <button
                 type="button"
                 onClick={clearQuery}
                 aria-label="Aramayı temizle"
-                className="text-stone-400 hover:text-stone-600 transition p-0.5 rounded-full hover:bg-stone-200"
+                className="text-stone-600 hover:text-stone-900 transition p-0.5 rounded-full hover:bg-stone-200"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

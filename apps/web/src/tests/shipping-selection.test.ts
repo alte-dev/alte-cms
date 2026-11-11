@@ -1,0 +1,249 @@
+import { describe, it, expect } from "vitest";
+import {
+  getDefaultShippingOptionId,
+  sortShippingOptions,
+  calculateCheckoutTotals,
+} from "../lib/medusa/checkout-pricing";
+import type { StoreShippingOption, StoreCart } from "../lib/medusa/types";
+
+describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
+  const mockShippingOptions: StoreShippingOption[] = [
+    {
+      id: "so_standard",
+      name: "Standart Kargo",
+      price_type: "flat",
+      amount: 150,
+    },
+    {
+      id: "so_pickup",
+      name: "Mağazadan Teslim",
+      price_type: "flat",
+      amount: 0,
+    },
+    {
+      id: "so_free",
+      name: "Ücretsiz Kargo",
+      price_type: "flat",
+      amount: 0,
+    },
+  ];
+
+  describe("getDefaultShippingOptionId", () => {
+    it("preserves existing shipping method if already assigned to cart", () => {
+      const selected = getDefaultShippingOptionId(mockShippingOptions, "so_standard");
+      expect(selected).toBe("so_standard");
+    });
+
+    it("defaults to 'Ücretsiz Kargo' when available instead of paid standard shipping", () => {
+      // Even though 'Standart Kargo' is first in the array, 'Ücretsiz Kargo' must be prioritized
+      const selected = getDefaultShippingOptionId(mockShippingOptions);
+      expect(selected).toBe("so_free");
+    });
+
+    it("falls back to standard shipping if free shipping is not available", () => {
+      const paidOnlyOptions = mockShippingOptions.filter((o) => o.id !== "so_free");
+      // Between Standart (150) and Mağazadan Teslim (0), home delivery is preferred or first available
+      const selected = getDefaultShippingOptionId(paidOnlyOptions);
+      expect(selected).toBe("so_standard");
+    });
+
+    it("returns empty string if no shipping options provided", () => {
+      expect(getDefaultShippingOptionId([])).toBe("");
+    });
+  });
+
+  describe("sortShippingOptions", () => {
+    it("sorts 'Ücretsiz Kargo' to the top of the list for customer visibility", () => {
+      const sorted = sortShippingOptions(mockShippingOptions);
+      expect(sorted[0].id).toBe("so_free");
+    });
+  });
+
+  describe("calculateCheckoutTotals", () => {
+    const mockCart: StoreCart = {
+      id: "cart_test_1",
+      region_id: "reg_tr",
+      currency_code: "try",
+      total: 2190,
+      subtotal: 1825, // KDV hariç ürünler
+      item_subtotal: 1825,
+      tax_total: 365, // %20 KDV
+      discount_total: 0,
+      shipping_total: 0,
+      items: [
+        {
+          id: "item_1",
+          title: "Ürün 1",
+          quantity: 1,
+          unit_price: 140, // KDV dahil
+          subtotal: 116.67,
+          tax_total: 23.33,
+          total: 140,
+          product_title: "Ürün 1",
+        },
+        {
+          id: "item_2",
+          title: "Ürün 2",
+          quantity: 1,
+          unit_price: 2050, // KDV dahil
+          subtotal: 1708.33,
+          tax_total: 341.67,
+          total: 2050,
+          product_title: "Ürün 2",
+        },
+      ],
+    };
+
+    it("calculates correct grand total with free shipping", () => {
+      const freeOption = mockShippingOptions.find((o) => o.id === "so_free")!;
+      const totals = calculateCheckoutTotals(mockCart, freeOption, 0, "card");
+
+      expect(totals.shippingCost).toBe(0);
+      expect(totals.itemTotal).toBe(2190);
+      expect(totals.total).toBe(2190);
+      expect(totals.subtotalNet).toBe(1825); // KDV Hariç net tutar
+      expect(totals.taxTotal).toBe(365);
+    });
+
+    it("calculates correct grand total with paid standard shipping", () => {
+      const stdOption = mockShippingOptions.find((o) => o.id === "so_standard")!;
+      const totals = calculateCheckoutTotals(mockCart, stdOption, 0, "card");
+
+      expect(totals.shippingCost).toBe(150);
+      expect(totals.total).toBe(2340); // 2190 + 150
+    });
+
+    it("does not double-deduct VAT from subtotal", () => {
+      const freeOption = mockShippingOptions.find((o) => o.id === "so_free")!;
+      const totals = calculateCheckoutTotals(mockCart, freeOption, 0, "card");
+
+      // Bug had subtotal - taxTotal = 1825 - 365 = 1460 (wrong!)
+      expect(totals.subtotalNet).toBe(1825);
+    });
+
+    it("exposes configuredCodFee regardless of current payment method so badge shows actual fee", () => {
+      const freeOption = mockShippingOptions.find((o) => o.id === "so_free")!;
+
+      // 1. When card is selected: codFee is 0 in total, but configuredCodFee is 100
+      const cardTotals = calculateCheckoutTotals(mockCart, freeOption, 100, "card");
+      expect(cardTotals.codFee).toBe(0);
+      expect(cardTotals.configuredCodFee).toBe(100);
+      expect(cardTotals.total).toBe(2190);
+
+      // 2. When COD is selected: both codFee and configuredCodFee are 100
+      const codTotals = calculateCheckoutTotals(mockCart, freeOption, 100, "cod");
+      expect(codTotals.codFee).toBe(100);
+      expect(codTotals.configuredCodFee).toBe(100);
+      expect(codTotals.total).toBe(2290); // 2190 + 100
+    });
+
+    it("hides COD fee badge when COD payment option is disabled and shows it when enabled", async () => {
+      const pricingMod = await import("../lib/medusa/checkout-pricing");
+      const shouldShowCodFeeBadge = (pricingMod as Record<string, unknown>)
+        .shouldShowCodFeeBadge as (codEnabled?: boolean, configuredCodFee?: number) => boolean;
+
+      expect(typeof shouldShowCodFeeBadge).toBe("function");
+      expect(shouldShowCodFeeBadge(false, 100)).toBe(false);
+      expect(shouldShowCodFeeBadge(undefined, 100)).toBe(false);
+      expect(shouldShowCodFeeBadge(true, 0)).toBe(false);
+      expect(shouldShowCodFeeBadge(true, 100)).toBe(true);
+    });
+  });
+
+  describe("Live E2E Verification on Real Checkout Page", () => {
+    it("auto-selects Free Shipping on /odeme and displays COD fee badge when COD is enabled", async (ctx) => {
+      const { chromium } = await import("playwright");
+      const fs = await import("fs");
+      const path = await import("path");
+      const BASE_URL = process.env.WEB_PUBLIC_URL || "http://localhost:3100";
+      const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
+      let pubKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
+      if (!pubKey) {
+        try {
+          const envFile = fs.readFileSync(path.resolve(process.cwd(), ".env"), "utf-8");
+          const match = envFile.match(/^NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=(.+)$/m);
+          if (match?.[1]) pubKey = match[1].trim();
+        } catch {
+          // ignore if .env does not exist in CI
+        }
+      }
+
+      let serverOnline = false;
+      let dynamicCartId = "";
+      try {
+        const [probeWeb, probeMedusa] = await Promise.all([
+          fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) }),
+          fetch(`${MEDUSA_URL}/health`, { signal: AbortSignal.timeout(5000) }),
+        ]);
+        serverOnline = probeWeb.status === 200 && probeMedusa.ok;
+
+        if (serverOnline && pubKey) {
+          const headers = {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": pubKey,
+          };
+          const [regRes, prodRes] = await Promise.all([
+            fetch(`${MEDUSA_URL}/store/regions`, { headers }),
+            fetch(`${MEDUSA_URL}/store/products?handle=test-urun-sabit-1`, { headers }),
+          ]);
+          const regData = await regRes.json();
+          const prodData = await prodRes.json();
+          const regionId = regData?.regions?.[0]?.id;
+          const variantId = prodData?.products?.[0]?.variants?.[0]?.id;
+
+          if (regionId && variantId) {
+            const cartRes = await fetch(`${MEDUSA_URL}/store/carts`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ region_id: regionId }),
+            });
+            const cartData = await cartRes.json();
+            const cId = cartData?.cart?.id;
+            if (cId) {
+              await fetch(`${MEDUSA_URL}/store/carts/${cId}/line-items`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ variant_id: variantId, quantity: 4 }),
+              });
+              dynamicCartId = cId;
+            }
+          }
+        }
+      } catch {
+        serverOnline = false;
+      }
+
+      if (!serverOnline || !dynamicCartId) {
+        ctx.skip();
+        return;
+      }
+
+      const browser = await chromium.launch({ headless: true });
+      const context = await browser.newContext();
+
+      await context.addCookies([
+        {
+          name: "alte_cart_id",
+          value: dynamicCartId,
+          domain: "localhost",
+          path: "/",
+        },
+      ]);
+
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/odeme`, { waitUntil: "networkidle" });
+
+      // 1. Verify "Kargo Tutarı" in sidebar summary is "Ücretsiz"
+      const shippingRow = page.locator("div:has(> span:text('Kargo Tutarı'))");
+      const shippingText = await shippingRow.innerText();
+      expect(shippingText).toContain("Ücretsiz");
+
+      // 2. Verify "Ücretsiz Kargo" radio button is checked by default
+      const freeRadio = page.locator("label:has-text('Ücretsiz Kargo') input[type='radio']");
+      const isChecked = await freeRadio.isChecked();
+      expect(isChecked).toBe(true);
+
+      await browser.close();
+    }, 15000);
+  });
+});

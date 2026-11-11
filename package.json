@@ -30,6 +30,8 @@
     "verify:search": "tsx scripts/verify-search.ts",
     "verify:notifications": "tsx scripts/verify-notifications.ts",
     "verify:order-ops": "tsx scripts/verify-order-ops.ts",
+    "measure:quality": "tsx scripts/measure-quality.ts",
+    "verify:quality": "tsx scripts/verify-quality.ts",
     "seed:content": "pnpm --filter @alte/web seed:content",
     "seed:fake": "tsx scripts/seed-fake-catalog.ts",
     "create-admin": "pnpm --filter @alte/web create-admin",
@@ -55,16 +57,19 @@
     }
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@axe-core/playwright": "4.14.0",
+    "@eslint/js": "10.0.1",
     "@types/node": "22.10.7",
+    "@types/smtp-server": "3.5.10",
     "eslint": "9.21.0",
     "lefthook": "1.10.10",
+    "lighthouse": "13.5.0",
+    "playwright": "1.64.1",
     "prettier": "3.5.3",
     "smtp-server": "3.13.6",
-    "@types/smtp-server": "3.5.10",
     "tsx": "4.19.3",
     "typescript": "5.7.3",
-    "typescript-eslint": "^8.72.1",
+    "typescript-eslint": "8.72.1",
     "zod": "3.24.2"
   }
 }

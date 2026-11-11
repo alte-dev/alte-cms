@@ -1,7 +1,8 @@
 import type { CollectionConfig, Access } from "payload";
+import { ValidationError } from "payload";
 import type { UserRole } from "@alte/shared";
 import path from "path";
-import { ALLOWED_MIME_TYPES, sanitizeUploadFilename } from "../lib/media-utils";
+import { ALLOWED_MIME_TYPES, sanitizeUploadFilename, isAllowedMimeType } from "../lib/media-utils";
 import { canDeleteContent } from "../access/content";
 
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -65,9 +66,24 @@ export const Media: CollectionConfig = {
       ({ req, operation }) => {
         if (operation === "create" && req.file) {
           if (!validateFileSize(req.file.size)) {
-            throw new Error(
-              `Dosya boyutu 5 MB sınırını aşamaz (Yüklenen boyut: ${(req.file.size / (1024 * 1024)).toFixed(2)} MB).`,
-            );
+            throw new ValidationError({
+              errors: [
+                {
+                  message: `Dosya boyutu 5 MB sınırını aşamaz (Yüklenen boyut: ${(req.file.size / (1024 * 1024)).toFixed(2)} MB).`,
+                  path: "file",
+                },
+              ],
+            });
+          }
+          if (req.file.mimetype && !isAllowedMimeType(req.file.mimetype)) {
+            throw new ValidationError({
+              errors: [
+                {
+                  message: `Güvenlik uyarısı: ${req.file.mimetype} dosya türü kabul edilemez. SVG ve çalıştırılabilir dosyalar yasaktır.`,
+                  path: "file",
+                },
+              ],
+            });
           }
           if (req.file.name) {
             req.file.name = sanitizeUploadFilename(req.file.name);
@@ -79,9 +95,14 @@ export const Media: CollectionConfig = {
       ({ req, data }) => {
         const file = (req as any)?.file;
         if (file && !validateFileSize(file.size)) {
-          throw new Error(
-            `Dosya boyutu 5 MB sınırını aşamaz (Yüklenen boyut: ${(file.size / (1024 * 1024)).toFixed(2)} MB).`,
-          );
+          throw new ValidationError({
+            errors: [
+              {
+                message: `Dosya boyutu 5 MB sınırını aşamaz (Yüklenen boyut: ${(file.size / (1024 * 1024)).toFixed(2)} MB).`,
+                path: "file",
+              },
+            ],
+          });
         }
         return data;
       },

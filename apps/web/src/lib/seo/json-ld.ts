@@ -91,3 +91,53 @@ export function generateJsonLdBlogPosting(params: {
   };
   return safeJsonLdStringify(schema);
 }
+
+export function generateJsonLdProduct(params: {
+  name: string;
+  description?: string;
+  url: string;
+  imageUrl?: string;
+  price: number;
+  currency?: string;
+  inStock: boolean;
+  brandName?: string;
+}): string {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: params.name,
+    ...(params.description ? { description: params.description } : {}),
+    ...(params.imageUrl ? { image: params.imageUrl } : {}),
+    ...(params.brandName
+      ? {
+          brand: {
+            "@type": "Brand",
+            name: params.brandName,
+          },
+        }
+      : {}),
+    offers: {
+      "@type": "Offer",
+      price: params.price,
+      priceCurrency: params.currency || "TRY",
+      availability: params.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+      url: params.url,
+    },
+  };
+  return safeJsonLdStringify(schema);
+}
+
+export function generateJsonLdBreadcrumbs(items: Array<{ name: string; item: string }>): string {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: it.name,
+      item: it.item,
+    })),
+  };
+  return safeJsonLdStringify(schema);
+}

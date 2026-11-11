@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "medusa develop",
-    "build": "medusa build && node -e \"const fs=require('fs'); if(fs.existsSync('dist/public')) fs.cpSync('dist/public', 'public', {recursive:true, force:true});\"",
+    "build": "medusa build && node -e \"const fs=require('fs'); if(fs.existsSync('dist/public/admin')) { fs.rmSync('public/admin', {recursive:true, force:true}); fs.cpSync('dist/public/admin', 'public/admin', {recursive:true}); }\"",
     "start": "medusa start",
     "db:migrate": "medusa db:migrate",
     "typecheck": "tsc --noEmit",

@@ -8,6 +8,7 @@ export const TEST_PROMOTIONS = [
     type: "standard" as const,
     status: "active" as const,
     is_automatic: false,
+    is_tax_inclusive: true,
     application_method: {
       type: "percentage" as const,
       target_type: "items" as const,
@@ -21,6 +22,7 @@ export const TEST_PROMOTIONS = [
     type: "standard" as const,
     status: "active" as const,
     is_automatic: false,
+    is_tax_inclusive: true,
     application_method: {
       type: "fixed" as const,
       target_type: "items" as const,

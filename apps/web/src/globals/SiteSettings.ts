@@ -50,6 +50,20 @@ export const SiteSettings: GlobalConfig = {
       label: "Favicon",
     },
     {
+      name: "catalogListingMode",
+      type: "select",
+      label: "Ürün Listeleme Modu",
+      defaultValue: "pagination",
+      options: [
+        { label: "Klasik Sayfalama (Pagination)", value: "pagination" },
+        { label: "Sonsuz Kaydırma (Infinite Scroll)", value: "infinite" },
+      ],
+      admin: {
+        description:
+          "Vitrin ürünler ve kategori sayfalarında ürünlerin nasıl listeleneceğini belirler.",
+      },
+    },
+    {
       name: "socialMedia",
       type: "group",
       label: "Sosyal Medya Hesapları",

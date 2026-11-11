@@ -38,7 +38,7 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Content Area */}
       <div className="p-4 flex flex-col flex-1">
         {product.categories?.[0] && (
-          <span className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">
+          <span className="text-xs font-medium text-stone-600 uppercase tracking-wider mb-1">
             {product.categories[0].name}
           </span>
         )}
@@ -53,12 +53,12 @@ export function ProductCard({ product }: ProductCardProps) {
             <div className="flex items-baseline gap-2">
               <span className="text-base font-bold text-stone-900">{formatTRY(currentPrice)}</span>
               {isDiscounted && (
-                <span className="text-xs text-stone-400 line-through">
+                <span className="text-xs text-stone-600 line-through">
                   {formatTRY(originalPrice)}
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-stone-500">KDV dahil</span>
+            <span className="text-[11px] text-stone-600">KDV dahil</span>
           </div>
 
           <Link

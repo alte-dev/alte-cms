@@ -1,9 +1,14 @@
 import React from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getProducts, getCategories } from "@/lib/medusa/products";
 import { ProductQuerySchema } from "@/lib/medusa/validation";
+import { resolveCatalogPageRedirect } from "@/lib/pagination";
 import { ProductCard } from "@/components/product-card";
+import { Pagination } from "@/components/pagination";
+import { InfiniteProductGrid } from "@/components/infinite-product-grid";
+import { getSiteSettings } from "@/lib/payload/content";
 
 export const metadata: Metadata = {
   title: "Tüm Ürünler",
@@ -21,25 +26,6 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
   const parsed = ProductQuerySchema.safeParse(rawParams);
 
   const query = parsed.success ? parsed.data : { page: 1, limit: 12, sort: "created_at" as const };
-
-  const categories = await getCategories();
-
-  // If category handle or id was passed
-  let categoryId: string | undefined = undefined;
-  if (query.category) {
-    const matched = categories.find((c) => c.handle === query.category || c.id === query.category);
-    if (matched) {
-      categoryId = matched.id;
-    }
-  }
-
-  const { products, count, totalPages, currentPage } = await getProducts({
-    page: query.page,
-    limit: query.limit,
-    sort: query.sort,
-    category_id: categoryId,
-    q: query.q,
-  });
 
   const buildUrl = (newParams: Record<string, string | number | undefined>) => {
     const params = new URLSearchParams();
@@ -59,8 +45,37 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
     return qs ? `/urunler?${qs}` : "/urunler";
   };
 
+  if (resolveCatalogPageRedirect(rawParams.page) === 1) {
+    redirect(buildUrl({ page: undefined }));
+  }
+
+  const [categories, settings] = await Promise.all([getCategories(), getSiteSettings()]);
+  const isInfinite = settings?.catalogListingMode === "infinite";
+
+  // If category handle or id was passed
+  let categoryId: string | undefined = undefined;
+  if (query.category) {
+    const matched = categories.find((c) => c.handle === query.category || c.id === query.category);
+    if (matched) {
+      categoryId = matched.id;
+    }
+  }
+
+  const { products, count, totalPages, currentPage } = await getProducts({
+    page: query.page,
+    limit: query.limit,
+    sort: query.sort,
+    category_id: categoryId,
+    q: query.q,
+  });
+
+  const targetPageRedirect = resolveCatalogPageRedirect(rawParams.page, totalPages);
+  if (targetPageRedirect !== null) {
+    redirect(buildUrl({ page: targetPageRedirect > 1 ? targetPageRedirect : undefined }));
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-x-hidden">
       {/* Page Header */}
       <div className="border-b border-stone-200 pb-6">
         <h1 className="text-3xl font-extrabold tracking-tight text-stone-900">Tüm Ürünler</h1>
@@ -136,7 +151,7 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* Product Grid or Infinite Grid */}
       {products.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-stone-200 p-8">
           <h3 className="text-lg font-bold text-stone-800 mb-2">Ürün Bulunamadı</h3>
@@ -150,51 +165,29 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
             Filtreleri Temizle
           </Link>
         </div>
+      ) : isInfinite ? (
+        <InfiniteProductGrid
+          initialProducts={products}
+          initialPage={currentPage}
+          totalPages={totalPages}
+          category={query.category}
+          sort={query.sort}
+          limit={query.limit}
+        />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-8">
-          {currentPage > 1 && (
-            <Link
-              href={buildUrl({ page: currentPage - 1 })}
-              className="px-4 py-2 text-xs font-medium bg-white border border-stone-300 rounded-lg text-stone-700 hover:bg-stone-50"
-            >
-              Önceki
-            </Link>
-          )}
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Link
-                key={p}
-                href={buildUrl({ page: p })}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg text-xs font-semibold transition ${
-                  p === currentPage
-                    ? "bg-stone-900 text-white"
-                    : "bg-white border border-stone-300 text-stone-700 hover:bg-stone-50"
-                }`}
-              >
-                {p}
-              </Link>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
 
-          {currentPage < totalPages && (
-            <Link
-              href={buildUrl({ page: currentPage + 1 })}
-              className="px-4 py-2 text-xs font-medium bg-white border border-stone-300 rounded-lg text-stone-700 hover:bg-stone-50"
-            >
-              Sonraki
-            </Link>
-          )}
-        </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            buildUrl={(p) => buildUrl({ page: p })}
+          />
+        </>
       )}
     </div>
   );

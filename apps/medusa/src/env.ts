@@ -59,9 +59,29 @@ export const medusaEnvSchema = z.object({
 
 export type MedusaEnv = z.infer<typeof medusaEnvSchema>;
 
+/**
+ * Resolves `cookieOptions.secure`:
+ * - In `production`, always defaults to `true` (`COOKIE_SECURE=false` is forbidden in production).
+ * - Outside `production`, defaults to `false` unless `COOKIE_SECURE === "true"` or `API_PUBLIC_URL` starts with `https://` (and not explicitly `COOKIE_SECURE === "false"`).
+ */
+export function resolveCookieSecure(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.NODE_ENV === "production") {
+    return true;
+  }
+  if (env.COOKIE_SECURE === "false") {
+    return false;
+  }
+  return env.COOKIE_SECURE === "true" || (env.API_PUBLIC_URL?.startsWith("https://") ?? false);
+}
+
 export function validateMedusaEnv(): MedusaEnv {
   // Production guard for dev-only overrides
   if (process.env.NODE_ENV === "production") {
+    if (process.env.COOKIE_SECURE === "false") {
+      throw new Error(
+        "[Security] COOKIE_SECURE=false yalnızca geliştirme ortamında kullanılabilir. Production modunda çerez güvenliği kapatılamaz.",
+      );
+    }
     if (process.env.PAYTR_API_BASE) {
       throw new Error(
         "[Security] PAYTR_API_BASE yalnızca geliştirme ortamında kullanılabilir. Production modunda tanımlanamaz.",

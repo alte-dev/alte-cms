@@ -1,6 +1,6 @@
 import path from "path";
 import { defineConfig, Modules } from "@medusajs/framework/utils";
-import { validateMedusaEnv } from "./src/env";
+import { validateMedusaEnv, resolveCookieSecure } from "./src/env";
 
 const env = validateMedusaEnv();
 
@@ -16,10 +16,14 @@ module.exports = defineConfig({
       jwtSecret: env.JWT_SECRET,
       cookieSecret: env.COOKIE_SECRET,
     },
+    cookieOptions: {
+      secure: resolveCookieSecure(process.env),
+      sameSite: "lax",
+    },
   },
   admin: {
     disable: false,
-    backendUrl: process.env.MEDUSA_ADMIN_BACKEND_URL || `http://${env.HOST}:${env.PORT}`,
+    backendUrl: process.env.MEDUSA_ADMIN_BACKEND_URL,
   },
   modules: [
     {
@@ -31,6 +35,10 @@ module.exports = defineConfig({
     {
       resolve: path.resolve(__dirname, "src/modules/payment-guard"),
       dependencies: [Modules.PAYMENT, Modules.LINK],
+    },
+    {
+      resolve: path.resolve(__dirname, "src/modules/search-indexes"),
+      dependencies: [Modules.PRODUCT],
     },
     {
       resolve: "@medusajs/medusa/payment",

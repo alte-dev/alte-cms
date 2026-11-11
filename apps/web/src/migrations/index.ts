@@ -1,9 +1,15 @@
 import * as migration_20261109_133208_init from "./20261109_133208_init";
+import * as migration_20261110_143652_add_catalog_listing_mode from "./20261110_143652_add_catalog_listing_mode";
 
 export const migrations = [
   {
     up: migration_20261109_133208_init.up,
     down: migration_20261109_133208_init.down,
     name: "20261109_133208_init",
+  },
+  {
+    up: migration_20261110_143652_add_catalog_listing_mode.up,
+    down: migration_20261110_143652_add_catalog_listing_mode.down,
+    name: "20261110_143652_add_catalog_listing_mode",
   },
 ];

@@ -1,4 +1,5 @@
 import path from "path";
+import { ValidationError } from "payload";
 import { slugify } from "./slugify";
 
 export const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
@@ -11,16 +12,21 @@ export const FORBIDDEN_EXTENSIONS = [".svg", ".svgz", ".html", ".htm", ".xml", "
  * - Transliterates Turkish / special characters
  * - Converts to lowercase safe slug
  * - Appends timestamp for uniqueness
- * - Strictly prevents SVG or dangerous extensions
+ * - Strictly prevents SVG or dangerous extensions with ValidationError (HTTP 400)
  */
 export function sanitizeUploadFilename(filename: string): string {
   const parsed = path.parse(filename);
   const ext = parsed.ext.toLowerCase();
 
   if (FORBIDDEN_EXTENSIONS.includes(ext)) {
-    throw new Error(
-      `Güvenlik uyarısı: ${ext} uzantılı dosya yüklenemez. SVG ve çalıştırılabilir dosyalar yasaktır.`,
-    );
+    throw new ValidationError({
+      errors: [
+        {
+          message: `Güvenlik uyarısı: ${ext} uzantılı dosya yüklenemez. SVG ve çalıştırılabilir dosyalar yasaktır.`,
+          path: "file",
+        },
+      ],
+    });
   }
 
   const baseSlug = slugify(parsed.name || "media") || "media";

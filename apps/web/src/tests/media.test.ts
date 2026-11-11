@@ -32,7 +32,7 @@ describe("Payload Media Collection Validation", () => {
     expect(uploadConfig.mimeTypes).toContain("image/webp");
   });
 
-  it("must reject oversized files in beforeChange hook", async () => {
+  it("must reject oversized files in beforeChange hook with ValidationError (HTTP 400)", async () => {
     const hook = Media.hooks?.beforeChange?.[0];
     expect(hook).toBeDefined();
 
@@ -43,11 +43,18 @@ describe("Payload Media Collection Validation", () => {
       },
     };
 
-    expect(() =>
+    let error: any;
+    try {
       (hook as any)({
         req: mockOversizedReq,
         data: {},
-      }),
-    ).toThrow("Dosya boyutu 5 MB sınırını aşamaz");
+      });
+    } catch (e) {
+      error = e;
+    }
+
+    expect(error).toBeDefined();
+    expect(error.status).toBe(400);
+    expect(error.data?.errors?.[0]?.message).toContain("Dosya boyutu 5 MB sınırını aşamaz");
   });
 });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Pagination } from "@/components/pagination";
 import { getPublishedPosts, getAllPostCategories, getSiteSettings } from "@/lib/payload/content";
 
 interface Props {
@@ -130,8 +131,8 @@ export default async function BlogCategoryPage({ params, searchParams }: Props) 
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-zinc-400 bg-zinc-100">
-                      <span className="text-xs">Görsel Yok</span>
+                    <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-100">
+                      <span className="text-xs font-medium">Görsel Yok</span>
                     </div>
                   )}
                 </Link>
@@ -174,27 +175,12 @@ export default async function BlogCategoryPage({ params, searchParams }: Props) 
       )}
 
       {/* Pagination */}
-      {postsRes.totalPages > 1 && (
-        <div className="mt-12 flex items-center justify-center gap-2">
-          {Array.from({ length: postsRes.totalPages }).map((_, idx) => {
-            const pageNum = idx + 1;
-            const isCurrent = pageNum === currentPage;
-            return (
-              <Link
-                key={pageNum}
-                href={`/blog/kategori/${slug}?page=${pageNum}`}
-                className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold transition ${
-                  isCurrent
-                    ? "bg-zinc-900 text-white"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                }`}
-              >
-                {pageNum}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={postsRes.totalPages}
+        buildUrl={(p) => `/blog/kategori/${slug}?page=${p}`}
+        className="mt-12"
+      />
     </div>
   );
 }

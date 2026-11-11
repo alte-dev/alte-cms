@@ -39,7 +39,7 @@ export default buildConfig({
     pool: {
       connectionString: env.DATABASE_URI,
     },
-    push: process.env.NODE_ENV !== "production",
+    push: false,
     migrationDir: path.resolve(dirname, "migrations"),
     prodMigrations: migrations,
   }),

@@ -48,7 +48,7 @@ export async function initializeSearchIndexes(
       ) {
         logger.error?.(
           `❌ [FATAL] PostgreSQL extension '${ext}' could not be created due to insufficient permissions. ` +
-            `The database user must have CREATE EXTENSION privileges or superuser access. Runbook: docs/SEARCH.md`,
+            `The database user must have CREATE EXTENSION privileges or a superuser must pre-install it. Runbook: docs/RUNBOOK.md & docs/SEARCH.md`,
         );
       } else {
         logger.warn?.(`[Search Loader] Warning creating extension '${ext}': ${errMsg}`);
@@ -56,8 +56,10 @@ export async function initializeSearchIndexes(
     }
   }
 
-  // 2. GIN Trigram Indexes Setup
+  // 2. GIN Trigram & Status Indexes Setup
   const indexStatements = [
+    // Product status B-tree index for published catalog filtering
+    `CREATE INDEX IF NOT EXISTS "idx_product_status" ON "product" ("status");`,
     // Product title trigram GIN index
     `CREATE INDEX IF NOT EXISTS "idx_product_title_trgm" ON "product" USING gin ("title" gin_trgm_ops);`,
     // Product subtitle trigram GIN index

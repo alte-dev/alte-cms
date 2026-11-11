@@ -34,7 +34,9 @@ dotenv.config();
 
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 const STOREFRONT_URL = process.env.STOREFRONT_URL || "http://localhost:3100";
-const MOCK_PORT = 9099;
+const MOCK_PORT = process.env.PAYTR_API_BASE
+  ? Number(new URL(process.env.PAYTR_API_BASE).port) || 9099
+  : 9099;
 
 const DB_URL =
   process.env.DATABASE_URL ||

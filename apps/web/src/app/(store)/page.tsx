@@ -118,8 +118,8 @@ export default async function HomePage() {
               <Truck className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-semibold text-stone-900 text-sm">Hızlı ve Güvenli Kargo</h4>
-              <p className="text-stone-500 text-xs mt-0.5">Tüm Türkiye'ye sigortalı gönderim</p>
+              <p className="font-semibold text-stone-900 text-sm">Hızlı ve Güvenli Kargo</p>
+              <p className="text-stone-600 text-xs mt-0.5">Tüm Türkiye'ye sigortalı gönderim</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -127,8 +127,8 @@ export default async function HomePage() {
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-semibold text-stone-900 text-sm">KDV Dahil Şeffaf Fiyatlar</h4>
-              <p className="text-stone-500 text-xs mt-0.5">Gizli ücret veya ek maliyet yok</p>
+              <p className="font-semibold text-stone-900 text-sm">KDV Dahil Şeffaf Fiyatlar</p>
+              <p className="text-stone-600 text-xs mt-0.5">Gizli ücret veya ek maliyet yok</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -136,8 +136,8 @@ export default async function HomePage() {
               <RefreshCw className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-semibold text-stone-900 text-sm">Kolay İade ve Değişim</h4>
-              <p className="text-stone-500 text-xs mt-0.5">14 gün içinde koşulsuz iade hakkı</p>
+              <p className="font-semibold text-stone-900 text-sm">Kolay İade ve Değişim</p>
+              <p className="text-stone-600 text-xs mt-0.5">14 gün içinde koşulsuz iade hakkı</p>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { ValidationError } from "payload";
 import { slugify, validateSlugField } from "../lib/slugify";
 import { validatePuckData } from "../lib/puck/schema";
 import { seoGroup } from "../fields/seo";
+import { revalidateContentTag, CACHE_TAGS } from "../lib/cache-tags";
 import {
   canReadPublishedOnlyOrStaff,
   canCreateContent,
@@ -93,6 +94,24 @@ export const Pages: CollectionConfig = {
           }
         }
         return data;
+      },
+    ],
+    afterChange: [
+      ({ doc }) => {
+        revalidateContentTag(CACHE_TAGS.pages);
+        revalidateContentTag(CACHE_TAGS.sitemap);
+        if (doc?.slug) {
+          revalidateContentTag(CACHE_TAGS.page(doc.slug));
+        }
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        revalidateContentTag(CACHE_TAGS.pages);
+        revalidateContentTag(CACHE_TAGS.sitemap);
+        if (doc?.slug) {
+          revalidateContentTag(CACHE_TAGS.page(doc.slug));
+        }
       },
     ],
   },

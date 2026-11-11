@@ -8,21 +8,43 @@ describe("Media Utils & Filename Sanitization", () => {
   });
 
   it("strictly rejects SVG uploads", () => {
-    expect(() => sanitizeUploadFilename("logo.svg")).toThrow(
-      /SVG ve çalıştırılabilir dosyalar yasaktır/,
-    );
-    expect(() => sanitizeUploadFilename("malicious.svgz")).toThrow(
-      /SVG ve çalıştırılabilir dosyalar yasaktır/,
-    );
+    let err1: any;
+    try {
+      sanitizeUploadFilename("logo.svg");
+    } catch (e) {
+      err1 = e;
+    }
+    expect(err1?.status).toBe(400);
+    expect(err1?.data?.errors?.[0]?.message).toMatch(/SVG ve çalıştırılabilir dosyalar yasaktır/);
+
+    let err2: any;
+    try {
+      sanitizeUploadFilename("malicious.svgz");
+    } catch (e) {
+      err2 = e;
+    }
+    expect(err2?.status).toBe(400);
+    expect(err2?.data?.errors?.[0]?.message).toMatch(/SVG ve çalıştırılabilir dosyalar yasaktır/);
   });
 
   it("strictly rejects HTML and script uploads", () => {
-    expect(() => sanitizeUploadFilename("payload.html")).toThrow(
-      /SVG ve çalıştırılabilir dosyalar yasaktır/,
-    );
-    expect(() => sanitizeUploadFilename("exploit.php")).toThrow(
-      /SVG ve çalıştırılabilir dosyalar yasaktır/,
-    );
+    let err1: any;
+    try {
+      sanitizeUploadFilename("payload.html");
+    } catch (e) {
+      err1 = e;
+    }
+    expect(err1?.status).toBe(400);
+    expect(err1?.data?.errors?.[0]?.message).toMatch(/SVG ve çalıştırılabilir dosyalar yasaktır/);
+
+    let err2: any;
+    try {
+      sanitizeUploadFilename("exploit.php");
+    } catch (e) {
+      err2 = e;
+    }
+    expect(err2?.status).toBe(400);
+    expect(err2?.data?.errors?.[0]?.message).toMatch(/SVG ve çalıştırılabilir dosyalar yasaktır/);
   });
 
   it("validates allowed MIME types (JPEG, PNG, WebP, AVIF) and forbids SVG", () => {
