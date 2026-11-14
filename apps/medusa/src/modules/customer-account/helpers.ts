@@ -70,7 +70,7 @@ export async function linkGuestOrdersForVerifiedCustomer(
   const normalized = normalizeEmail(email);
   const guestOrders: Array<{ id: string }> = await pgConnection("order")
     .join("customer", "order.customer_id", "customer.id")
-    .whereRaw("LOWER(order.email) = ?", [normalized])
+    .whereRaw('LOWER("order"."email") = ?', [normalized])
     .andWhere("customer.has_account", false)
     .whereNull("order.deleted_at")
     .select("order.id");

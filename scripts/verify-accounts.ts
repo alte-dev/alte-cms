@@ -67,6 +67,27 @@ function extractTokenFromEmailBody(body: string, pathPrefix: string): string | n
   return decodeURIComponent(match[1]);
 }
 
+async function waitForEmailToken(
+  capturedEmails: CapturedEmail[],
+  recipientEmail: string,
+  pathPrefix: string,
+  timeoutMs = 6000,
+): Promise<string | null> {
+  const deadline = Date.now() + timeoutMs;
+  const lower = recipientEmail.toLowerCase();
+  while (Date.now() < deadline) {
+    for (let i = capturedEmails.length - 1; i >= 0; i--) {
+      const e = capturedEmails[i];
+      if (e.to.toLowerCase().indexOf(lower) !== -1 && e.body.indexOf(pathPrefix) !== -1) {
+        const tok = extractTokenFromEmailBody(e.body, pathPrefix);
+        if (tok) return tok;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return null;
+}
+
 async function resolvePublishableKey(): Promise<string> {
   if (process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY) {
     return process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
@@ -386,14 +407,8 @@ async function main() {
       recordStep(2, "Mükerrer kayıt tek tip yanıt", false, (err as Error).message);
     }
 
-    // Wait briefly for verification email of A
-    await new Promise((r) => setTimeout(r, 800));
-
     // Verify A's email so A can place/view orders and have an address
-    const emailForA = capturedEmails.find((e) => e.to.toLowerCase().indexOf(emailA) !== -1);
-    const verifyTokenA = emailForA
-      ? extractTokenFromEmailBody(emailForA.body, "/hesap/dogrula?token=")
-      : null;
+    const verifyTokenA = await waitForEmailToken(capturedEmails, emailA, "/hesap/dogrula?token=");
     if (verifyTokenA) {
       await fetch(`${WEB_URL}/api/account/verify-email`, {
         method: "POST",
@@ -474,10 +489,7 @@ async function main() {
       const ordersBefore = await ordersBeforeRes.json();
       const countBefore = (ordersBefore.orders || []).length;
 
-      const emailForB = capturedEmails.find((e) => e.to.toLowerCase().indexOf(emailB) !== -1);
-      const tokenB = emailForB
-        ? extractTokenFromEmailBody(emailForB.body, "/hesap/dogrula?token=")
-        : null;
+      const tokenB = await waitForEmailToken(capturedEmails, emailB, "/hesap/dogrula?token=");
 
       let countAfter = 0;
       if (tokenB) {
@@ -634,17 +646,11 @@ async function main() {
         headers: originHeaders,
         body: JSON.stringify({ email: emailA }),
       });
-      await new Promise((r) => setTimeout(r, 1000));
-
-      const resetEmails = capturedEmails.filter(
-        (e) =>
-          e.to.toLowerCase().indexOf(emailA) !== -1 &&
-          e.body.indexOf("/hesap/sifre-sifirla?token=") !== -1,
+      const resetToken = await waitForEmailToken(
+        capturedEmails,
+        emailA,
+        "/hesap/sifre-sifirla?token=",
       );
-      const resetEmail = resetEmails[resetEmails.length - 1];
-      const resetToken = resetEmail
-        ? extractTokenFromEmailBody(resetEmail.body, "/hesap/sifre-sifirla?token=")
-        : null;
 
       let confirmStatus = 0;
       let reuseStatus = 0;
@@ -655,7 +661,7 @@ async function main() {
         const confirmRes = await fetch(`${WEB_URL}/api/account/password-reset/confirm`, {
           method: "POST",
           headers: originHeaders,
-          body: JSON.stringify({ token: resetToken, newPassword: passwordANew }),
+          body: JSON.stringify({ token: resetToken, password: passwordANew }),
         });
         confirmStatus = confirmRes.status;
 
@@ -663,7 +669,7 @@ async function main() {
         const reuseRes = await fetch(`${WEB_URL}/api/account/password-reset/confirm`, {
           method: "POST",
           headers: originHeaders,
-          body: JSON.stringify({ token: resetToken, newPassword: passwordANew }),
+          body: JSON.stringify({ token: resetToken, password: passwordANew }),
         });
         reuseStatus = reuseRes.status;
 
@@ -683,7 +689,7 @@ async function main() {
           const expRes = await fetch(`${WEB_URL}/api/account/password-reset/confirm`, {
             method: "POST",
             headers: originHeaders,
-            body: JSON.stringify({ token: expiredRawToken, newPassword: passwordANew }),
+            body: JSON.stringify({ token: expiredRawToken, password: passwordANew }),
           });
           expiredStatus = expRes.status;
         }
