@@ -12,6 +12,7 @@ describe("productionPaymentGuard", () => {
     process.env = { ...originalEnv };
     delete process.env.PAYTR_API_BASE;
     delete process.env.DEV_PAYTR_USER_IP;
+    delete process.env.REGISTER_IP_LIMIT_MAX;
   });
 
   afterEach(() => {
@@ -36,6 +37,13 @@ describe("productionPaymentGuard", () => {
       process.env.DEV_PAYTR_USER_IP = "1.2.3.4";
       expect(() => assertUndefinedInProduction("production")).toThrow(
         /DEV_PAYTR_USER_IP environment variable is strictly prohibited/,
+      );
+    });
+
+    it("throws if REGISTER_IP_LIMIT_MAX is set in production", () => {
+      process.env.REGISTER_IP_LIMIT_MAX = "50";
+      expect(() => assertUndefinedInProduction("production")).toThrow(
+        /FAIL-CLOSED: REGISTER_IP_LIMIT_MAX environment variable is strictly prohibited in production/,
       );
     });
   });

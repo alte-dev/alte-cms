@@ -1,4 +1,5 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { assertNoRateLimitOverridesInProduction } from "../../api/store/account/rate-limit-config";
 
 export interface PaymentGuardOptions {
   nodeEnv?: string;
@@ -28,6 +29,8 @@ export function assertUndefinedInProduction(
       "FAIL-CLOSED: DEV_PAYTR_USER_IP environment variable is strictly prohibited in production.",
     );
   }
+
+  assertNoRateLimitOverridesInProduction(nodeEnv);
 }
 
 /**
