@@ -273,7 +273,7 @@ async function main() {
     }
   }
 
-  const failed = results.filter((r) => !r.pass);
+  const failed = results.filter((r) => !r.passed);
   console.log(`\n📊 Sonuç: ${results.length - failed.length}/${results.length} adım geçti.`);
   if (failed.length > 0) {
     process.exit(1);
