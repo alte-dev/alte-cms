@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { z } from "zod";
 import {
@@ -46,11 +47,26 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const customerId = consumed.customer_id;
 
-  // Mark account verified (idempotent if already verified)
-  await pgConnection("customer_account_state")
-    .where({ customer_id: customerId })
-    .whereNull("email_verified_at")
-    .update({ email_verified_at: now, updated_at: now });
+  // Mark account verified (upsert as an additional safeguard; never silently return 200 on 0 rows)
+  const upsertResult = await pgConnection.raw(
+    `INSERT INTO customer_account_state (id, customer_id, email_verified_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (customer_id) DO UPDATE
+     SET email_verified_at = COALESCE(customer_account_state.email_verified_at, EXCLUDED.email_verified_at),
+         updated_at = EXCLUDED.updated_at
+     RETURNING customer_id, email_verified_at`,
+    [`cstate_${crypto.randomUUID().replace(/-/g, "")}`, customerId, now, now, now],
+  );
+  const upsertedState = upsertResult?.rows?.[0];
+  if (!upsertedState?.customer_id || !upsertedState?.email_verified_at) {
+    console.error(
+      "[Account Verify Email] customer_account_state güncellenemedi (0 satır etkilendi).",
+      {
+        customerId,
+      },
+    );
+    return res.status(500).json({ error: "E-posta doğrulama durumu güncellenemedi." });
+  }
 
   // Invalidate any other unused verification tokens for this customer
   await pgConnection("customer_email_verification")
