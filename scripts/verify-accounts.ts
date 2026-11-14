@@ -245,8 +245,8 @@ async function main() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: "admin@example.test",
-          password: "test-admin-password-123",
+          email: process.env.MEDUSA_ADMIN_EMAIL || "admin@example.test",
+          password: process.env.MEDUSA_ADMIN_PASSWORD || "supersecret-test-password",
         }),
       });
       if (adminLogin.ok) {
