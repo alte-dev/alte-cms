@@ -112,54 +112,72 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     has_account: true,
   });
 
-  await authService.updateAuthIdentities({
-    id: authResult.authIdentity.id,
-    app_metadata: {
-      ...(authResult.authIdentity.app_metadata ?? {}),
-      customer_id: customer.id,
-    },
-  });
-
   const now = new Date();
-  await pgConnection("customer_account_state").insert({
-    id: `cstate_${crypto.randomUUID().replace(/-/g, "")}`,
-    customer_id: customer.id,
-    email_verified_at: null,
-    created_at: now,
-    updated_at: now,
-  });
-
-  await pgConnection("customer_consent").insert([
-    {
-      id: `ccons_${crypto.randomUUID().replace(/-/g, "")}`,
-      customer_id: customer.id,
-      consent_type: "kvkk_notice",
-      granted: true,
-      document_version: data.kvkk_version,
-      created_at: now,
-      updated_at: now,
-    },
-    {
-      id: `ccons_${crypto.randomUUID().replace(/-/g, "")}`,
-      customer_id: customer.id,
-      consent_type: "marketing",
-      granted: Boolean(data.marketing_consent),
-      document_version: data.marketing_version,
-      created_at: now,
-      updated_at: now,
-    },
-  ]);
-
   const { raw: rawToken, hash: tokenHash } = generateOpaqueToken();
-  await pgConnection("customer_email_verification").insert({
-    id: `cver_${crypto.randomUUID().replace(/-/g, "")}`,
-    customer_id: customer.id,
-    token_hash: tokenHash,
-    expires_at: new Date(now.getTime() + EMAIL_VERIFICATION_TTL_MS),
-    used_at: null,
-    created_at: now,
-    updated_at: now,
-  });
+
+  try {
+    await authService.updateAuthIdentities({
+      id: authResult.authIdentity.id,
+      app_metadata: {
+        ...(authResult.authIdentity.app_metadata ?? {}),
+        customer_id: customer.id,
+      },
+    });
+
+    await pgConnection.transaction(async (trx: any) => {
+      await trx("customer_account_state").insert({
+        id: `cstate_${crypto.randomUUID().replace(/-/g, "")}`,
+        customer_id: customer.id,
+        email_verified_at: null,
+        created_at: now,
+        updated_at: now,
+      });
+
+      await trx("customer_consent").insert([
+        {
+          id: `ccons_${crypto.randomUUID().replace(/-/g, "")}`,
+          customer_id: customer.id,
+          consent_type: "kvkk_notice",
+          granted: true,
+          document_version: data.kvkk_version,
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          id: `ccons_${crypto.randomUUID().replace(/-/g, "")}`,
+          customer_id: customer.id,
+          consent_type: "marketing",
+          granted: Boolean(data.marketing_consent),
+          document_version: data.marketing_version,
+          created_at: now,
+          updated_at: now,
+        },
+      ]);
+
+      await trx("customer_email_verification").insert({
+        id: `cver_${crypto.randomUUID().replace(/-/g, "")}`,
+        customer_id: customer.id,
+        token_hash: tokenHash,
+        expires_at: new Date(now.getTime() + EMAIL_VERIFICATION_TTL_MS),
+        used_at: null,
+        created_at: now,
+        updated_at: now,
+      });
+    });
+  } catch (err) {
+    console.error(
+      "[Account Register] Hesap durumu/onay/doğrulama kaydı oluşturulamadı, geri alınıyor:",
+      {
+        customerId: customer.id,
+        error: (err as Error)?.message || String(err),
+      },
+    );
+    await customerService.deleteCustomers([customer.id]).catch(() => {});
+    if (typeof authService.deleteAuthIdentities === "function") {
+      await authService.deleteAuthIdentities([authResult.authIdentity.id]).catch(() => {});
+    }
+    throw err;
+  }
 
   try {
     await eventBus.emit({

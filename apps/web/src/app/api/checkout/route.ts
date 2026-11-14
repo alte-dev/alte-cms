@@ -11,7 +11,7 @@ import {
   setCartShippingMethod,
   updateCart,
 } from "../../../lib/medusa/cart";
-import { getServerCustomer } from "../../../lib/medusa/account";
+import { getServerCustomer, saveCustomerAddressFromCheckout } from "../../../lib/medusa/account";
 import {
   deleteCartId,
   getCartId,
@@ -254,6 +254,15 @@ export async function POST(req: Request) {
       }
     }
 
+    const syncCustomerAddress = async () => {
+      if (loggedInCustomer && customerToken) {
+        await saveCustomerAddressFromCheckout(customerToken, {
+          ...deliveryAddress,
+          phone,
+        });
+      }
+    };
+
     // 3. Handle payment method execution
     if (effectivePaymentMethod === "paytr") {
       if (!paymentOptions.paytr.enabled) {
@@ -267,6 +276,7 @@ export async function POST(req: Request) {
       }
 
       const paytrData = await initiatePaytrPayment(cart.id);
+      await syncCustomerAddress();
       return NextResponse.json({
         success: true,
         paymentMethod: "paytr",
@@ -317,6 +327,7 @@ export async function POST(req: Request) {
       defaultCheckoutGuard.markCompleted(cart.id, completionResult.order.id);
       await setOrderConfirmation(completionResult.order.id);
       await deleteCartId();
+      await syncCustomerAddress();
 
       return NextResponse.json({
         success: true,
@@ -366,6 +377,7 @@ export async function POST(req: Request) {
       defaultCheckoutGuard.markCompleted(cart.id, completionResult.order.id);
       await setOrderConfirmation(completionResult.order.id);
       await deleteCartId();
+      await syncCustomerAddress();
 
       return NextResponse.json({
         success: true,

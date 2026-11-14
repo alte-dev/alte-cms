@@ -152,3 +152,87 @@ export async function getServerCustomerOrderById(
     return null;
   }
 }
+
+export interface CheckoutDeliveryAddressInput {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  city: string;
+  district: string;
+  addressLine1: string;
+  addressLine2?: string;
+  postalCode?: string;
+}
+
+function normalizeAddressField(value: string | null | undefined): string {
+  return (value ?? "").trim().toLocaleLowerCase("tr-TR");
+}
+
+export function isMatchingCustomerAddress(
+  existing: CustomerAddress,
+  input: CheckoutDeliveryAddressInput,
+): boolean {
+  return (
+    normalizeAddressField(existing.first_name) === normalizeAddressField(input.firstName) &&
+    normalizeAddressField(existing.last_name) === normalizeAddressField(input.lastName) &&
+    normalizeAddressField(existing.phone) === normalizeAddressField(input.phone) &&
+    normalizeAddressField(existing.address_1) === normalizeAddressField(input.addressLine1) &&
+    normalizeAddressField(existing.address_2) === normalizeAddressField(input.addressLine2) &&
+    normalizeAddressField(existing.city) === normalizeAddressField(input.city) &&
+    normalizeAddressField(existing.province) === normalizeAddressField(input.district) &&
+    normalizeAddressField(existing.postal_code) === normalizeAddressField(input.postalCode)
+  );
+}
+
+/**
+ * Saves the checkout delivery address to the logged-in customer's address book
+ * if an identical address does not already exist. Logs and returns false on error
+ * so checkout completion is never aborted by address-book sync.
+ */
+export async function saveCustomerAddressFromCheckout(
+  customerToken: string,
+  input: CheckoutDeliveryAddressInput,
+): Promise<boolean> {
+  if (!customerToken) return false;
+  try {
+    const existingData = await medusaAccountFetch<{ addresses?: CustomerAddress[] }>(
+      "/store/customers/me/addresses",
+      { customerToken },
+    );
+    const existingAddresses = existingData.addresses || [];
+
+    if (existingAddresses.some((addr) => isMatchingCustomerAddress(addr, input))) {
+      return false;
+    }
+
+    const shouldSetDefault = !existingAddresses.some((addr) => addr.is_default_shipping);
+    const addressName = `${input.city.trim()} - ${input.district.trim()}`.slice(0, 60);
+
+    await medusaAccountFetch<{ customer: { addresses?: CustomerAddress[] } }>(
+      "/store/customers/me/addresses",
+      {
+        method: "POST",
+        customerToken,
+        body: JSON.stringify({
+          address_name: addressName || "Teslimat Adresi",
+          first_name: input.firstName.trim(),
+          last_name: input.lastName.trim(),
+          phone: input.phone?.trim() || undefined,
+          address_1: input.addressLine1.trim(),
+          address_2: input.addressLine2?.trim() || undefined,
+          city: input.city.trim(),
+          province: input.district.trim(),
+          postal_code: input.postalCode?.trim() || undefined,
+          country_code: "tr",
+          is_default_shipping: shouldSetDefault,
+          is_default_billing: shouldSetDefault,
+        }),
+      },
+    );
+
+    return true;
+  } catch (err) {
+    console.warn("[checkout] Failed to save customer address:", err);
+    return false;
+  }
+}

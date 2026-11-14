@@ -8,42 +8,45 @@ import {
 } from "../../../modules/customer-account/helpers";
 import { BruteForceGuard, FixedWindowRateLimiter } from "../../../utils/rate-limiter";
 import { verifyJwtHs256 } from "../../middleware-guards";
+import { getAccountRateLimitConfig } from "./rate-limit-config";
+
+const rateLimitConfig = getAccountRateLimitConfig();
 
 // Rate limiters (process-local; Redis migration planned for Faz 13)
 export const loginIpEmailGuard = new BruteForceGuard({
-  maxFailures: 5,
+  maxFailures: rateLimitConfig.loginIpEmailMaxFailures,
   blockDurationMs: 15 * 60_000,
 });
 export const loginEmailGuard = new BruteForceGuard({
-  maxFailures: 20,
+  maxFailures: rateLimitConfig.loginEmailMaxFailures,
   blockDurationMs: 15 * 60_000,
 });
 export const loginIpLimiter = new FixedWindowRateLimiter({
-  maxRequests: 30,
+  maxRequests: rateLimitConfig.loginIpLimitMax,
   windowMs: 15 * 60_000,
 });
 export const registerIpLimiter = new FixedWindowRateLimiter({
-  maxRequests: 5,
+  maxRequests: rateLimitConfig.registerIpLimitMax,
   windowMs: 60 * 60_000,
 });
 export const registerEmailLimiter = new FixedWindowRateLimiter({
-  maxRequests: 5,
+  maxRequests: rateLimitConfig.registerEmailLimitMax,
   windowMs: 60 * 60_000,
 });
 export const resetEmailLimiter = new FixedWindowRateLimiter({
-  maxRequests: 3,
+  maxRequests: rateLimitConfig.resetEmailLimitMax,
   windowMs: 60 * 60_000,
 });
 export const resetIpLimiter = new FixedWindowRateLimiter({
-  maxRequests: 10,
+  maxRequests: rateLimitConfig.resetIpLimitMax,
   windowMs: 60 * 60_000,
 });
 export const tokenConfirmIpLimiter = new FixedWindowRateLimiter({
-  maxRequests: 10,
+  maxRequests: rateLimitConfig.tokenConfirmIpLimitMax,
   windowMs: 15 * 60_000,
 });
 export const resendVerificationCustomerLimiter = new FixedWindowRateLimiter({
-  maxRequests: 3,
+  maxRequests: rateLimitConfig.resendVerificationLimitMax,
   windowMs: 60 * 60_000,
 });
 

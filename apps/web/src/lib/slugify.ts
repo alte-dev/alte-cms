@@ -24,7 +24,6 @@ export const RESERVED_SLUGS = [
   "search",
   "arama",
   "hesap",
-  "iletisim",
   "checkout",
   "cart",
 ] as const;
