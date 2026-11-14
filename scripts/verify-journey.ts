@@ -184,6 +184,13 @@ async function createGuestCodOrderViaWeb(
     body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
   });
 
+  const shipRes = await fetch(`${MEDUSA_URL}/store/shipping-options?cart_id=${cartId}`, {
+    headers,
+  });
+  const shipJson = await shipRes.json();
+  const shippingOptionId = shipJson.shipping_options?.[0]?.id;
+  if (!shippingOptionId) throw new Error("No shipping option found for guest cart");
+
   const checkoutRes = await fetch(`${WEB_URL}/api/checkout`, {
     method: "POST",
     headers: {
@@ -193,27 +200,37 @@ async function createGuestCodOrderViaWeb(
     },
     body: JSON.stringify({
       email,
-      firstName,
-      lastName,
       phone: "05550001122",
-      address1: "Misafir Sokak No: 7",
-      city: "Istanbul",
-      province: "Kadikoy",
-      postalCode: "34710",
+      deliveryAddress: {
+        firstName,
+        lastName,
+        city: "İstanbul",
+        district: "Kadıköy",
+        addressLine1: "Misafir Sokak No: 7",
+        postalCode: "34710",
+        countryCode: "tr",
+      },
+      sameAsDelivery: true,
+      invoiceType: "individual",
+      shippingOptionId,
       paymentMethod: "cod",
+      distanceSalesContract: true,
       kvkkConsent: true,
     }),
   });
 
   const checkoutJson = await checkoutRes.json();
-  if (!checkoutRes.ok || !checkoutJson.order?.id) {
-    throw new Error(`Guest COD checkout failed (${checkoutRes.status})`);
+  const orderId = checkoutJson.orderId || checkoutJson.order?.id;
+  if (!checkoutRes.ok || !orderId) {
+    throw new Error(
+      `Guest COD checkout failed (${checkoutRes.status}): ${checkoutJson.error || ""}`,
+    );
   }
 
   return {
-    orderId: checkoutJson.order.id,
-    displayId: checkoutJson.order.display_id || 0,
-    total: Number(checkoutJson.order.total || 0),
+    orderId,
+    displayId: checkoutJson.order?.display_id || 0,
+    total: Number(checkoutJson.order?.total || 0),
   };
 }
 
@@ -368,7 +385,7 @@ async function main() {
       await pageA.fill("#reg-phone", secretPhoneA);
       await pageA.fill("#reg-password", passwordA);
       await pageA.check("#reg-kvkk");
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
 
       await pageA.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
       const statusText = await pageA.locator("[role='status']").innerText();
@@ -416,7 +433,7 @@ async function main() {
       await pageA.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 20000 });
       await pageA.fill("#login-email", emailA);
       await pageA.fill("#login-password", passwordA);
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
       await pageA.waitForURL("**/hesap", { timeout: 15000 });
 
       await pageA.goto(`${WEB_URL}/hesap/siparisler`, { waitUntil: "networkidle", timeout: 15000 });
@@ -488,7 +505,7 @@ async function main() {
       await pageA.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 20000 });
       await pageA.fill("#login-email", emailA);
       await pageA.fill("#login-password", passwordA);
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
       await pageA.waitForURL("**/hesap", { timeout: 15000 });
 
       await pageA.goto(`${WEB_URL}/hesap/siparisler`, { waitUntil: "networkidle", timeout: 15000 });
@@ -501,11 +518,11 @@ async function main() {
       await pageA.fill("#addr-first", "Ayse");
       await pageA.fill("#addr-last", lastNameA);
       await pageA.fill("#addr-line1", secretStreetA);
-      await pageA.fill("#addr-city", "Istanbul");
-      await pageA.fill("#addr-province", "Besiktas");
+      await pageA.fill("#addr-city", "İstanbul");
+      await pageA.fill("#addr-province", "Beşiktaş");
       await pageA.fill("#addr-postal", "34353");
       await pageA.check("#addr-default");
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
       await pageA.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
 
       const cookiesBeforeLogout = await ctxA.cookies(WEB_URL);
@@ -538,7 +555,7 @@ async function main() {
       await pageA.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 20000 });
       await pageA.fill("#login-email", emailA);
       await pageA.fill("#login-password", passwordA);
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
       await pageA.waitForURL("**/hesap", { timeout: 15000 });
 
       await pageA.goto(`${WEB_URL}/urun/${targetProduct.handle}`, {
@@ -553,11 +570,11 @@ async function main() {
       const activeCartId = cartCookie?.value || "";
 
       await pageA.goto(`${WEB_URL}/odeme`, { waitUntil: "networkidle", timeout: 20000 });
-      const addressVal = await pageA.inputValue("input[name='address1']");
+      const addressVal = await pageA.locator("#addressLine1").inputValue();
       const prefilledOk = addressVal.indexOf(secretStreetA) !== -1;
 
       await pageA.locator("label:has-text('Kapıda Ödeme') input[type='radio']").check();
-      const checkboxes = pageA.locator("form input[type='checkbox']");
+      const checkboxes = pageA.locator("main form input[type='checkbox']");
       const cbCount = await checkboxes.count();
       for (let i = 0; i < cbCount; i++) {
         const cb = checkboxes.nth(i);
@@ -571,13 +588,22 @@ async function main() {
           (res) => res.url().indexOf("/api/checkout") !== -1 && res.request().method() === "POST",
           { timeout: 20000 },
         ),
-        pageA.locator("button[type='submit']:visible").first().click(),
+        pageA.locator("main form button[type='submit']:visible").first().click(),
       ]);
 
       const checkoutPayload = await checkoutRes.json();
-      customerOrderId = checkoutPayload.order?.id || "";
-      customerOrderDisplayId = Number(checkoutPayload.order?.display_id || 0);
-      const orderTotal = Number(checkoutPayload.order?.total || 0);
+      customerOrderId = checkoutPayload.orderId || checkoutPayload.order?.id || "";
+      let orderTotal = Number(checkoutPayload.order?.total || 0);
+      if (customerOrderId) {
+        const ordRes = await fetch(`${MEDUSA_URL}/admin/orders/${customerOrderId}`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        if (ordRes.ok) {
+          const ordJson = await ordRes.json();
+          customerOrderDisplayId = Number(ordJson.order?.display_id || 0);
+          orderTotal = Number(ordJson.order?.total || orderTotal || 0);
+        }
+      }
 
       await pageA.waitForURL("**/siparis-onay**", { timeout: 20000 });
 
@@ -595,14 +621,21 @@ async function main() {
         },
         body: JSON.stringify({
           email: emailA,
-          firstName: "Ayse",
-          lastName: lastNameA,
           phone: secretPhoneA,
-          address1: secretStreetA,
-          city: "Istanbul",
-          province: "Besiktas",
-          postalCode: "34353",
+          deliveryAddress: {
+            firstName: "Ayse",
+            lastName: lastNameA,
+            city: "İstanbul",
+            district: "Beşiktaş",
+            addressLine1: secretStreetA,
+            postalCode: "34353",
+            countryCode: "tr",
+          },
+          sameAsDelivery: true,
+          invoiceType: "individual",
+          shippingOptionId: "so_dummy_retry",
           paymentMethod: "cod",
+          distanceSalesContract: true,
           kvkkConsent: true,
         }),
       });
@@ -657,7 +690,7 @@ async function main() {
       await pageB.fill("#reg-email", emailB);
       await pageB.fill("#reg-password", passwordB);
       await pageB.check("#reg-kvkk");
-      await pageB.click("button[type='submit']");
+      await pageB.locator("main form button[type='submit']").click();
       await pageB.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
 
       expectedEmailCount += 1;
@@ -674,7 +707,7 @@ async function main() {
       await pageB.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
       await pageB.fill("#login-email", emailB);
       await pageB.fill("#login-password", passwordB);
-      await pageB.click("button[type='submit']");
+      await pageB.locator("main form button[type='submit']").click();
       await pageB.waitForURL("**/hesap", { timeout: 15000 });
 
       const cookiesB = await ctxB.cookies(WEB_URL);
@@ -730,13 +763,11 @@ async function main() {
         waitUntil: "networkidle",
         timeout: 15000,
       });
-      await trackPage.fill(
-        "input[name='orderNumber'], #orderNumber",
-        String(customerOrderDisplayId),
-      );
-      await trackPage.fill("input[name='email'], #email", emailA);
-      await trackPage.click("button[type='submit']");
-      await trackPage.waitForTimeout(1000);
+      await trackPage.fill("#no, input[name='no']", String(customerOrderDisplayId));
+      await trackPage.fill("#email, input[name='email']", emailA);
+      await trackPage.locator("main form button[type='submit']").click();
+      await trackPage.waitForURL("**/siparis-takip**", { timeout: 15000 });
+      await trackPage.waitForLoadState("networkidle");
       const trackHtml = await trackPage.content();
       const trackWorked = trackHtml.indexOf("https://") !== -1;
       await trackPage.close();
@@ -776,7 +807,7 @@ async function main() {
         timeout: 15000,
       });
       await resetPage.fill("#reset-email", emailA);
-      await resetPage.click("button[type='submit']");
+      await resetPage.locator("main form button[type='submit']").click();
       await resetPage.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
 
       expectedEmailCount += 1;
@@ -789,7 +820,7 @@ async function main() {
 
       await resetPage.goto(resetUrl, { waitUntil: "networkidle", timeout: 15000 });
       await resetPage.fill("#reset-new-password", passwordANew);
-      await resetPage.click("button[type='submit']");
+      await resetPage.locator("main form button[type='submit']").click();
       await resetPage.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
       await resetPage.close();
 
@@ -838,13 +869,13 @@ async function main() {
       await pageA.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
       await pageA.fill("#login-email", emailA);
       await pageA.fill("#login-password", passwordANew);
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
       await pageA.waitForURL("**/hesap", { timeout: 15000 });
 
       await pageA.goto(`${WEB_URL}/hesap/sil`, { waitUntil: "networkidle", timeout: 15000 });
       await pageA.fill("#del-password", passwordANew);
       await pageA.fill("#del-confirm", "SİL");
-      await pageA.click("button[type='submit']");
+      await pageA.locator("main form button[type='submit']").click();
       await pageA.waitForURL("**/hesap/giris**", { timeout: 15000 });
 
       const loginAfterDel = await fetch(`${WEB_URL}/api/account/login`, {
@@ -890,7 +921,7 @@ async function main() {
       ].filter((v) => v && v.length > 0);
 
       const emailLogRows = await pool.query(
-        "SELECT id, template, recipient_masked, status, error_message FROM email_log ORDER BY created_at DESC LIMIT 100",
+        "SELECT id, template, recipient_masked, status, error_code FROM email_log ORDER BY created_at DESC LIMIT 100",
       );
       let dbPiiLeaked = false;
       for (const row of emailLogRows.rows) {
