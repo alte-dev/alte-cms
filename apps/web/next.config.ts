@@ -60,6 +60,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    globalNotFound: true,
+  },
   async headers() {
     return [
       {
