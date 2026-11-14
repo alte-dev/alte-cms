@@ -32,10 +32,16 @@ export default async function SiparisTakipPage({ searchParams }: SiparisTakipPag
       process.env.NEXT_PUBLIC_MEDUSA_URL ||
       "http://127.0.0.1:9000";
 
+    const publishableKey =
+      process.env.MEDUSA_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
+
     try {
       const res = await fetch(`${medusaUrl}/store/order-tracking`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(publishableKey ? { "x-publishable-api-key": publishableKey } : {}),
+        },
         body: JSON.stringify({
           order_id_or_number: orderNumber,
           email,
