@@ -242,14 +242,14 @@ async function main() {
       previousEmailSetting = existingRes.rows[0];
       await pool.query(
         `UPDATE email_setting
-         SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $1, smtp_secure = false,
+         SET enabled = true, host = '127.0.0.1', port = $1, secure = false,
              from_name = 'Test Magaza', from_email = 'noreply@example.test', updated_at = NOW()
          WHERE id = $2`,
         [smtpPort, previousEmailSetting.id],
       );
     } else {
       await pool.query(
-        `INSERT INTO email_setting (id, enabled, smtp_host, smtp_port, smtp_secure, from_name, from_email, created_at, updated_at)
+        `INSERT INTO email_setting (id, enabled, host, port, secure, from_name, from_email, created_at, updated_at)
          VALUES ('email_setting_default', true, '127.0.0.1', $1, false, 'Test Magaza', 'noreply@example.test', NOW(), NOW())`,
         [smtpPort],
       );
@@ -888,14 +888,14 @@ async function main() {
     if (savedSettingExists && previousEmailSetting) {
       await pool.query(
         `UPDATE email_setting
-         SET enabled = $1, smtp_host = $2, smtp_port = $3, smtp_secure = $4,
+         SET enabled = $1, host = $2, port = $3, secure = $4,
              from_name = $5, from_email = $6, updated_at = NOW()
          WHERE id = $7`,
         [
           previousEmailSetting.enabled,
-          previousEmailSetting.smtp_host,
-          previousEmailSetting.smtp_port,
-          previousEmailSetting.smtp_secure,
+          previousEmailSetting.host,
+          previousEmailSetting.port,
+          previousEmailSetting.secure,
           previousEmailSetting.from_name,
           previousEmailSetting.from_email,
           previousEmailSetting.id,
