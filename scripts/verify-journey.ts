@@ -246,6 +246,9 @@ async function main() {
   const smtpServer = new SMTPServer({
     authOptional: true,
     disabledCommands: ["STARTTLS"],
+    onAuth(auth, _session, callback) {
+      callback(null, { user: auth.username || "ok" });
+    },
     onData(stream, session, callback) {
       const chunks: Buffer[] = [];
       stream.on("data", (c: Buffer) => chunks.push(c));
@@ -319,8 +322,8 @@ async function main() {
         host: "127.0.0.1",
         port: smtpPort,
         secure: false,
-        username: "sink-user",
-        password: "sink-fake-password",
+        username: "",
+        password: "",
         from_name: "Test Magaza",
         from_email: "noreply@example.test",
         admin_notify_email: "",
