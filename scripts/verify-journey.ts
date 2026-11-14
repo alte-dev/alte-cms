@@ -618,29 +618,28 @@ async function main() {
         }
       }
 
-      const [checkoutRes] = await Promise.all([
-        pageA.waitForResponse(
-          (res) => res.url().indexOf("/api/checkout") !== -1 && res.request().method() === "POST",
-          { timeout: 20000 },
-        ),
+      await Promise.all([
+        pageA.waitForURL("**/siparis-onay**", { timeout: 20000 }),
         pageA.locator("button:has-text('Siparişi Onayla ve Tamamla'):visible").click(),
       ]);
 
-      const checkoutPayload = await checkoutRes.json();
-      customerOrderId = checkoutPayload.orderId || checkoutPayload.order?.id || "";
-      let orderTotal = Number(checkoutPayload.order?.total || 0);
+      const ordDbRes = await pool.query(
+        'SELECT id, display_id FROM "order" WHERE LOWER(email) = LOWER($1) ORDER BY created_at DESC LIMIT 1',
+        [emailA],
+      );
+      customerOrderId = ordDbRes.rows[0]?.id || "";
+      customerOrderDisplayId = Number(ordDbRes.rows[0]?.display_id || 0);
+      let orderTotal = 0;
       if (customerOrderId) {
         const ordRes = await fetch(`${MEDUSA_URL}/admin/orders/${customerOrderId}`, {
           headers: { Authorization: `Bearer ${adminToken}` },
         });
         if (ordRes.ok) {
           const ordJson = await ordRes.json();
-          customerOrderDisplayId = Number(ordJson.order?.display_id || 0);
-          orderTotal = Number(ordJson.order?.total || orderTotal || 0);
+          customerOrderDisplayId = Number(ordJson.order?.display_id || customerOrderDisplayId || 0);
+          orderTotal = Number(ordJson.order?.total || 0);
         }
       }
-
-      await pageA.waitForURL("**/siparis-onay**", { timeout: 20000 });
 
       expectedEmailCount += 1;
       const orderEmail = await waitForCapturedEmailCount(capturedEmails, expectedEmailCount);
