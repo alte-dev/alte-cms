@@ -40,6 +40,12 @@ export const enum__posts_v_version_status = pgEnum("enum__posts_v_version_status
   "published",
 ]);
 export const enum_redirects_type = pgEnum("enum_redirects_type", ["301", "302"]);
+export const enum_contact_messages_status = pgEnum("enum_contact_messages_status", [
+  "new",
+  "in_progress",
+  "replied",
+  "archived",
+]);
 export const enum_site_settings_catalog_listing_mode = pgEnum(
   "enum_site_settings_catalog_listing_mode",
   ["pagination", "infinite"],
@@ -435,6 +441,37 @@ export const redirects = pgTable(
   ],
 );
 
+export const contact_messages = pgTable(
+  "contact_messages",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name").notNull(),
+    email: varchar("email").notNull(),
+    phone: varchar("phone"),
+    subject: varchar("subject").notNull(),
+    message: varchar("message").notNull(),
+    kvkkAccepted: boolean("kvkk_accepted").notNull().default(false),
+    status: enum_contact_messages_status("status").notNull().default("new"),
+    replyMessage: varchar("reply_message"),
+    repliedAt: timestamp("replied_at", { mode: "string", withTimezone: true, precision: 3 }),
+    repliedBy: integer("replied_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    internalNote: varchar("internal_note"),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index("contact_messages_replied_by_idx").on(columns.repliedBy),
+    index("contact_messages_updated_at_idx").on(columns.updatedAt),
+    index("contact_messages_created_at_idx").on(columns.createdAt),
+  ],
+);
+
 export const payload_kv = pgTable(
   "payload_kv",
   {
@@ -477,6 +514,7 @@ export const payload_locked_documents_rels = pgTable(
     postsID: integer("posts_id"),
     "post-categoriesID": integer("post_categories_id"),
     redirectsID: integer("redirects_id"),
+    "contact-messagesID": integer("contact_messages_id"),
   },
   (columns) => [
     index("payload_locked_documents_rels_order_idx").on(columns.order),
@@ -488,6 +526,9 @@ export const payload_locked_documents_rels = pgTable(
     index("payload_locked_documents_rels_posts_id_idx").on(columns.postsID),
     index("payload_locked_documents_rels_post_categories_id_idx").on(columns["post-categoriesID"]),
     index("payload_locked_documents_rels_redirects_id_idx").on(columns.redirectsID),
+    index("payload_locked_documents_rels_contact_messages_id_idx").on(
+      columns["contact-messagesID"],
+    ),
     foreignKey({
       columns: [columns["parent"]],
       foreignColumns: [payload_locked_documents.id],
@@ -522,6 +563,11 @@ export const payload_locked_documents_rels = pgTable(
       columns: [columns["redirectsID"]],
       foreignColumns: [redirects.id],
       name: "payload_locked_documents_rels_redirects_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["contact-messagesID"]],
+      foreignColumns: [contact_messages.id],
+      name: "payload_locked_documents_rels_contact_messages_fk",
     }).onDelete("cascade"),
   ],
 );
@@ -592,6 +638,25 @@ export const payload_migrations = pgTable(
   ],
 );
 
+export const site_settings_contact_form_subject_options = pgTable(
+  "site_settings_contact_form_subject_options",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    label: varchar("label").notNull(),
+  },
+  (columns) => [
+    index("site_settings_contact_form_subject_options_order_idx").on(columns._order),
+    index("site_settings_contact_form_subject_options_parent_id_idx").on(columns._parentID),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [site_settings.id],
+      name: "site_settings_contact_form_subject_options_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const site_settings = pgTable(
   "site_settings",
   {
@@ -615,6 +680,18 @@ export const site_settings = pgTable(
     socialMedia_facebook: varchar("social_media_facebook"),
     socialMedia_twitter: varchar("social_media_twitter"),
     socialMedia_youtube: varchar("social_media_youtube"),
+    contactForm_enabled: boolean("contact_form_enabled").default(true),
+    contactForm_recipientEmail: varchar("contact_form_recipient_email"),
+    contactForm_autoReplyEnabled: boolean("contact_form_auto_reply_enabled").default(true),
+    contactForm_autoReplySubject: varchar("contact_form_auto_reply_subject").default(
+      "Mesajınızı aldık",
+    ),
+    contactForm_autoReplyIntro: varchar("contact_form_auto_reply_intro").default(
+      "Mesajınız bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecektir.",
+    ),
+    contactForm_successMessage: varchar("contact_form_success_message").default(
+      "Mesajınız başarıyla iletildi. En kısa sürede size dönüş yapacağız.",
+    ),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
   },
@@ -815,6 +892,13 @@ export const relations__posts_v = relations(_posts_v, ({ one, many }) => ({
 }));
 export const relations_post_categories = relations(post_categories, () => ({}));
 export const relations_redirects = relations(redirects, () => ({}));
+export const relations_contact_messages = relations(contact_messages, ({ one }) => ({
+  repliedBy: one(users, {
+    fields: [contact_messages.repliedBy],
+    references: [users.id],
+    relationName: "repliedBy",
+  }),
+}));
 export const relations_payload_kv = relations(payload_kv, () => ({}));
 export const relations_payload_locked_documents_rels = relations(
   payload_locked_documents_rels,
@@ -854,6 +938,11 @@ export const relations_payload_locked_documents_rels = relations(
       references: [redirects.id],
       relationName: "redirects",
     }),
+    "contact-messagesID": one(contact_messages, {
+      fields: [payload_locked_documents_rels["contact-messagesID"]],
+      references: [contact_messages.id],
+      relationName: "contact-messages",
+    }),
   }),
 );
 export const relations_payload_locked_documents = relations(
@@ -885,7 +974,17 @@ export const relations_payload_preferences = relations(payload_preferences, ({ m
   }),
 }));
 export const relations_payload_migrations = relations(payload_migrations, () => ({}));
-export const relations_site_settings = relations(site_settings, ({ one }) => ({
+export const relations_site_settings_contact_form_subject_options = relations(
+  site_settings_contact_form_subject_options,
+  ({ one }) => ({
+    _parentID: one(site_settings, {
+      fields: [site_settings_contact_form_subject_options._parentID],
+      references: [site_settings.id],
+      relationName: "contactForm_subjectOptions",
+    }),
+  }),
+);
+export const relations_site_settings = relations(site_settings, ({ one, many }) => ({
   logo: one(media, {
     fields: [site_settings.logo],
     references: [media.id],
@@ -895,6 +994,9 @@ export const relations_site_settings = relations(site_settings, ({ one }) => ({
     fields: [site_settings.favicon],
     references: [media.id],
     relationName: "favicon",
+  }),
+  contactForm_subjectOptions: many(site_settings_contact_form_subject_options, {
+    relationName: "contactForm_subjectOptions",
   }),
 }));
 export const relations_navigation_header_menu_children = relations(
@@ -959,6 +1061,7 @@ type DatabaseSchema = {
   enum_posts_status: typeof enum_posts_status;
   enum__posts_v_version_status: typeof enum__posts_v_version_status;
   enum_redirects_type: typeof enum_redirects_type;
+  enum_contact_messages_status: typeof enum_contact_messages_status;
   enum_site_settings_catalog_listing_mode: typeof enum_site_settings_catalog_listing_mode;
   users_sessions: typeof users_sessions;
   users: typeof users;
@@ -971,12 +1074,14 @@ type DatabaseSchema = {
   _posts_v_rels: typeof _posts_v_rels;
   post_categories: typeof post_categories;
   redirects: typeof redirects;
+  contact_messages: typeof contact_messages;
   payload_kv: typeof payload_kv;
   payload_locked_documents: typeof payload_locked_documents;
   payload_locked_documents_rels: typeof payload_locked_documents_rels;
   payload_preferences: typeof payload_preferences;
   payload_preferences_rels: typeof payload_preferences_rels;
   payload_migrations: typeof payload_migrations;
+  site_settings_contact_form_subject_options: typeof site_settings_contact_form_subject_options;
   site_settings: typeof site_settings;
   navigation_header_menu_children: typeof navigation_header_menu_children;
   navigation_header_menu: typeof navigation_header_menu;
@@ -994,12 +1099,14 @@ type DatabaseSchema = {
   relations__posts_v: typeof relations__posts_v;
   relations_post_categories: typeof relations_post_categories;
   relations_redirects: typeof relations_redirects;
+  relations_contact_messages: typeof relations_contact_messages;
   relations_payload_kv: typeof relations_payload_kv;
   relations_payload_locked_documents_rels: typeof relations_payload_locked_documents_rels;
   relations_payload_locked_documents: typeof relations_payload_locked_documents;
   relations_payload_preferences_rels: typeof relations_payload_preferences_rels;
   relations_payload_preferences: typeof relations_payload_preferences;
   relations_payload_migrations: typeof relations_payload_migrations;
+  relations_site_settings_contact_form_subject_options: typeof relations_site_settings_contact_form_subject_options;
   relations_site_settings: typeof relations_site_settings;
   relations_navigation_header_menu_children: typeof relations_navigation_header_menu_children;
   relations_navigation_header_menu: typeof relations_navigation_header_menu;

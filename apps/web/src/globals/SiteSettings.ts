@@ -1,9 +1,12 @@
 import type { GlobalConfig } from "payload";
-import { canManageGlobals } from "../access/content";
+import { canManageGlobals, isAdminRole } from "../access/content";
 
 export const SiteSettings: GlobalConfig = {
   slug: "site-settings",
   label: "Site Ayarları",
+  admin: {
+    hidden: ({ user }) => !isAdminRole(user?.role as string | undefined),
+  },
   access: {
     read: () => true,
     update: canManageGlobals,
@@ -87,6 +90,70 @@ export const SiteSettings: GlobalConfig = {
           name: "youtube",
           type: "text",
           label: "YouTube URL (https://...)",
+        },
+      ],
+    },
+    {
+      name: "contactForm",
+      type: "group",
+      label: "İletişim Formu Ayarları",
+      fields: [
+        {
+          name: "enabled",
+          type: "checkbox",
+          defaultValue: true,
+          label: "İletişim Formu Aktif",
+        },
+        {
+          name: "recipientEmail",
+          type: "email",
+          label: "Bildirim Alıcı E-postası",
+          admin: {
+            description:
+              "Yeni iletişim formu mesajlarının bildirileceği e-posta adresi. Boş bırakılırsa yukarıdaki İletişim E-posta Adresi kullanılır.",
+          },
+        },
+        {
+          name: "subjectOptions",
+          type: "array",
+          label: "Konu Seçenekleri",
+          admin: {
+            description:
+              "Ziyaretçilerin formda seçebileceği konu başlıkları. Boş bırakılırsa serbest konu girişi gösterilir.",
+          },
+          fields: [
+            {
+              name: "label",
+              type: "text",
+              required: true,
+              label: "Konu Başlığı",
+            },
+          ],
+        },
+        {
+          name: "autoReplyEnabled",
+          type: "checkbox",
+          defaultValue: true,
+          label: "Müşteriye Otomatik Onay E-postası Gönder",
+        },
+        {
+          name: "autoReplySubject",
+          type: "text",
+          defaultValue: "Mesajınızı aldık",
+          label: "Otomatik Yanıt E-posta Konusu",
+        },
+        {
+          name: "autoReplyIntro",
+          type: "textarea",
+          defaultValue:
+            "Mesajınız bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecektir.",
+          label: "Otomatik Yanıt Karşılama Metni",
+        },
+        {
+          name: "successMessage",
+          type: "textarea",
+          defaultValue: "Mesajınız başarıyla iletildi. En kısa sürede size dönüş yapacağız.",
+          label: "Form Gönderim Başarı Mesajı",
         },
       ],
     },

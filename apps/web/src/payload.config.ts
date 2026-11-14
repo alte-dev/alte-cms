@@ -10,6 +10,7 @@ import { Pages } from "./collections/Pages";
 import { Posts } from "./collections/Posts";
 import { PostCategories } from "./collections/PostCategories";
 import { Redirects } from "./collections/Redirects";
+import { ContactMessages } from "./collections/ContactMessages";
 import { SiteSettings } from "./globals/SiteSettings";
 import { Navigation } from "./globals/Navigation";
 import { validateWebEnv } from "./env";
@@ -27,7 +28,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Pages, Posts, PostCategories, Redirects],
+  collections: [Users, Media, Pages, Posts, PostCategories, Redirects, ContactMessages],
   globals: [SiteSettings, Navigation],
   editor: lexicalEditor(),
   sharp,

@@ -11,6 +11,11 @@ export function isAdminRole(role?: string): boolean {
   return ["super-admin", "admin"].includes(role);
 }
 
+export function isShopManagerOrAdmin(role?: string): boolean {
+  if (!role) return false;
+  return ["super-admin", "admin", "shop-manager"].includes(role);
+}
+
 /**
  * Access Control for Published-Only Content (Pages, Posts):
  * - Authenticated staff (super-admin, admin, shop-manager, editor) can read drafts and published.
