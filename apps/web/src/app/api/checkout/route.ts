@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   addItemToCart,
+  assignCartToCustomer,
   completeCart,
   getCart,
   getPaymentOptions,
@@ -10,9 +11,11 @@ import {
   setCartShippingMethod,
   updateCart,
 } from "../../../lib/medusa/cart";
+import { getServerCustomer } from "../../../lib/medusa/account";
 import {
   deleteCartId,
   getCartId,
+  getCustomerSessionToken,
   getOrderConfirmation,
   setOrderConfirmation,
 } from "../../../lib/medusa/cookies";
@@ -112,6 +115,15 @@ export async function POST(req: Request) {
       paymentMethod,
     } = parsed.data;
 
+    // If customer is logged in, enforce server-verified account email & cart ownership
+    const customerToken = await getCustomerSessionToken();
+    const loggedInCustomer = customerToken ? await getServerCustomer() : null;
+    const effectiveEmail = loggedInCustomer?.email || email;
+
+    if (loggedInCustomer && customerToken && (cart as any).customer_id !== loggedInCustomer.id) {
+      await assignCartToCustomer(cart.id, customerToken);
+    }
+
     // Build shipping address payload
     const shippingAddressPayload: Partial<StoreAddress> = {
       first_name: deliveryAddress.firstName,
@@ -178,7 +190,7 @@ export async function POST(req: Request) {
 
     // 1. Update cart with email, addresses, metadata
     await updateCart(cart.id, {
-      email,
+      email: effectiveEmail,
       shipping_address: shippingAddressPayload,
       billing_address: billingAddressPayload,
       metadata,

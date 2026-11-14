@@ -6,6 +6,7 @@ import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreShippingOption } from "../lib/medusa/types";
 import { PaymentOptionsResult } from "../lib/medusa/cart";
+import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
 import {
   getDefaultShippingOptionId,
   sortShippingOptions,
@@ -29,9 +30,24 @@ interface CheckoutFormProps {
   initialCart: StoreCart;
   shippingOptions: StoreShippingOption[];
   paymentOptions?: PaymentOptionsResult;
+  initialCustomer?: CustomerProfile | null;
+  savedAddresses?: CustomerAddress[];
 }
 
-export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: CheckoutFormProps) {
+export function CheckoutForm({
+  initialCart,
+  shippingOptions,
+  paymentOptions,
+  initialCustomer = null,
+  savedAddresses = [],
+}: CheckoutFormProps) {
+  const defaultSavedAddress = useMemo(
+    () => savedAddresses.find((a) => a.is_default_shipping) || savedAddresses[0] || null,
+    [savedAddresses],
+  );
+  const [selectedAddressId, setSelectedAddressId] = useState<string>(
+    defaultSavedAddress?.id || "",
+  );
   const [cart, setCart] = useState<StoreCart>(initialCart);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -49,17 +65,39 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
   const [paytrIframeUrl, setPaytrIframeUrl] = useState<string | null>(null);
 
   // Form Fields
-  const [email, setEmail] = useState(cart.email || "");
-  const [phone, setPhone] = useState(cart.shipping_address?.phone || "");
+  const [email, setEmail] = useState(initialCustomer?.email || cart.email || "");
+  const [phone, setPhone] = useState(
+    cart.shipping_address?.phone || defaultSavedAddress?.phone || initialCustomer?.phone || "",
+  );
 
   // Delivery Address
-  const [firstName, setFirstName] = useState(cart.shipping_address?.first_name || "");
-  const [lastName, setLastName] = useState(cart.shipping_address?.last_name || "");
-  const [city, setCity] = useState(cart.shipping_address?.city || TURKISH_CITIES[0]);
-  const [district, setDistrict] = useState(cart.shipping_address?.province || "");
-  const [addressLine1, setAddressLine1] = useState(cart.shipping_address?.address_1 || "");
-  const [addressLine2, setAddressLine2] = useState(cart.shipping_address?.address_2 || "");
-  const [postalCode, setPostalCode] = useState(cart.shipping_address?.postal_code || "");
+  const [firstName, setFirstName] = useState(
+    cart.shipping_address?.first_name ||
+      defaultSavedAddress?.first_name ||
+      initialCustomer?.first_name ||
+      "",
+  );
+  const [lastName, setLastName] = useState(
+    cart.shipping_address?.last_name ||
+      defaultSavedAddress?.last_name ||
+      initialCustomer?.last_name ||
+      "",
+  );
+  const [city, setCity] = useState(
+    cart.shipping_address?.city || defaultSavedAddress?.city || TURKISH_CITIES[0],
+  );
+  const [district, setDistrict] = useState(
+    cart.shipping_address?.province || defaultSavedAddress?.province || "",
+  );
+  const [addressLine1, setAddressLine1] = useState(
+    cart.shipping_address?.address_1 || defaultSavedAddress?.address_1 || "",
+  );
+  const [addressLine2, setAddressLine2] = useState(
+    cart.shipping_address?.address_2 || defaultSavedAddress?.address_2 || "",
+  );
+  const [postalCode, setPostalCode] = useState(
+    cart.shipping_address?.postal_code || defaultSavedAddress?.postal_code || "",
+  );
 
   // Invoice & Billing
   const [invoiceType, setInvoiceType] = useState<"individual" | "corporate">(
@@ -344,11 +382,53 @@ export function CheckoutForm({ initialCart, shippingOptions, paymentOptions }: C
                 id="email"
                 type="email"
                 required
+                readOnly={Boolean(initialCustomer)}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  if (!initialCustomer) setEmail(e.target.value);
+                }}
                 placeholder="ornek@alanadi.com"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 ${
+                  initialCustomer ? "bg-stone-50 text-stone-600" : ""
+                }`}
               />
+              {savedAddresses.length > 0 && (
+                <div className="mt-2">
+                  <label
+                    htmlFor="saved-address-select"
+                    className="block text-xs font-semibold text-stone-700 mb-1"
+                  >
+                    Kayıtlı Adres Seçin
+                  </label>
+                  <select
+                    id="saved-address-select"
+                    value={selectedAddressId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setSelectedAddressId(nextId);
+                      const chosen = savedAddresses.find((a) => a.id === nextId);
+                      if (chosen) {
+                        setFirstName(chosen.first_name || "");
+                        setLastName(chosen.last_name || "");
+                        if (chosen.phone) setPhone(chosen.phone);
+                        if (chosen.city) setCity(chosen.city);
+                        setDistrict(chosen.province || "");
+                        setAddressLine1(chosen.address_1 || "");
+                        setAddressLine2(chosen.address_2 || "");
+                        setPostalCode(chosen.postal_code || "");
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                  >
+                    {savedAddresses.map((addr) => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.address_name || `${addr.first_name} ${addr.last_name}`} —{" "}
+                        {addr.city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <p className="text-[11px] text-stone-500 mt-1">
                 Sipariş onayı bu adrese gönderilecektir.
               </p>

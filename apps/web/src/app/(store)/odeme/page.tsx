@@ -2,6 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCart, getCartShippingOptions, getPaymentOptions } from "@/lib/medusa/cart";
+import { getServerCustomer, getServerCustomerAddresses } from "@/lib/medusa/account";
 import { getCartId } from "@/lib/medusa/cookies";
 import { CheckoutForm } from "@/components/checkout-form";
 export const metadata: Metadata = {
@@ -22,8 +23,12 @@ export default async function CheckoutPage() {
     redirect("/sepet");
   }
 
-  const shippingOptions = await getCartShippingOptions(cart.id);
-  const paymentOptions = await getPaymentOptions();
+  const [shippingOptions, paymentOptions, customer, savedAddresses] = await Promise.all([
+    getCartShippingOptions(cart.id),
+    getPaymentOptions(),
+    getServerCustomer(),
+    getServerCustomerAddresses(),
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -38,6 +43,8 @@ export default async function CheckoutPage() {
         initialCart={cart}
         shippingOptions={shippingOptions}
         paymentOptions={paymentOptions}
+        initialCustomer={customer}
+        savedAddresses={savedAddresses}
       />
     </div>
   );
