@@ -262,7 +262,7 @@ export default async function SiparisTakipPage({ searchParams }: SiparisTakipPag
           Tüm Ürünler
         </Link>
         <span>&bull;</span>
-        <Link href="/sayfa/iletisim" className="hover:underline">
+        <Link href="/iletisim" className="hover:underline">
           Müşteri Destek
         </Link>
       </div>
