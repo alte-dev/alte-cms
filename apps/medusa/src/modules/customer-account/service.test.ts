@@ -42,25 +42,18 @@ describe("customer-account crypto & token helpers", () => {
 describe("linkGuestOrdersForVerifiedCustomer", () => {
   it("fails closed when email_verified_at is null (does not link guest orders)", async () => {
     const updateMock = vi.fn();
-    const fakePg = Object.assign(
-      (table: string) => {
-        if (table === "customer_account_state") {
-          return {
-            where: () => ({
-              first: async () => ({ customer_id: "cust_1", email_verified_at: null }),
-            }),
-          };
-        }
-        return { update: updateMock };
-      },
-      {},
-    );
+    const fakePg = Object.assign((table: string) => {
+      if (table === "customer_account_state") {
+        return {
+          where: () => ({
+            first: async () => ({ customer_id: "cust_1", email_verified_at: null }),
+          }),
+        };
+      }
+      return { update: updateMock };
+    }, {});
 
-    const res = await linkGuestOrdersForVerifiedCustomer(
-      fakePg,
-      "cust_1",
-      "user@example.test",
-    );
+    const res = await linkGuestOrdersForVerifiedCustomer(fakePg, "cust_1", "user@example.test");
     expect(res.linkedCount).toBe(0);
     expect(res.skippedUnverified).toBe(true);
     expect(updateMock).not.toHaveBeenCalled();

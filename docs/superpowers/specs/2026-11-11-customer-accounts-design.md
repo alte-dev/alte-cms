@@ -72,14 +72,14 @@ Tarayıcı ──(httpOnly çerez, Origin)──► Next.js /api/account/* (rout
 
 ### 6.2 Medusa `customer-account` modülü (migration ile, 6 tablo)
 
-| Tablo                         | Alanlar                                                                                                                       | Not                                                                                          |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `customer_account_state`      | `customer_id` (uniq), `email_verified_at` (null), `created_at`                                                                | Doğrulama durumu. `customer.metadata` kullanılmaz (API'de döner).                            |
-| `customer_session`            | `id`, `customer_id`, `token_hash` (sha256, uniq), `created_at`, `last_seen_at`, `expires_at`, `revoked_at`                    | JWT iptali.                                                                                  |
-| `customer_email_verification` | `id`, `customer_id`, `token_hash` (uniq), `expires_at`, `used_at`, `created_at`                                               | Ham token saklanmaz.                                                                         |
-| `customer_password_reset`     | `id`, `customer_id`, `token_hash` (uniq), `expires_at`, `used_at`, `created_at`                                               | Medusa reset JWT'sini tek kullanımlık yapar.                                                 |
-| `customer_consent`            | `id`, `customer_id`, `consent_type` (`kvkk_notice` / `marketing`), `granted` (bool), `document_version`, `created_at`         | Yalnızca ekleme (append-only). IP saklanmaz.                                                 |
-| `customer_legacy_credential`  | `id`, `customer_id` (uniq), `email_lookup` (HMAC-SHA256, uniq), `algorithm`, `hash_encrypted` (AES-256-GCM), `created_at`     | Faz 10 doldurur. Hiçbir API yanıtına/loga/CSV'ye girmez. `email_lookup` düz e-posta değildir. |
+| Tablo                         | Alanlar                                                                                                                   | Not                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `customer_account_state`      | `customer_id` (uniq), `email_verified_at` (null), `created_at`                                                            | Doğrulama durumu. `customer.metadata` kullanılmaz (API'de döner).                             |
+| `customer_session`            | `id`, `customer_id`, `token_hash` (sha256, uniq), `created_at`, `last_seen_at`, `expires_at`, `revoked_at`                | JWT iptali.                                                                                   |
+| `customer_email_verification` | `id`, `customer_id`, `token_hash` (uniq), `expires_at`, `used_at`, `created_at`                                           | Ham token saklanmaz.                                                                          |
+| `customer_password_reset`     | `id`, `customer_id`, `token_hash` (uniq), `expires_at`, `used_at`, `created_at`                                           | Medusa reset JWT'sini tek kullanımlık yapar.                                                  |
+| `customer_consent`            | `id`, `customer_id`, `consent_type` (`kvkk_notice` / `marketing`), `granted` (bool), `document_version`, `created_at`     | Yalnızca ekleme (append-only). IP saklanmaz.                                                  |
+| `customer_legacy_credential`  | `id`, `customer_id` (uniq), `email_lookup` (HMAC-SHA256, uniq), `algorithm`, `hash_encrypted` (AES-256-GCM), `created_at` | Faz 10 doldurur. Hiçbir API yanıtına/loga/CSV'ye girmez. `email_lookup` düz e-posta değildir. |
 
 Hiçbir tablo düz e-posta, ad, telefon, adres veya ham token tutmaz. Token'lar 32 bayt `crypto.randomBytes`, base64url; saklanan değer sha256.
 
@@ -234,15 +234,15 @@ Tek işlemde:
 
 `order-tracking` içindeki bellek içi Map deseni ortak bir yardımcıya çıkarılır (`apps/medusa/src/utils/rate-limiter.ts`, sabit pencere, süresi dolan kayıtları temizleyen, test edilebilir saat). `order-tracking` bu yardımcıyı kullanacak şekilde davranış değişmeden taşınır (`verify:order-ops` regresyonu).
 
-| Uç nokta                  | Anahtar     | Sınır                | Aşımda |
-| ------------------------- | ----------- | -------------------- | ------ |
-| login                     | IP + e-posta | 5 hatalı / 15 dk     | 429    |
-| login                     | IP          | 30 / 15 dk           | 429    |
-| register                  | IP          | 5 / saat             | 429    |
-| password-reset request    | e-posta     | 3 / saat             | 429    |
-| password-reset request    | IP          | 10 / saat            | 429    |
-| verify-email, reset confirm | IP        | 10 / 15 dk           | 429    |
-| verify-email resend       | müşteri     | 3 / saat             | 429    |
+| Uç nokta                    | Anahtar      | Sınır            | Aşımda |
+| --------------------------- | ------------ | ---------------- | ------ |
+| login                       | IP + e-posta | 5 hatalı / 15 dk | 429    |
+| login                       | IP           | 30 / 15 dk       | 429    |
+| register                    | IP           | 5 / saat         | 429    |
+| password-reset request      | e-posta      | 3 / saat         | 429    |
+| password-reset request      | IP           | 10 / saat        | 429    |
+| verify-email, reset confirm | IP           | 10 / 15 dk       | 429    |
+| verify-email resend         | müşteri      | 3 / saat         | 429    |
 
 429 yanıtı tek tip ve e-postanın varlığından bağımsızdır (anahtar gönderilen e-postadır, kayıt durumu değil). Anahtarlarda e-posta düz tutulmaz, HMAC'lenir. Çoklu süreçte sınır süreç başınadır (Faz 13'te Redis).
 

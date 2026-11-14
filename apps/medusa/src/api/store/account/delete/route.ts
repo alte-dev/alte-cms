@@ -3,11 +3,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { Modules } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { normalizeEmail } from "../../../../modules/customer-account/helpers";
-import {
-  getCustomerIdFromRequest,
-  getPgConnection,
-  revokeAllCustomerSessions,
-} from "../_shared";
+import { getCustomerIdFromRequest, getPgConnection, revokeAllCustomerSessions } from "../_shared";
 
 const deleteAccountSchema = z.object({
   password: z.string().min(1).max(128),
@@ -83,14 +79,16 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   for (const guest of guestCustomers) {
     const gSuffix = crypto.randomBytes(8).toString("hex");
-    await pgConnection("customer").where({ id: guest.id }).update({
-      email: `deleted-${gSuffix}@anonymized.invalid`,
-      first_name: "Silinmiş",
-      last_name: "Kullanıcı",
-      phone: null,
-      company_name: null,
-      updated_at: now,
-    });
+    await pgConnection("customer")
+      .where({ id: guest.id })
+      .update({
+        email: `deleted-${gSuffix}@anonymized.invalid`,
+        first_name: "Silinmiş",
+        last_name: "Kullanıcı",
+        phone: null,
+        company_name: null,
+        updated_at: now,
+      });
     await pgConnection("customer_address").where({ customer_id: guest.id }).del();
   }
 

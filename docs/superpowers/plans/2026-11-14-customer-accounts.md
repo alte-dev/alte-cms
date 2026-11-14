@@ -33,6 +33,7 @@
 ### Task 1: Shared Password Policy & Reserved Slug (`hesap`)
 
 **Files:**
+
 - Create: `packages/shared/src/password-policy.ts`
 - Create: `packages/shared/src/common-passwords.ts`
 - Modify: `packages/shared/src/index.ts`
@@ -43,6 +44,7 @@
 - Modify: `AGENTS.md`
 
 **Interfaces:**
+
 - Produces: `validateCustomerPassword(password: string, email?: string): { valid: boolean; error?: string }` in `@alte/shared`
 - Produces: `RESERVED_SLUGS` including `"hesap"` in `apps/web/src/lib/slugify.ts` and `apps/web/src/app/sitemap.ts`
 
@@ -66,6 +68,7 @@
 ### Task 2: `INTERNAL_API_SECRET` Fail-Closed Env Validation & CI Env
 
 **Files:**
+
 - Modify: `apps/medusa/src/env.ts`
 - Modify: `apps/medusa/src/env.test.ts`
 - Modify: `apps/web/src/env.ts`
@@ -75,6 +78,7 @@
 - Modify: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Produces: `env.INTERNAL_API_SECRET` (validated >= 32 chars, not weak) in both `validateMedusaEnv()` and `validateWebEnv()`
 
 - [ ] **Step 1: Write failing env tests**
@@ -93,11 +97,13 @@
 ### Task 3: Shared Rate Limiter & `order-tracking` Refactor
 
 **Files:**
+
 - Create: `apps/medusa/src/utils/rate-limiter.ts`
 - Create: `apps/medusa/src/utils/rate-limiter.test.ts`
 - Modify: `apps/medusa/src/api/store/order-tracking/route.ts`
 
 **Interfaces:**
+
 - Produces: `FixedWindowRateLimiter` (`check(key)`, `consume(key)`, `reset(key)`) and `BruteForceGuard` (`isBlocked(key)`, `recordFailure(key)`, `clear(key)`) with injectable `now: () => number` and expired-entry pruning.
 
 - [ ] **Step 1: Write failing unit tests for `FixedWindowRateLimiter` & `BruteForceGuard`**
@@ -115,6 +121,7 @@
 ### Task 4: Medusa `customer-account` Module (Models, Migration, Legacy Verifier Hook, Service)
 
 **Files:**
+
 - Create: `apps/medusa/src/modules/customer-account/models/customer-account-state.ts`
 - Create: `apps/medusa/src/modules/customer-account/models/customer-session.ts`
 - Create: `apps/medusa/src/modules/customer-account/models/customer-email-verification.ts`
@@ -131,9 +138,11 @@
 - Modify: `apps/medusa/medusa-config.ts`
 
 **Interfaces:**
+
 - Produces: `CUSTOMER_ACCOUNT_MODULE = "customerAccount"`
 - Produces: `LegacyPasswordVerifier`, `LegacyVerifierRegistry` (rejects `"fake-test"` in `NODE_ENV === "production"`)
 - Produces: `CustomerAccountModuleService`:
+
   - `hashToken(raw: string): string`, `generateOpaqueToken(): { raw: string; hash: string }`
   - `hashEmailLookup(email: string): string` (HMAC-SHA256 using `SETTINGS_ENCRYPTION_KEY`)
   - `createSession(customerId: string, jwt: string)`, `validateSession(jwt: string)`, `revokeSession(jwt: string)`, `revokeAllSessions(customerId: string)`
@@ -162,11 +171,14 @@
 ### Task 5: Medusa Fail-Closed Middlewares & Direct Store API Protection
 
 **Files:**
+
 - Create: `apps/medusa/src/api/middlewares.ts`
 - Create: `apps/medusa/src/api/middlewares.test.ts`
 
 **Interfaces:**
+
 - Enforces:
+
   - `/auth/customer/*` and `/auth/token/refresh` (when `actor_type=customer`): require `X-Alte-Internal` (`constantTimeCompare`), else `404`.
   - `/store/account/*`: require `X-Alte-Internal`, else `404`.
   - `POST /store/customers`: require `X-Alte-Internal`, else `404`.
@@ -188,6 +200,7 @@
 ### Task 6: Medusa `/store/account/*` Routes & Email Subscriber
 
 **Files:**
+
 - Create: `apps/medusa/src/utils/timing-floor.ts`
 - Create: `apps/medusa/src/api/store/account/register/route.ts`
 - Create: `apps/medusa/src/api/store/account/login/route.ts`
@@ -218,6 +231,7 @@
 ### Task 7: Web Origin/Host Guard, Cookie Helpers, BFF Client & `/api/account/*` Routes
 
 **Files:**
+
 - Create: `apps/web/src/lib/security/origin-guard.ts`
 - Create: `apps/web/src/tests/origin-guard.test.ts`
 - Modify: `apps/web/src/lib/medusa/cookies.ts`
@@ -255,6 +269,7 @@
 ### Task 8: Web `/hesap/...` Pages, Headers & Navbar Link
 
 **Files:**
+
 - Modify: `apps/web/next.config.ts` (add `Referrer-Policy: no-referrer` & `X-Robots-Tag: noindex, nofollow` for `/hesap/:path*`)
 - Modify: `apps/web/src/components/navbar.tsx` (add lightweight server-rendered link to `/hesap`)
 - Create: `apps/web/src/app/(store)/hesap/layout.tsx` (`noindex`, `force-dynamic`, shared account nav)
@@ -283,6 +298,7 @@
 ### Task 9: Checkout Integration (`/odeme` & `/api/checkout`)
 
 **Files:**
+
 - Modify: `apps/web/src/app/(store)/odeme/page.tsx`
 - Modify: `apps/web/src/components/checkout-form.tsx`
 - Modify: `apps/web/src/app/api/checkout/route.ts`
@@ -302,6 +318,7 @@
 ### Task 10: Live Verification (`verify-accounts.ts`), A11y/Keyboard Tests, Docs & Quality Baseline
 
 **Files:**
+
 - Create: `scripts/verify-accounts.ts`
 - Modify: `scripts/verify-all.ts`
 - Modify: `scripts/check-verify-scripts.ts`

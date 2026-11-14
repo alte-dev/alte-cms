@@ -62,12 +62,18 @@ export function PasswordResetClient({ token }: { token: string }) {
     return (
       <form onSubmit={handleConfirm} className="space-y-4" noValidate>
         {error && (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+          >
             {error}
           </div>
         )}
         {successMsg && (
-          <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          <div
+            role="status"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
+          >
             {successMsg}{" "}
             <Link href="/hesap/giris" className="underline font-medium">
               Giriş Yap
@@ -76,7 +82,10 @@ export function PasswordResetClient({ token }: { token: string }) {
         )}
 
         <div>
-          <label htmlFor="reset-new-password" className="block text-sm font-medium text-stone-700 mb-1">
+          <label
+            htmlFor="reset-new-password"
+            className="block text-sm font-medium text-stone-700 mb-1"
+          >
             Yeni Parola (En az 10 karakter)
           </label>
           <input
@@ -106,12 +115,18 @@ export function PasswordResetClient({ token }: { token: string }) {
   return (
     <form onSubmit={handleRequest} className="space-y-4" noValidate>
       {error && (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+        >
           {error}
         </div>
       )}
       {successMsg && (
-        <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div
+          role="status"
+          className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
+        >
           {successMsg}
         </div>
       )}

@@ -727,7 +727,8 @@ export async function sendAccountEmail(
         <p>Şifrenizi unuttuysanız şifre sıfırlama sayfasından yeni şifre oluşturabilirsiniz.</p>
       </div>
     `;
-    text = "E-posta adresinizle yeni bir kayıt denemesi yapıldı. Zaten bir hesabınız bulunmaktadır; şifrenizi unuttuysanız şifre sıfırlama sayfasını kullanabilirsiniz.";
+    text =
+      "E-posta adresinizle yeni bir kayıt denemesi yapıldı. Zaten bir hesabınız bulunmaktadır; şifrenizi unuttuysanız şifre sıfırlama sayfasını kullanabilirsiniz.";
   }
 
   const { transporter, settings } = await createTransporter(pgConnection);

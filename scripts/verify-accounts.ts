@@ -18,10 +18,11 @@ dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
 dotenv.config();
 
-const WEB_URL = (process.env.WEB_URL || process.env.WEB_PUBLIC_URL || "http://localhost:3100").replace(
-  /\/+$/,
-  "",
-);
+const WEB_URL = (
+  process.env.WEB_URL ||
+  process.env.WEB_PUBLIC_URL ||
+  "http://localhost:3100"
+).replace(/\/+$/, "");
 const MEDUSA_URL = (process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000").replace(/\/+$/, "");
 const DATABASE_URL =
   process.env.DATABASE_URL ||
@@ -149,7 +150,9 @@ async function createGuestCodOrder(
   });
 
   // 5. Shipping option
-  const shipRes = await fetch(`${MEDUSA_URL}/store/shipping-options?cart_id=${cartId}`, { headers });
+  const shipRes = await fetch(`${MEDUSA_URL}/store/shipping-options?cart_id=${cartId}`, {
+    headers,
+  });
   const shipJson = await shipRes.json();
   const shippingOptionId = shipJson.shipping_options?.[0]?.id;
   if (shippingOptionId) {
@@ -324,7 +327,8 @@ async function main() {
         }),
       });
       const dupJson = await dupRes.json();
-      const pass = dupRes.status === 200 && dupJson.ok === true && typeof dupJson.message === "string";
+      const pass =
+        dupRes.status === 200 && dupJson.ok === true && typeof dupJson.message === "string";
       recordStep(
         2,
         "Mükerrer kayıt tek tip yanıt (enum koruması)",
@@ -438,7 +442,9 @@ async function main() {
           headers: { Cookie: cookieB },
         });
         const ordersAfter = await ordersAfterRes.json();
-        countAfter = (ordersAfter.orders || []).filter((o: any) => o.id === guestOrderB.orderId).length;
+        countAfter = (ordersAfter.orders || []).filter(
+          (o: any) => o.id === guestOrderB.orderId,
+        ).length;
       }
 
       const pass = regB.status === 200 && Boolean(cookieB) && countBefore === 0 && countAfter === 1;
@@ -616,9 +622,10 @@ async function main() {
         // Expired token check
         const expiredRawToken = `exp_${crypto.randomBytes(16).toString("hex")}`;
         const expiredHash = crypto.createHash("sha256").update(expiredRawToken).digest("hex");
-        const custRow = await pool.query("SELECT id FROM customer WHERE LOWER(email) = $1 LIMIT 1", [
-          emailA.toLowerCase(),
-        ]);
+        const custRow = await pool.query(
+          "SELECT id FROM customer WHERE LOWER(email) = $1 LIMIT 1",
+          [emailA.toLowerCase()],
+        );
         if (custRow.rows[0]?.id) {
           await pool.query(
             `INSERT INTO customer_password_reset (id, customer_id, token_hash, expires_at, used_at, created_at, updated_at)
@@ -791,7 +798,7 @@ async function main() {
         headers: originHeaders,
         body: JSON.stringify({ email: emailC, password: passwordC }),
       });
-      const orderCheck = await pool.query("SELECT id FROM \"order\" WHERE id = $1 LIMIT 1", [
+      const orderCheck = await pool.query('SELECT id FROM "order" WHERE id = $1 LIMIT 1', [
         orderC.orderId,
       ]);
       const oldCustCheck = await pool.query(
@@ -873,12 +880,7 @@ async function main() {
           }
         }
       }
-      recordStep(
-        14,
-        "Loglarda test parolası sızıntısı yok",
-        !leaked,
-        `leaked=${leaked}`,
-      );
+      recordStep(14, "Loglarda test parolası sızıntısı yok", !leaked, `leaked=${leaked}`);
     } catch (err) {
       recordStep(14, "Log sızıntısı kontrolü", false, (err as Error).message);
     }
@@ -907,7 +909,9 @@ async function main() {
   }
 
   const failed = results.filter((r) => !r.pass);
-  console.log(`\nToplam: ${results.length}, Başarılı: ${results.length - failed.length}, Başarısız: ${failed.length}`);
+  console.log(
+    `\nToplam: ${results.length}, Başarılı: ${results.length - failed.length}, Başarısız: ${failed.length}`,
+  );
   if (failed.length > 0) {
     process.exit(1);
   }

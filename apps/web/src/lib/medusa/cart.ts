@@ -466,7 +466,10 @@ export async function getOrder(orderId: string): Promise<StoreOrder | null> {
 /**
  * Associates a guest cart with an authenticated customer account.
  */
-export async function assignCartToCustomer(cartId: string, customerToken: string): Promise<boolean> {
+export async function assignCartToCustomer(
+  cartId: string,
+  customerToken: string,
+): Promise<boolean> {
   if (!cartId || !customerToken) return false;
   try {
     await medusaFetch(`/store/carts/${cartId}/customer`, {

@@ -40,7 +40,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     | (ReturnType<typeof verifyJwtHs256> & { entity_id?: string; purpose?: string })
     | null;
 
-  if (!claims || claims.actor_type !== "customer" || claims.purpose !== "reset" || !claims.entity_id) {
+  if (
+    !claims ||
+    claims.actor_type !== "customer" ||
+    claims.purpose !== "reset" ||
+    !claims.entity_id
+  ) {
     return res.status(400).json(UNIFORM_TOKEN_ERROR);
   }
 

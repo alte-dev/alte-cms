@@ -35,7 +35,11 @@ export function DeleteAccountForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-red-200 bg-white p-6" noValidate>
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-lg border border-red-200 bg-white p-6"
+      noValidate
+    >
       <h2 className="text-lg font-semibold text-red-900">Hesabı Sil (KVKK Anonimleştirme)</h2>
       <p className="text-sm text-stone-700">
         Bu işlem geri alınamaz. Ad, soyad, e-posta, telefon ve adres bilgileriniz kalıcı olarak
@@ -43,7 +47,10 @@ export function DeleteAccountForm() {
       </p>
 
       {error && (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+        >
           {error}
         </div>
       )}

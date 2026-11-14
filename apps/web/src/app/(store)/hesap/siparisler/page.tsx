@@ -40,14 +40,13 @@ export default async function OrdersPage() {
                   {typeof order.metadata?.tracking_code === "string" &&
                     order.metadata.tracking_code && (
                       <p className="text-stone-700 mt-1">
-                        Kargo Takip: <span className="font-mono">{order.metadata.tracking_code}</span>
+                        Kargo Takip:{" "}
+                        <span className="font-mono">{order.metadata.tracking_code}</span>
                       </p>
                     )}
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-bold text-stone-900">
-                    {formatTRY(order.total)}
-                  </span>
+                  <span className="text-sm font-bold text-stone-900">{formatTRY(order.total)}</span>
                   <Link
                     href={`/hesap/siparisler/${order.id}`}
                     className="px-3 py-1.5 rounded-md border border-stone-300 text-xs font-medium text-stone-800 hover:bg-stone-50"

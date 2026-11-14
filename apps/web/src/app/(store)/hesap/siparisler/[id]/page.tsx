@@ -7,11 +7,7 @@ import { safeHref } from "../../../../../lib/safe-href";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrderDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const customer = await getServerCustomer();
   if (!customer) {
     redirect("/hesap/giris");

@@ -4,11 +4,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { hashEmailLookup, normalizeEmail } from "../../../../../modules/customer-account/helpers";
 import { waitTimingFloor } from "../../../../../utils/timing-floor";
-import {
-  getTrustedClientIp,
-  resetEmailLimiter,
-  resetIpLimiter,
-} from "../../_shared";
+import { getTrustedClientIp, resetEmailLimiter, resetIpLimiter } from "../../_shared";
 
 const resetRequestSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -41,7 +37,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const emailDecision = resetEmailLimiter.consume(hashEmailLookup(email));
   if (!emailDecision.allowed) {
     return res.status(429).json({
-      error: "Bu e-posta adresi için çok fazla şifre sıfırlama isteği gönderildi. Lütfen daha sonra tekrar deneyiniz.",
+      error:
+        "Bu e-posta adresi için çok fazla şifre sıfırlama isteği gönderildi. Lütfen daha sonra tekrar deneyiniz.",
     });
   }
 

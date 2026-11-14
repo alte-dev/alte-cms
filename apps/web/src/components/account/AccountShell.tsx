@@ -82,7 +82,10 @@ export function AccountShell({
       )}
 
       {resendMsg && (
-        <div role="status" className="mb-6 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-800">
+        <div
+          role="status"
+          className="mb-6 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-800"
+        >
           {resendMsg}
         </div>
       )}

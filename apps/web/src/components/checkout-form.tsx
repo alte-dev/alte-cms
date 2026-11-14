@@ -45,9 +45,7 @@ export function CheckoutForm({
     () => savedAddresses.find((a) => a.is_default_shipping) || savedAddresses[0] || null,
     [savedAddresses],
   );
-  const [selectedAddressId, setSelectedAddressId] = useState<string>(
-    defaultSavedAddress?.id || "",
-  );
+  const [selectedAddressId, setSelectedAddressId] = useState<string>(defaultSavedAddress?.id || "");
   const [cart, setCart] = useState<StoreCart>(initialCart);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -422,8 +420,7 @@ export function CheckoutForm({
                   >
                     {savedAddresses.map((addr) => (
                       <option key={addr.id} value={addr.id}>
-                        {addr.address_name || `${addr.first_name} ${addr.last_name}`} —{" "}
-                        {addr.city}
+                        {addr.address_name || `${addr.first_name} ${addr.last_name}`} — {addr.city}
                       </option>
                     ))}
                   </select>

@@ -114,12 +114,18 @@ export function AddressesManager({ initialAddresses }: { initialAddresses: Custo
   return (
     <div className="space-y-6">
       {error && (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+        >
           {error}
         </div>
       )}
       {statusMsg && (
-        <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div
+          role="status"
+          className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
+        >
           {statusMsg}
         </div>
       )}
@@ -131,7 +137,10 @@ export function AddressesManager({ initialAddresses }: { initialAddresses: Custo
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {addresses.map((addr) => (
-              <div key={addr.id} className="rounded-lg border border-stone-200 bg-white p-4 text-sm">
+              <div
+                key={addr.id}
+                className="rounded-lg border border-stone-200 bg-white p-4 text-sm"
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-semibold text-stone-900">
                     {addr.address_name || "Adres"}
@@ -184,7 +193,11 @@ export function AddressesManager({ initialAddresses }: { initialAddresses: Custo
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-stone-200 bg-white p-6 space-y-4" noValidate>
+      <form
+        onSubmit={handleSubmit}
+        className="rounded-lg border border-stone-200 bg-white p-6 space-y-4"
+        noValidate
+      >
         <h3 className="text-base font-semibold text-stone-900">
           {editingId ? "Adresi Düzenle" : "Yeni Adres Ekle"}
         </h3>
@@ -276,7 +289,10 @@ export function AddressesManager({ initialAddresses }: { initialAddresses: Custo
             />
           </div>
           <div>
-            <label htmlFor="addr-province" className="block text-sm font-medium text-stone-700 mb-1">
+            <label
+              htmlFor="addr-province"
+              className="block text-sm font-medium text-stone-700 mb-1"
+            >
               İlçe
             </label>
             <input

@@ -39,16 +39,26 @@ export function ProfileForm({ initialCustomer }: { initialCustomer: CustomerProf
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-stone-200 bg-white p-6" noValidate>
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-lg border border-stone-200 bg-white p-6"
+      noValidate
+    >
       <h2 className="text-lg font-semibold text-stone-900">Profil Bilgileri</h2>
 
       {error && (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+        >
           {error}
         </div>
       )}
       {savedMsg && (
-        <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div
+          role="status"
+          className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
+        >
           {savedMsg}
         </div>
       )}
@@ -68,7 +78,10 @@ export function ProfileForm({ initialCustomer }: { initialCustomer: CustomerProf
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="prof-first-name" className="block text-sm font-medium text-stone-700 mb-1">
+          <label
+            htmlFor="prof-first-name"
+            className="block text-sm font-medium text-stone-700 mb-1"
+          >
             Ad
           </label>
           <input

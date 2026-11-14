@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { validateCustomerPassword } from "@alte/shared";
 import { z } from "zod";
 import { medusaAccountFetch } from "../../../../lib/medusa/account";
-import {
-  getCustomerSessionToken,
-  setCustomerSessionToken,
-} from "../../../../lib/medusa/cookies";
+import { getCustomerSessionToken, setCustomerSessionToken } from "../../../../lib/medusa/cookies";
 import { extractClientIp, requireAccountOrigin } from "../../../../lib/security/origin-guard";
 import { handleAccountApiError } from "../_utils";
 

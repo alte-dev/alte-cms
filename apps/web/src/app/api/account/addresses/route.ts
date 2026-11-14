@@ -77,7 +77,10 @@ export async function POST(req: Request) {
       },
     );
 
-    return NextResponse.json({ ok: true, addresses: data.customer?.addresses || [] }, { status: 201 });
+    return NextResponse.json(
+      { ok: true, addresses: data.customer?.addresses || [] },
+      { status: 201 },
+    );
   } catch (err) {
     return handleAccountApiError(err, "Adres eklenemedi.");
   }
