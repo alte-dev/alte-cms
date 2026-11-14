@@ -45,6 +45,7 @@ export const webEnvSchema = z.object({
     .min(1, "MEDUSA_BACKEND_URL is required")
     .url("MEDUSA_BACKEND_URL must be a valid URL"),
   MEDUSA_PUBLISHABLE_KEY: z.string().optional().default(""),
+  INTERNAL_API_SECRET: secretValidator,
   PAYLOAD_MEDIA_DIR: z.string().optional().default("media/uploads"),
   TRUST_PROXY: z
     .enum(["true", "false", "1", "0"])

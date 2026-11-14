@@ -46,6 +46,9 @@ export const medusaEnvSchema = z.object({
   SETTINGS_ENCRYPTION_KEY: z
     .string()
     .min(32, "SETTINGS_ENCRYPTION_KEY en az 32 bayt (64 hex veya 32 karakter) olmalıdır."),
+  // Internal Web <-> Medusa shared secret (Faz 12)
+  INTERNAL_API_SECRET: secretValidator,
+  ACCOUNT_RESPONSE_FLOOR_MS: z.coerce.number().int().min(0).max(5000).optional().default(900),
   API_PUBLIC_URL: z.string().url().optional(),
   WEB_PUBLIC_URL: z.string().url().optional(),
 
