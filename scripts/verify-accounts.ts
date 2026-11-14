@@ -201,6 +201,9 @@ async function main() {
   const smtpServer = new SMTPServer({
     authOptional: true,
     disabledCommands: ["STARTTLS"],
+    onAuth(auth, _session, callback) {
+      callback(null, { user: auth.username || "ok" });
+    },
     onData(stream, _session, callback) {
       const chunks: Buffer[] = [];
       stream.on("data", (c: Buffer) => chunks.push(c));
@@ -234,15 +237,54 @@ async function main() {
   const passwordB = `GucluParolaB-${runId}!`;
   const passwordC = `GucluParolaC-${runId}!`;
 
+  let adminToken = "";
   try {
-    // Save existing email_setting and point to local SMTP
+    // Save existing email_setting and point to local SMTP via Medusa Admin API (refreshes in-memory EmailSettingsRegistry)
+    try {
+      const adminLogin = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "admin@example.test",
+          password: "test-admin-password-123",
+        }),
+      });
+      if (adminLogin.ok) {
+        adminToken = (await adminLogin.json()).token || "";
+      }
+    } catch {
+      // ignore
+    }
+
     const existingRes = await pool.query("SELECT * FROM email_setting LIMIT 1");
     if (existingRes.rows.length > 0) {
       savedSettingExists = true;
       previousEmailSetting = existingRes.rows[0];
+    }
+
+    if (adminToken) {
+      await fetch(`${MEDUSA_URL}/admin/email-settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          enabled: true,
+          host: "127.0.0.1",
+          port: smtpPort,
+          secure: false,
+          username: "",
+          password: "",
+          from_name: "Test Magaza",
+          from_email: "noreply@example.test",
+        }),
+      });
+    } else if (savedSettingExists) {
       await pool.query(
         `UPDATE email_setting
          SET enabled = true, host = '127.0.0.1', port = $1, secure = false,
+             username = '', password = NULL,
              from_name = 'Test Magaza', from_email = 'noreply@example.test', updated_at = NOW()
          WHERE id = $2`,
         [smtpPort, previousEmailSetting.id],
@@ -300,10 +342,13 @@ async function main() {
           marketingConsent: false,
         }),
       });
-      const pass = shortRes.status === 400 && commonRes.status === 400 && goodRes.status === 200;
+      const pass =
+        shortRes.status === 400 &&
+        commonRes.status === 400 &&
+        (goodRes.status === 202 || goodRes.status === 200);
       recordStep(
         1,
-        "Parola politikası (kısa/yaygın -> 400, güçlü -> 200)",
+        "Parola politikası (kısa/yaygın -> 400, güçlü -> 202)",
         pass,
         `short=${shortRes.status}, common=${commonRes.status}, good=${goodRes.status}`,
       );
@@ -328,7 +373,9 @@ async function main() {
       });
       const dupJson = await dupRes.json();
       const pass =
-        dupRes.status === 200 && dupJson.ok === true && typeof dupJson.message === "string";
+        (dupRes.status === 202 || dupRes.status === 200) &&
+        dupJson.ok === true &&
+        typeof dupJson.message === "string";
       recordStep(
         2,
         "Mükerrer kayıt tek tip yanıt (enum koruması)",
@@ -371,18 +418,19 @@ async function main() {
         method: "POST",
         headers: { ...originHeaders, Cookie: cookieA },
         body: JSON.stringify({
-          address_name: "Ev",
-          first_name: "Ali",
-          last_name: "Yilmaz",
-          address_1: "Ornek Sokak No 5",
+          addressName: "Ev",
+          firstName: "Ali",
+          lastName: "Yilmaz",
+          address1: "Ornek Sokak No 5",
           city: "Istanbul",
-          postal_code: "34000",
+          province: "Kadikoy",
+          postalCode: "34000",
           phone: "05550001111",
-          is_default_shipping: true,
+          isDefaultShipping: true,
         }),
       });
       const addrJson = await addrRes.json().catch(() => ({}));
-      addrAId = addrJson.address?.id || "";
+      addrAId = addrJson.addresses?.[0]?.id || "";
 
       const orderA = await createGuestCodOrder(pubKey, emailA);
       orderAId = orderA.orderId;
@@ -790,7 +838,7 @@ async function main() {
       const delRes = await fetch(`${WEB_URL}/api/account/delete`, {
         method: "POST",
         headers: { ...originHeaders, Cookie: cookieC },
-        body: JSON.stringify({ password: passwordC, confirmation: "HESABIMI SIL" }),
+        body: JSON.stringify({ password: passwordC, confirmation: "SİL" }),
       });
 
       const loginCAfter = await fetch(`${WEB_URL}/api/account/login`, {
@@ -885,7 +933,23 @@ async function main() {
       recordStep(14, "Log sızıntısı kontrolü", false, (err as Error).message);
     }
   } finally {
-    if (savedSettingExists && previousEmailSetting) {
+    if (adminToken && savedSettingExists && previousEmailSetting) {
+      await fetch(`${MEDUSA_URL}/admin/email-settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          enabled: Boolean(previousEmailSetting.enabled),
+          host: previousEmailSetting.host || "127.0.0.1",
+          port: Number(previousEmailSetting.port) || 587,
+          secure: Boolean(previousEmailSetting.secure),
+          from_name: previousEmailSetting.from_name || "Magaza",
+          from_email: previousEmailSetting.from_email || "noreply@example.test",
+        }),
+      }).catch(() => {});
+    } else if (savedSettingExists && previousEmailSetting) {
       await pool.query(
         `UPDATE email_setting
          SET enabled = $1, host = $2, port = $3, secure = $4,
@@ -908,7 +972,7 @@ async function main() {
     await new Promise<void>((resolve) => smtpServer.close(() => resolve()));
   }
 
-  const failed = results.filter((r) => !r.pass);
+  const failed = results.filter((r) => !r.passed);
   console.log(
     `\nToplam: ${results.length}, Başarılı: ${results.length - failed.length}, Başarısız: ${failed.length}`,
   );

@@ -11,7 +11,7 @@ export default defineMiddlewares({
   routes: [
     // Close direct customer auth endpoints (enforce password policy, rate limit, consent, legacy verifiers via /store/account/*)
     {
-      matcher: /^\/auth\/customer(\/|$)/,
+      matcher: "/auth/customer",
       middlewares: [requireInternalSecret],
     },
     {
@@ -20,7 +20,7 @@ export default defineMiddlewares({
     },
     // Protect all custom account endpoints with internal secret + session check where applicable
     {
-      matcher: /^\/store\/account(\/|$)/,
+      matcher: "/store/account",
       middlewares: [requireInternalSecret, customerSessionGuard],
     },
     // Prevent bypassing registration via direct POST /store/customers
@@ -31,7 +31,11 @@ export default defineMiddlewares({
     },
     // Enforce server-side session revocation on Medusa built-in customer & order routes
     {
-      matcher: /^\/store\/(customers\/me|orders)(\/|$)/,
+      matcher: "/store/customers/me",
+      middlewares: [customerSessionGuard],
+    },
+    {
+      matcher: "/store/orders",
       middlewares: [customerSessionGuard],
     },
     {
@@ -46,7 +50,7 @@ export default defineMiddlewares({
     },
     // Disable Medusa built-in order transfer endpoints (linking happens strictly after email verification)
     {
-      matcher: /^\/store\/orders\/[^/]+\/transfer(\/|$)/,
+      matcher: "/store/orders/:id/transfer",
       middlewares: [blockRoute],
     },
   ],
