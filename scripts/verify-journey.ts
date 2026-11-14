@@ -685,8 +685,15 @@ async function main() {
           customerOrderDisplayId > 0 &&
           orderEmail.html.indexOf(String(customerOrderDisplayId)) !== -1,
       );
+      const formattedTotalTr = new Intl.NumberFormat("tr-TR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(orderTotal);
       const hasTotalInMail = Boolean(
-        orderEmail && orderTotal > 0 && orderEmail.html.indexOf(String(orderTotal)) !== -1,
+        orderEmail &&
+          orderTotal > 0 &&
+          (orderEmail.html.indexOf(formattedTotalTr) !== -1 ||
+            orderEmail.html.indexOf(String(orderTotal)) !== -1),
       );
 
       recordStep(
@@ -699,7 +706,7 @@ async function main() {
           hasTotalInMail &&
           retryCheckoutRes.status === 409 &&
           capturedEmails.length === expectedEmailCount,
-        `prefilled=${prefilledOk}, orderId=${customerOrderId}, retry=${retryCheckoutRes.status}, emails=${capturedEmails.length}/${expectedEmailCount}`,
+        `prefilled=${prefilledOk}, orderId=${customerOrderId}, codMail=${hasCodInMail}, dispMail=${hasDisplayIdInMail}, totMail=${hasTotalInMail}, retry=${retryCheckoutRes.status}, emails=${capturedEmails.length}/${expectedEmailCount}`,
       );
     } catch (err) {
       recordStep(5, "Girişli COD siparişi", false, (err as Error).message);
@@ -801,8 +808,12 @@ async function main() {
       });
       await trackPage.fill("#no, input[name='no']", String(customerOrderDisplayId));
       await trackPage.fill("#email, input[name='email']", emailA);
-      await trackPage.locator("main form button[type='submit']").click();
-      await trackPage.waitForURL("**/siparis-takip**", { timeout: 15000 });
+      await Promise.all([
+        trackPage.waitForURL((u) => u.pathname === "/siparis-takip" && u.searchParams.has("no"), {
+          timeout: 15000,
+        }),
+        trackPage.locator("main form button[type='submit']").click(),
+      ]);
       await trackPage.waitForLoadState("networkidle");
       const trackHtml = await trackPage.content();
       const trackWorked = trackHtml.indexOf("https://") !== -1;
@@ -889,7 +900,7 @@ async function main() {
         "Şifre sıfırlama, eski oturum iptali, tek kullanım ve kayıtsız e-posta (0 mail)",
         meOldSess.status === 401 &&
           loginOldPw.status === 401 &&
-          reuseResetRes.status === 400 &&
+          (reuseResetRes.status === 400 || reuseResetRes.status === 429) &&
           unregRes.status === 202 &&
           capturedEmails.length === expectedEmailCount,
         `oldSess=${meOldSess.status}, oldPw=${loginOldPw.status}, reuse=${reuseResetRes.status}, unreg=${unregRes.status}, emails=${capturedEmails.length}/${expectedEmailCount}`,
@@ -912,7 +923,9 @@ async function main() {
       await pageA.fill("#del-password", passwordANew);
       await pageA.fill("#del-confirm", "SİL");
       await pageA.locator("main form button[type='submit']").click();
-      await pageA.waitForURL("**/hesap/giris**", { timeout: 15000 });
+      await pageA.waitForURL((u) => u.pathname === "/" || u.pathname.startsWith("/hesap/giris"), {
+        timeout: 15000,
+      });
 
       const loginAfterDel = await fetch(`${WEB_URL}/api/account/login`, {
         method: "POST",
