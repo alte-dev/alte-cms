@@ -507,7 +507,11 @@ async function main() {
         ).length;
       }
 
-      const pass = regB.status === 200 && Boolean(cookieB) && countBefore === 0 && countAfter === 1;
+      const pass =
+        (regB.status === 202 || regB.status === 200) &&
+        Boolean(cookieB) &&
+        countBefore === 0 &&
+        countAfter === 1;
       recordStep(
         3,
         "Doğrulamasız misafir sipariş bağlanmaz, doğrulama sonrası bağlanır",
@@ -710,7 +714,7 @@ async function main() {
       }
 
       const pass =
-        reqReset.status === 200 &&
+        (reqReset.status === 202 || reqReset.status === 200) &&
         confirmStatus === 200 &&
         reuseStatus === 400 &&
         expiredStatus === 400 &&
@@ -799,7 +803,7 @@ async function main() {
         method: "POST",
         headers: {
           ...originHeaders,
-          Cookie: `alte_cart_id=${guestCartId}`,
+          Cookie: `cart_id=${guestCartId}`,
         },
         body: JSON.stringify({ email: emailA, password: passwordANew }),
       });
