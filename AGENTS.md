@@ -81,7 +81,7 @@ Aşağıdakiler daha önce yaşandı. Tekrarlama:
 - **Girdi:** Tüm girdi doğrulanır (zod). Kullanıcı girdisi HTML'e kaçırılarak basılır, `dangerouslySetInnerHTML` yok. Bağlantılar yalnızca `/` iç yol veya `https://` olabilir (`javascript:`, `data:`, `//host`, `\\host` reddedilir). SQL her zaman parametreli, her parametre tip dönüşümlüdür (`CAST`).
 - **Yetki:** Rol matrisi `docs/PERMISSIONS.md`. Editor silemez, ayar/menü değiştiremez. Anonim yalnızca yayınlanmış içeriği okur, taslak hiçbir uç noktadan sızmaz (REST `draft`, `where`, `versions`, `depth` dahil). Sipariş sorgulama tek tip hata verir ve hız sınırlıdır.
 - **Şema:** Payload tabloları yalnızca migration ile değişir (`payload migrate`). Medusa tabloları Medusa migration ile. Üretimde çalışma anında şema oluşturma/push yok. Alan eklersen migration üret ve commit et.
-- **Rezerve slug'lar:** `urunler`, `urun`, `kategori`, `sepet`, `odeme`, `siparis-onay`, `blog`, `admin`, `api`, `sayfa`, `onizleme`, `ara`, `siparis-takip`.
+- **Rezerve slug'lar:** `urunler`, `urun`, `kategori`, `sepet`, `odeme`, `siparis-onay`, `blog`, `admin`, `api`, `sayfa`, `onizleme`, `ara`, `siparis-takip`, `hesap`.
 - **Taşınabilirlik:** Dosya adı ve yol işlemlerinde yol gezinmesine karşı normalize et. SVG yükleme kapalı.
 
 ## 7. Performans ve bellek

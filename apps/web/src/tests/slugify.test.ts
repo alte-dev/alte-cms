@@ -32,6 +32,7 @@ describe("Slugify Utility (Turkish Transliteration & Rules)", () => {
     expect(isReservedSlug("siparis-onay")).toBe(true);
     expect(isReservedSlug("/sayfa/")).toBe(true);
     expect(isReservedSlug("urunler")).toBe(true);
+    expect(isReservedSlug("hesap")).toBe(true);
     expect(isReservedSlug("hakkimizda")).toBe(false);
     expect(isReservedSlug("yeni-blog-yazisi")).toBe(false);
   });
@@ -42,6 +43,7 @@ describe("Slugify Utility (Turkish Transliteration & Rules)", () => {
     expect(validateSlugField("")).toBe("Slug alanı zorunludur.");
     expect(validateSlugField("admin")).toContain("rezerve edilmiş bir rota adıdır");
     expect(validateSlugField("blog")).toContain("rezerve edilmiş bir rota adıdır");
+    expect(validateSlugField("hesap")).toContain("rezerve edilmiş bir rota adıdır");
     expect(validateSlugField("hatali slug!")).toContain("yalnızca küçük harf");
     expect(validateSlugField("-basinda-tire")).toContain("yalnızca küçük harf");
   });

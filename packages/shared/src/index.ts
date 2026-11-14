@@ -37,3 +37,10 @@ export interface MedusaProductRef {
   customTitle?: string;
   puckPageData?: Record<string, unknown>;
 }
+
+export {
+  CUSTOMER_PASSWORD_MAX_LENGTH,
+  CUSTOMER_PASSWORD_MIN_LENGTH,
+  validateCustomerPassword,
+  type PasswordValidationResult,
+} from "./password-policy";
