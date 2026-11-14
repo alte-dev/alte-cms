@@ -18,6 +18,7 @@ export const RESERVED_SLUGS = [
   "onizleme",
   "ara",
   "siparis-takip",
+  "hesap",
 ];
 
 export async function generateSitemaps() {

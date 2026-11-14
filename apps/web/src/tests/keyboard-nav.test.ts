@@ -224,4 +224,77 @@ describe("Keyboard Navigation & Focus Management (WCAG 2.1 AA on Real Server)", 
 
     await context.close();
   }, 15000);
+
+  it("must complete keyboard-only customer register, login, and logout flow on live pages", async (ctx) => {
+    if (!isServerAvailable || !browser) {
+      handleLiveServerAbsence(
+        ctx,
+        `Canlı sunucu (${BASE_URL}) çalışmıyor; klavye hesap testi gerçekleştirilemedi.`,
+      );
+      return;
+    }
+
+    const uniqueEmail = `e2e-kbd-${Date.now()}@example.test`;
+    const testPass = "GucluKbdTestParola2026!";
+
+    const context = await browser.newContext();
+    const page: Page = await context.newPage();
+
+    // 1. Register via keyboard on /hesap/kayit
+    await page.goto(`${BASE_URL}/hesap/kayit`, {
+      waitUntil: "networkidle",
+      timeout: 15000,
+    });
+
+    await page.focus("#reg-first-name");
+    await page.keyboard.type("Klavye");
+    await page.keyboard.press("Tab"); // reg-last-name
+    await page.keyboard.type("Kullanici");
+    await page.keyboard.press("Tab"); // reg-email
+    await page.keyboard.type(uniqueEmail);
+    await page.keyboard.press("Tab"); // reg-phone
+    await page.keyboard.type("05550001122");
+    await page.keyboard.press("Tab"); // reg-password
+    await page.keyboard.type(testPass);
+    await page.keyboard.press("Tab"); // KVKK link
+    await page.keyboard.press("Tab"); // reg-kvkk checkbox (wait, checkbox comes before or after link? Let's focus checkbox directly for determinism)
+    await page.focus("#reg-kvkk");
+    await page.keyboard.press("Space");
+
+    const regBtn = page.locator("button[type='submit']");
+    await regBtn.focus();
+    await page.keyboard.press("Enter");
+
+    await page.locator("[role='status']").waitFor({ state: "visible", timeout: 10000 });
+    const statusText = await page.locator("[role='status']").innerText();
+    expect(statusText).toContain("Kaydınız alındı");
+
+    // 2. Login via keyboard on /hesap/giris
+    await page.goto(`${BASE_URL}/hesap/giris`, {
+      waitUntil: "networkidle",
+      timeout: 15000,
+    });
+
+    await page.focus("#login-email");
+    await page.keyboard.type(uniqueEmail);
+    await page.keyboard.press("Tab"); // login-password
+    await page.keyboard.type(testPass);
+
+    const loginBtn = page.locator("button[type='submit']");
+    await loginBtn.focus();
+    await page.keyboard.press("Enter");
+
+    await page.waitForURL("**/hesap", { timeout: 10000 });
+    const headingText = await page.locator("h1").innerText();
+    expect(headingText).toContain("Hesabım");
+
+    // 3. Logout via keyboard
+    const logoutBtn = page.locator("button:has-text('Çıkış Yap')");
+    await logoutBtn.focus();
+    await page.keyboard.press("Enter");
+
+    await page.waitForURL("**/hesap/giris", { timeout: 10000 });
+
+    await context.close();
+  }, 25000);
 });

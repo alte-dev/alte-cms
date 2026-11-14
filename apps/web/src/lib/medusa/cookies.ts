@@ -6,6 +6,9 @@ const CART_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const ORDER_CONFIRMATION_COOKIE_NAME = "_order_confirmation";
 const ORDER_CONFIRMATION_MAX_AGE = 60 * 60; // 1 hour (3600s)
 
+const CUSTOMER_SESSION_COOKIE_NAME = "alte_customer_session";
+const CUSTOMER_SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
 /**
  * Retrieves the current cart ID from the httpOnly session cookie.
  */
@@ -64,4 +67,34 @@ export async function setOrderConfirmation(orderId: string): Promise<void> {
 export async function deleteOrderConfirmation(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(ORDER_CONFIRMATION_COOKIE_NAME);
+}
+
+/**
+ * Retrieves the customer session JWT from the httpOnly cookie.
+ */
+export async function getCustomerSessionToken(): Promise<string | undefined> {
+  const cookieStore = await cookies();
+  return cookieStore.get(CUSTOMER_SESSION_COOKIE_NAME)?.value;
+}
+
+/**
+ * Persists the customer session JWT into an httpOnly, SameSite=Lax, Secure (prod) cookie.
+ */
+export async function setCustomerSessionToken(token: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(CUSTOMER_SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: CUSTOMER_SESSION_MAX_AGE,
+  });
+}
+
+/**
+ * Removes the customer session cookie.
+ */
+export async function deleteCustomerSessionToken(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(CUSTOMER_SESSION_COOKIE_NAME);
 }

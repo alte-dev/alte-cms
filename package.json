@@ -30,6 +30,7 @@
     "verify:search": "tsx scripts/verify-search.ts",
     "verify:notifications": "tsx scripts/verify-notifications.ts",
     "verify:order-ops": "tsx scripts/verify-order-ops.ts",
+    "verify:accounts": "tsx scripts/verify-accounts.ts",
     "measure:quality": "tsx scripts/measure-quality.ts",
     "verify:quality": "tsx scripts/verify-quality.ts",
     "verify:production-guard": "tsx scripts/verify-production-guard.ts",

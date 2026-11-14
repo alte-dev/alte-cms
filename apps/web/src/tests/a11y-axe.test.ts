@@ -85,6 +85,8 @@ describe("WCAG 2.1 AA Accessibility Live Audits (Axe-Core on Real Server)", () =
     { name: "Blog Listesi", path: "/blog" },
     { name: "Blog Yazısı", getPath: () => `/blog/${blogSlug}` },
     { name: "Puck Sayfası (Hakkımızda)", path: "/sayfa/hakkimizda" },
+    { name: "Müşteri Giriş Sayfası", path: "/hesap/giris" },
+    { name: "Müşteri Kayıt Sayfası", path: "/hesap/kayit" },
   ];
 
   for (const route of routesToAudit) {

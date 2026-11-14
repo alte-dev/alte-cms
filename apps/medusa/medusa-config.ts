@@ -33,6 +33,9 @@ module.exports = defineConfig({
       resolve: path.resolve(__dirname, "src/modules/email-settings"),
     },
     {
+      resolve: path.resolve(__dirname, "src/modules/customer-account"),
+    },
+    {
       resolve: path.resolve(__dirname, "src/modules/payment-guard"),
       dependencies: [Modules.PAYMENT, Modules.LINK],
     },

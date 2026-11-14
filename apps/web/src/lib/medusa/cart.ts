@@ -449,13 +449,39 @@ export async function completeCart(
 export async function getOrder(orderId: string): Promise<StoreOrder | null> {
   if (!orderId) return null;
   try {
+    const internalSecret = process.env.INTERNAL_API_SECRET || "";
     const data = await medusaFetch<StoreOrderResponse>(
       `/store/orders/${orderId}?fields=${ORDER_FIELDS}`,
-      { cache: "no-store" },
+      {
+        cache: "no-store",
+        headers: internalSecret ? { "x-alte-internal": internalSecret } : {},
+      },
     );
     return data.order || null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Associates a guest cart with an authenticated customer account.
+ */
+export async function assignCartToCustomer(
+  cartId: string,
+  customerToken: string,
+): Promise<boolean> {
+  if (!cartId || !customerToken) return false;
+  try {
+    await medusaFetch(`/store/carts/${cartId}/customer`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${customerToken}`,
+      },
+      cache: "no-store",
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 

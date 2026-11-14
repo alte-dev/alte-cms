@@ -47,9 +47,31 @@ describe("Web/Payload Environment Schema Validation (Fail-Closed)", () => {
       PAYLOAD_MEDIA_DIR: "media/uploads",
       TRUST_PROXY: "true",
       NEXT_OUTPUT_STANDALONE: "false",
+      INTERNAL_API_SECRET: "strong-random-internal-secret-at-least-32-chars!",
     };
 
     const result = webEnvSchema.safeParse(validConfig);
     expect(result.success).toBe(true);
+  });
+
+  it("should reject missing or weak INTERNAL_API_SECRET", () => {
+    const missingResult = webEnvSchema.safeParse({
+      NEXT_PUBLIC_SERVER_URL: "http://localhost:3100",
+      DATABASE_URI: "postgres://payload_user:dev-only-payload-password@127.0.0.1:5432/payload_db",
+      PAYLOAD_SECRET: "strong-random-payload-secret-at-least-32-chars!",
+      NEXT_PUBLIC_MEDUSA_URL: "http://api.localhost:9000",
+      MEDUSA_BACKEND_URL: "http://127.0.0.1:9000",
+    });
+    expect(missingResult.success).toBe(false);
+
+    const weakResult = webEnvSchema.safeParse({
+      NEXT_PUBLIC_SERVER_URL: "http://localhost:3100",
+      DATABASE_URI: "postgres://payload_user:dev-only-payload-password@127.0.0.1:5432/payload_db",
+      PAYLOAD_SECRET: "strong-random-payload-secret-at-least-32-chars!",
+      NEXT_PUBLIC_MEDUSA_URL: "http://api.localhost:9000",
+      MEDUSA_BACKEND_URL: "http://127.0.0.1:9000",
+      INTERNAL_API_SECRET: "secret123secret123secret123secret123",
+    });
+    expect(weakResult.success).toBe(false);
   });
 });

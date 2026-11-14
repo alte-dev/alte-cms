@@ -19,10 +19,11 @@ Bu dosya `AGENTS.md` içinden referanslanır ve ihtiyaç olunca okunur. Her faz 
 | 6.3              | Payload üretim migration'ları                                                | PR #19. `payload migrate`, üretimde `push: false`, CI'da boş DB'de migrate + şema senkron kontrolü. Merge edildi.                                                                                           |
 | 11.0             | Taşınan düzeltmeler                                                          | PR #20. `sharp` pinli, gerçek görsel boyutları (400/800/1600), `next/image`, `verify-content` Adım 2 düzeltmesi.                                                                                            |
 | 11, 11.1         | Performans, Erişilebilirlik (WCAG 2.1 AA), SEO, Kalite Güvencesi             | PR #21. Dinamik handle/slug ve gerçek Lighthouse ölçümü, Axe-core canlı sayfa taraması, canlı klavye gezintisi, XML Sitemap Index, yerel fontlar, zaman sabitli revalidateTag, Postgres trigram indeksleri. |
+| 11.5             | CI'da canlı doğrulama                                                        | PR #23. `live-verify` CI işi, `pnpm verify:all` koşucusu, sahte test/`continue-on-error`/ölçülmedi koruma kuralları, `verify-logs` artifact.                                                                |
 
 ## B. Kalan fazlar (öneri sırası)
 
-Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme sırası: 11 → 11.5 → 12 → 10 → 7 → 8 → 9 → 13 → 14.** Numaralar eski raporlarla karışmasın diye korundu, sıra bu satırdır. Canlıya çıkmadan önce 7, 8 ve 9 tamamlanmış olmalı. Faz 10 (WooCommerce geçişi) Faz 12'ye bağlıdır (hesap ve şifre taşıma).
+Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme sırası: 12 → 10 → 7 → 8 → 9 → 13 → 14.** Numaralar eski raporlarla karışmasın diye korundu, sıra bu satırdır. Canlıya çıkmadan önce 7, 8 ve 9 tamamlanmış olmalı. Faz 10 (WooCommerce geçişi) Faz 12'ye bağlıdır (hesap ve şifre taşıma).
 
 ### Faz 7 — Üretim altyapısı (eski adıyla Faz 0B). Yalnızca insan açıkça isterse başla.
 
@@ -54,28 +55,15 @@ Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme s�
 - Toplu ürün içe/dışa aktarma, varyant görselleri, düşük stok uyarı e-postası.
 - 301 yönlendirme listesi eski URL'ler için (Payload `redirects`).
 
-### Faz 11 — Performans, erişilebilirlik, SEO cilası
-
-- 11.0 tamamlandı (PR #20). Kalan: Lighthouse ölçümleri (gerçek), medya yükleme hatalarının 400 dönmesi.
-- WCAG kontrolü, klavye gezinmesi, odak yönetimi.
-- Önbellek stratejisi ve `revalidateTag` kapsamı, sitemap bölme, yapılandırılmış veri genişletme.
-
-### Faz 11.5 — CI'da canlı doğrulama (Faz 12'den önce)
-
-- Amaç: bağımsız insan/ajan doğrulamasında yakalanan hataların (404 sitemap, uydurma testler, "ölçülmedi" baseline, çalıştırılmamış regresyon) CI'da kendiliğinden kırmızı olması.
-- Ayrı CI işi: Postgres ve Redis servisleri, `medusa db:migrate`, `payload migrate`, `setup:store`, `seed:fake`, Medusa ve web ayağa kalkar, tüm `verify:*` betikleri gerçek HTTP ile çalışır. Çıktılar artifact olarak yüklenir.
-- `pnpm verify:all` tek komutla hepsini çalıştırır, ham çıktıyı `verify-logs/` altına yazar. PR raporu bu dosyalardan beslenir.
-- Koruma kuralları: testlerde `page.setContent` yasağı (ESLint), `QUALITY-BASELINE.md` içinde "ölçülmedi" varsa CI kırmızı, `continue-on-error` yasağı, verify betiklerinin hata durumunda sıfır olmayan kodla çıkması (kendi kendini sınayan negatif kontrol).
-- Required status check olarak ayarlamayı insan yapar.
-
 ### Faz 12 — Müşteri hesabı (Faz 11'den sonra, Faz 10'dan önce)
 
 - Kayıt, giriş, çıkış, e-posta ile şifre sıfırlama (süreli, tek kullanımlık bağlantı), profil, adres defteri, sipariş geçmişi. Medusa customer auth kullanılır.
 - Misafir siparişler, e-posta doğrulandıktan sonra hesaba bağlanır. Başkasının siparişi görülemez (yetki testi).
 - Güvenlik: giriş ve şifre sıfırlama hız sınırı, kullanıcı numaralandırma koruması (tek tip yanıt ve süre), httpOnly + SameSite oturum çerezi, parola kuralları.
-- KVKK: açık rıza kaydı, hesap silme/anonimleştirme, PII loga yazılmaz. Misafir checkout çalışmaya devam eder.
+- KVKK: açık rıza kaydı, hesap silme/anonimleştirme, PII loga yazılmaz. Misafir checkout çalışmaya devam eder. (Not: Hesap silme sonrası mali/sipariş kayıtlarının saklama süresi Faz 9 kapsamında avukat/muhasebeci — insan onayı — gerektirir.)
 - Şifre doğrulama, birden çok hash biçimini destekleyen **doğrulayıcı listesi** olarak tasarlanır. Şimdilik yalnızca Medusa biçimi vardır. Hesap kaydında "eski hash" için şifreli, API'de asla dönmeyen bir alan hazır tutulur. WooCommerce hash doğrulayıcıları (phpass `$P$` ve WP 6.8+ `$wp$2y$`) Faz 10'da eklenir. Giriş başarılıysa şifre Medusa biçimine yeniden hash'lenir ve eski hash silinir.
 - Kendi `verify-accounts` betiği: canlı HTTP ile kayıt, giriş, yanlış şifre, hız sınırı, yetkisiz sipariş erişimi, şifre sıfırlama, silme.
+- Tasarım ve uygulama planı: `docs/superpowers/specs/2026-11-11-customer-accounts-design.md`, `docs/superpowers/plans/2026-11-14-customer-accounts.md`.
 
 ### Faz 13 — Güvenlik sertleştirme
 

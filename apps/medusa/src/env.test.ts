@@ -13,6 +13,7 @@ describe("Medusa Environment & Cookie Security Defaults", () => {
     ADMIN_CORS: "http://localhost:9000",
     AUTH_CORS: "http://localhost:9000",
     SETTINGS_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    INTERNAL_API_SECRET: "a-very-strong-random-internal-secret-at-least-32-chars",
   };
 
   beforeEach(() => {
@@ -82,5 +83,13 @@ describe("Medusa Environment & Cookie Security Defaults", () => {
     process.env.NODE_ENV = "production";
     const parsed = envModule.validateMedusaEnv();
     expect(parsed.MEDUSA_ADMIN_BACKEND_URL).toBeUndefined();
+  });
+
+  it("throws fail-closed when INTERNAL_API_SECRET is missing or weak", () => {
+    delete process.env.INTERNAL_API_SECRET;
+    expect(() => envModule.validateMedusaEnv()).toThrow();
+
+    process.env.INTERNAL_API_SECRET = "secret-internal-key-that-is-32-chars!";
+    expect(() => envModule.validateMedusaEnv()).toThrow();
   });
 });

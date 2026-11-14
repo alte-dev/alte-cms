@@ -23,6 +23,7 @@ export const RESERVED_SLUGS = [
   "logout",
   "search",
   "arama",
+  "hesap",
   "checkout",
   "cart",
 ] as const;

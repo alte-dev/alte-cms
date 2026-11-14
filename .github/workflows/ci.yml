@@ -46,6 +46,7 @@ jobs:
       ADMIN_CORS: "http://api.localhost:9000"
       AUTH_CORS: "http://api.localhost:9000"
       SETTINGS_ENCRYPTION_KEY: "4e091da86e2b155c5697ee55ab2b5dd54bce76b9df9a9628546b4c3d9e9b827f"
+      INTERNAL_API_SECRET: "ci-dummy-internal-api-secret-at-least-32-chars-random"
       API_PUBLIC_URL: "http://api.localhost:9000"
       WEB_PUBLIC_URL: "http://localhost:3100"
 
@@ -179,6 +180,7 @@ jobs:
       ADMIN_CORS: "http://api.localhost:9000,http://127.0.0.1:9000"
       AUTH_CORS: "http://api.localhost:9000,http://127.0.0.1:9000,http://localhost:3100"
       SETTINGS_ENCRYPTION_KEY: "4e091da86e2b155c5697ee55ab2b5dd54bce76b9df9a9628546b4c3d9e9b827f"
+      INTERNAL_API_SECRET: "ci-dummy-internal-api-secret-at-least-32-chars-random"
       REVALIDATION_SECRET: "ci-dummy-revalidation-secret-token-32chars"
       API_PUBLIC_URL: "http://api.localhost:9000"
       WEB_PUBLIC_URL: "http://localhost:3100"

@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, ShoppingBag, BookOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, ShoppingBag } from "lucide-react";
 import "./(store)/globals.css";
 
 export default function GlobalNotFound() {
