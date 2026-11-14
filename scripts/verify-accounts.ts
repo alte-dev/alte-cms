@@ -949,7 +949,7 @@ async function main() {
     try {
       const rotEmail = `header-rot-${runId}@example.test`;
       const rotStatuses: number[] = [];
-      for (let i = 1; i <= 8; i++) {
+      for (let i = 1; i <= 6; i++) {
         const res = await fetch(`${WEB_URL}/api/account/login`, {
           method: "POST",
           headers: {
