@@ -65,9 +65,22 @@ function assertNoRealSmtpEnv(): void {
 }
 
 function decodeQuotedPrintable(input: string): string {
-  return input
-    .replace(/=\r?\n/g, "")
-    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  const unfolded = input.replace(/=\r?\n/g, "");
+  const bytes: number[] = [];
+  for (let i = 0; i < unfolded.length; i++) {
+    if (
+      unfolded[i] === "=" &&
+      i + 2 < unfolded.length &&
+      /^[0-9A-Fa-f]{2}$/.test(unfolded.slice(i + 1, i + 3))
+    ) {
+      bytes.push(parseInt(unfolded.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      const buf = Buffer.from(unfolded[i], "utf8");
+      for (const b of buf) bytes.push(b);
+    }
+  }
+  return Buffer.from(bytes).toString("utf8");
 }
 
 function parseRawSmtpMessage(raw: string): {
