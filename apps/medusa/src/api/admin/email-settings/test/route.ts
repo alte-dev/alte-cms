@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { createTransporter, getOrCreateEmailSettings } from "../../../../services/email-service";
 import { isValidEmail, sanitizeHeader } from "../../../../utils/email-sanitizer";
+import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
 
 // In-memory rate limiter for test email: max 3 per 5 minutes per admin
 const testEmailRateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -21,6 +22,7 @@ function checkTestEmailRateLimit(key: string): boolean {
 }
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   const adminEmail = (req as any).user?.email || "admin@example.test";
   const rateLimitKey = String((req as any).user?.id || req.ip || adminEmail);
 

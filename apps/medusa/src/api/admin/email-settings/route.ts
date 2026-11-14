@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { getMaskedEmailSettings, updateEmailSettings } from "../../../services/email-service";
+import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
 
 const updateEmailSettingsSchema = z.object({
   enabled: z.boolean().optional(),
@@ -30,6 +31,7 @@ const updateEmailSettingsSchema = z.object({
 });
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   try {
     const pgConnection =
       req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
@@ -45,6 +47,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 };
 
 export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   const parseResult = updateEmailSettingsSchema.safeParse(req.body);
   if (!parseResult.success) {
     const errorMsg = parseResult.error.issues.map((i) => i.message).join(", ");

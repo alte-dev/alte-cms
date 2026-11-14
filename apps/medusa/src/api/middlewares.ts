@@ -23,6 +23,11 @@ export default defineMiddlewares({
       matcher: "/store/account",
       middlewares: [requireInternalSecret, customerSessionGuard],
     },
+    // Protect internal service endpoints (e.g. contact form emails) with internal secret
+    {
+      matcher: "/store/internal",
+      middlewares: [requireInternalSecret],
+    },
     // Prevent bypassing registration via direct POST /store/customers
     {
       method: ["POST"],

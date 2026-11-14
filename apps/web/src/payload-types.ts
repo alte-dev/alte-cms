@@ -73,6 +73,7 @@ export interface Config {
     posts: Post;
     'post-categories': PostCategory;
     redirects: Redirect;
+    'contact-messages': ContactMessage;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +87,7 @@ export interface Config {
     posts: PostsSelect<false> | PostsSelect<true>;
     'post-categories': PostCategoriesSelect<false> | PostCategoriesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
+    'contact-messages': ContactMessagesSelect<false> | ContactMessagesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -353,6 +355,29 @@ export interface Redirect {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-messages".
+ */
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject: string;
+  message: string;
+  kvkkAccepted: boolean;
+  status: 'new' | 'in_progress' | 'replied' | 'archived';
+  /**
+   * Yanıt metnini yazıp kaydettiğinizde müşteriye e-posta gönderilir ve durum otomatik 'Yanıtlandı' olur.
+   */
+  replyMessage?: string | null;
+  repliedAt?: string | null;
+  repliedBy?: (number | null) | User;
+  internalNote?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -398,6 +423,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'redirects';
         value: number | Redirect;
+      } | null)
+    | ({
+        relationTo: 'contact-messages';
+        value: number | ContactMessage;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -591,6 +620,25 @@ export interface RedirectsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-messages_select".
+ */
+export interface ContactMessagesSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  phone?: T;
+  subject?: T;
+  message?: T;
+  kvkkAccepted?: T;
+  status?: T;
+  replyMessage?: T;
+  repliedAt?: T;
+  repliedBy?: T;
+  internalNote?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -651,6 +699,26 @@ export interface SiteSetting {
     facebook?: string | null;
     twitter?: string | null;
     youtube?: string | null;
+  };
+  contactForm?: {
+    enabled?: boolean | null;
+    /**
+     * Yeni iletişim formu mesajlarının bildirileceği e-posta adresi. Boş bırakılırsa yukarıdaki İletişim E-posta Adresi kullanılır.
+     */
+    recipientEmail?: string | null;
+    /**
+     * Ziyaretçilerin formda seçebileceği konu başlıkları. Boş bırakılırsa serbest konu girişi gösterilir.
+     */
+    subjectOptions?:
+      | {
+          label: string;
+          id?: string | null;
+        }[]
+      | null;
+    autoReplyEnabled?: boolean | null;
+    autoReplySubject?: string | null;
+    autoReplyIntro?: string | null;
+    successMessage?: string | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -717,6 +785,22 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         facebook?: T;
         twitter?: T;
         youtube?: T;
+      };
+  contactForm?:
+    | T
+    | {
+        enabled?: T;
+        recipientEmail?: T;
+        subjectOptions?:
+          | T
+          | {
+              label?: T;
+              id?: T;
+            };
+        autoReplyEnabled?: T;
+        autoReplySubject?: T;
+        autoReplyIntro?: T;
+        successMessage?: T;
       };
   updatedAt?: T;
   createdAt?: T;

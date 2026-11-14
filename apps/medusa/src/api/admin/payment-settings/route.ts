@@ -1,6 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { z } from "zod";
 import PaymentSettingsService from "../../../modules/payment-settings/service";
+import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
 
 const updatePaymentSettingsSchema = z.object({
   paytr_enabled: z.boolean().optional(),
@@ -32,6 +33,7 @@ const updatePaymentSettingsSchema = z.object({
 });
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   try {
     const service = req.scope.resolve<PaymentSettingsService>("paymentSettingsModuleService");
     const maskedSettings = await service.getMaskedSettings();
@@ -44,6 +46,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 };
 
 export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   const parseResult = updatePaymentSettingsSchema.safeParse(req.body);
   if (!parseResult.success) {
     const errorMsg = parseResult.error.issues.map((i) => i.message).join(", ");

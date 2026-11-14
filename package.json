@@ -32,6 +32,7 @@
     "verify:order-ops": "tsx scripts/verify-order-ops.ts",
     "verify:accounts": "tsx scripts/verify-accounts.ts",
     "verify:journey": "tsx scripts/verify-journey.ts",
+    "verify:contact": "tsx scripts/verify-contact.ts",
     "measure:quality": "tsx scripts/measure-quality.ts",
     "verify:quality": "tsx scripts/verify-quality.ts",
     "verify:production-guard": "tsx scripts/verify-production-guard.ts",
