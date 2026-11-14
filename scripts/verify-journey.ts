@@ -414,16 +414,40 @@ async function main() {
         verEmail && verEmail.html.indexOf("<script>alert(1)</script>") === -1,
       );
 
+      // Verify DB state rows were created on registration even when guest customer existed for same email
+      const regCustRes = await pool.query(
+        "SELECT id FROM customer WHERE LOWER(email) = LOWER($1) AND has_account = true AND deleted_at IS NULL LIMIT 1",
+        [emailA],
+      );
+      const regCustId = regCustRes.rows[0]?.id;
+      const stateBeforeVerify = regCustId
+        ? await pool.query(
+            "SELECT email_verified_at FROM customer_account_state WHERE customer_id = $1",
+            [regCustId],
+          )
+        : { rows: [] };
+      const consentsRes = regCustId
+        ? await pool.query("SELECT consent_type FROM customer_consent WHERE customer_id = $1", [
+            regCustId,
+          ])
+        : { rows: [] };
+      const dbAccountRowsOk =
+        Boolean(regCustId) &&
+        stateBeforeVerify.rows.length === 1 &&
+        stateBeforeVerify.rows[0].email_verified_at === null &&
+        consentsRes.rows.length === 2;
+
       recordStep(
         1,
-        "Tarayıcıda kayıt + XSS kaçışlı doğrulama e-postası",
+        "Tarayıcıda kayıt + XSS kaçışlı doğrulama e-postası + DB durum/onay satırları",
         uniformOk &&
           exactCount &&
           rightRecipient &&
           usesConfiguredUrl &&
           noPasswordInMail &&
-          xssEscaped,
-        `uniformOk=${uniformOk}, exactCount=${exactCount}, usesConfiguredUrl=${usesConfiguredUrl}, noPassword=${noPasswordInMail}, xssEscaped=${xssEscaped}`,
+          xssEscaped &&
+          dbAccountRowsOk,
+        `uniformOk=${uniformOk}, exactCount=${exactCount}, usesConfiguredUrl=${usesConfiguredUrl}, noPassword=${noPasswordInMail}, xssEscaped=${xssEscaped}, dbAccountRowsOk=${dbAccountRowsOk}`,
       );
     } catch (err) {
       recordStep(1, "Kayıt ve doğrulama e-postası", false, (err as Error).message);
@@ -461,6 +485,7 @@ async function main() {
     // -------------------------------------------------------------------------
     try {
       await pageA.goto(verifyUrl, { waitUntil: "networkidle", timeout: 20000 });
+      await pageA.getByRole("button", { name: "E-posta Adresimi Doğrula" }).click();
       await pageA.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
       const verifyStatusText = await pageA.locator("[role='status']").innerText();
       const verifiedInUi = verifyStatusText.indexOf("doğrulandı") !== -1;
@@ -478,6 +503,13 @@ async function main() {
         [emailA],
       );
       const custAId = custRes.rows[0]?.id;
+      const stateAfterVerify = custAId
+        ? await pool.query(
+            "SELECT email_verified_at FROM customer_account_state WHERE customer_id = $1",
+            [custAId],
+          )
+        : { rows: [] };
+      const dbVerifiedOk = Boolean(stateAfterVerify.rows[0]?.email_verified_at);
       const expiredRaw = crypto.randomBytes(24).toString("hex");
       const expiredHash = crypto.createHash("sha256").update(expiredRaw).digest("hex");
       await pool.query(
@@ -493,9 +525,9 @@ async function main() {
 
       recordStep(
         3,
-        "Doğrulama bağlantısı (UI), tekrar kullanım (400) ve süresi dolmuş token (400)",
-        verifiedInUi && reuseRes.status === 400 && expiredRes.status === 400,
-        `verifiedInUi=${verifiedInUi}, reuse=${reuseRes.status}, expired=${expiredRes.status}`,
+        "Doğrulama bağlantısı (UI), DB doğrulama zamanı, tekrar kullanım (400) ve süresi dolmuş token (400)",
+        verifiedInUi && dbVerifiedOk && reuseRes.status === 400 && expiredRes.status === 400,
+        `verifiedInUi=${verifiedInUi}, dbVerifiedOk=${dbVerifiedOk}, reuse=${reuseRes.status}, expired=${expiredRes.status}`,
       );
     } catch (err) {
       recordStep(3, "E-posta doğrulama ve token kuralları", false, (err as Error).message);
@@ -705,6 +737,8 @@ async function main() {
         const tokB = new URL(verifyUrlB).searchParams.get("token");
         if (tokB) extractedTokens.push(tokB);
         await pageB.goto(verifyUrlB, { waitUntil: "networkidle", timeout: 15000 });
+        await pageB.getByRole("button", { name: "E-posta Adresimi Doğrula" }).click();
+        await pageB.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
       }
 
       await pageB.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
