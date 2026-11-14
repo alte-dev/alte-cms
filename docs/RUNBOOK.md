@@ -148,7 +148,8 @@ pnpm verify:all
 8. `verify:order-ops` (`scripts/verify-order-ops.ts`)
 9. `verify:quality` (`scripts/verify-quality.ts`)
 10. `verify:accounts` (`scripts/verify-accounts.ts`) — Müşteri hesabı kayıt, parola politikası, e-posta doğrulama, misafir sipariş birleştirme, giriş hız sınırı/numaralandırma koruması, çapraz müşteri IDOR engeli, şifre sıfırlama, CSRF/Origin koruması, çıkış oturum iptali, misafir sepet bağlama, hesap silme/anonimleştirme, legacy verifier kancası ve log PII taramasını canlı HTTP ile doğrular.
-11. `verify-production-guard` (`scripts/verify-production-guard.ts`) — Rastgele boş bir port üzerinde `NODE_ENV=production` ile Medusa açılış korumalarını (Senaryo a, b, c, d) sınar ve sonunda geliştirici ödeme sağlayıcılarını geri yükler.
+11. `verify:journey` (`scripts/verify-journey.ts`) — Müşterinin kayıt, doğrulama, misafir sipariş birleştirme, giriş, adres ekleme, kapıda ödeme siparişi, idempotent e-posta, kargo takibi, COD tahsilatı, şifre sıfırlama ve hesap silme yolculuğunu gerçek tarayıcı + yerel `smtp-server` ile uçtan uca doğrular.
+12. `verify-production-guard` (`scripts/verify-production-guard.ts`) — Rastgele boş bir port üzerinde `NODE_ENV=production` ile Medusa açılış korumalarını (Senaryo a, b, c, d) sınar ve sonunda geliştirici ödeme sağlayıcılarını geri yükler.
 
 - Her betiğin ham çıktısı `verify-logs/<betik>.log` dosyasına, özet tablosu ise `verify-logs/SUMMARY.md` dosyasına yazılır (`verify-logs/` dizini `.gitignore` içindedir).
 - Bir betik başarısız olsa bile kalan betikler çalışmaya devam eder; en sonda herhangi biri sıfır olmayan kod döndürdüyse `pnpm verify:all` çıkış kodu `1` ile sonlanır.
@@ -172,3 +173,28 @@ pnpm verify:all
 - Üretimde tek bir güvenilir ters vekil (ör. OpenLiteSpeed / CyberPanel / Nginx) arkasında gerçek istemci IP'si gerekiyorsa:
   1. Ters vekilin istemciden gelen `X-Forwarded-For` ve `X-Real-IP` başlıklarını **üzerine yazdığından** (veya güvenilir zincirin sonuna gerçek istemci IP'sini eklediğinden) emin olun. Vekil başlıkları üzerine yazmıyorsa `TRUST_PROXY` kesinlikle `false` bırakılmalıdır.
   2. `TRUST_PROXY=true` ve `TRUSTED_PROXY_HOPS=1` (vekil katmanı sayısı kadar) tanımlayın. `extractClientIp` yalnızca `X-Forwarded-For` listesinin **sonundan** `TRUSTED_PROXY_HOPS`. elemanı okur ve IPv4/IPv6 biçimini doğrular.
+
+---
+
+## 7. Gerçek Posta Kutusuyla Elle Deneme (Yönetici Kontrolü)
+
+Otomatik testler (`verify:notifications`, `verify:accounts`, `verify:journey`) yalnızca yerel `127.0.0.1` sahte SMTP alıcısı ve `example.test` adresleriyle çalışır. Gerçek SMTP sunucusu ve gerçek posta kutusuyla elle doğrulama şu adımlarla yapılır:
+
+1. **SMTP Ayarını Girme:**
+
+   - Medusa Admin panelinden **Ayarlar → E-posta Bildirimleri** (veya `PUT /admin/email-settings`) ekranına gidin.
+   - `Host`, `Port` (ör. `587` STARTTLS veya `465` TLS), `Güvenli (TLS)`, `Kullanıcı Adı`, `Parola` (veritabanında AES-256-GCM şifreli saklanır), `Gönderen Adı` ve `Gönderen E-posta` (ör. `noreply@example.test`) alanlarını doldurup kaydedin.
+   - **"Test E-postası Gönder"** düğmesiyle (`POST /admin/email-settings/test`) kendi test gelen kutunuza örnek ileti düştüğünü doğrulayın.
+
+2. **Adım Adım Beklenen E-postalar:**
+
+   - **Kayıt (`/hesap/kayit`):** Doğrulama e-postası gelmeli. Bağlantı yapılandırılmış site adresini (`WEB_PUBLIC_URL`, ör. `https://magaza.example.test/hesap/dogrula?token=...`) göstermeli.
+   - **Sipariş Tamamlama (`/odeme`):** Sipariş onay e-postası gelmeli. Sipariş numarası, ürün kalemleri, KDV dahil toplam ve Kapıda Ödeme seçildiyse COD hizmet bedeli satırı doğru görünmeli.
+   - **Kargo Girişi (Admin → Sipariş İşlemleri):** Kargo takip e-postası gelmeli. Takip bağlantısı `https://` ile başlamalı ve kargo firması sayfasına yönlendirmeli.
+   - **Şifre Sıfırlama (`/hesap/sifre-sifirla`):** Şifre sıfırlama e-postası gelmeli. Bağlantı tek kullanımlık ve süreli olmalı (`/hesap/sifre-sifirla?token=...`).
+
+3. **Kontrol Edilecek Noktalar:**
+   - **Konu ve Gönderen Adı:** CRLF/bozuk karakter içermemeli, mağaza adınız doğru görünmeli.
+   - **Türkçe Karakterler:** `ğ, ü, ş, ı, İ, ö, ç` harfleri konu ve HTML gövdesinde bozulmadan (`UTF-8`) okunmalı.
+   - **Bağlantılar:** `localhost` veya yanlış alan adı yerine canlı `WEB_PUBLIC_URL` kullanılmalı.
+   - **Spam Klasörü ve Teslimat:** İletinin spam'e düşüp düşmediğini (SPF/DKIM/DMARC uyumu) kontrol edin; sorun varsa `email_log` tablosundan maskeli kayıt durumunu (`sent` / `failed`) inceleyin.
