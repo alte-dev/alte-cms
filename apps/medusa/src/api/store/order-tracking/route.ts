@@ -1,60 +1,48 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
-import { isValidEmail } from "../../../utils/email-sanitizer";
+import { BruteForceGuard, FixedWindowRateLimiter } from "../../../utils/rate-limiter";
 import { timingSafeEmailMatch } from "../../../utils/shipping-carriers";
 
 // In-memory rate limiter structures:
 // 1. IP rate limit: max 10 requests per minute
-const ipTrackingRateMap = new Map<string, { count: number; resetAt: number }>();
+const ipTrackingLimiter = new FixedWindowRateLimiter({
+  maxRequests: 10,
+  windowMs: 60_000,
+});
 // 2. Brute-force block: 5 failed attempts per IP + order -> 15 min block
-const bruteForceBlockMap = new Map<string, { failedCount: number; blockedUntil: number }>();
+const trackingBruteForceGuard = new BruteForceGuard({
+  maxFailures: 5,
+  blockDurationMs: 15 * 60_000,
+});
 
 function checkTrackingRateLimit(
   ip: string,
   orderNumber: string,
 ): { allowed: boolean; reason?: string } {
-  const now = Date.now();
-
-  // Check brute force block
   const blockKey = `${ip}:${orderNumber.trim().toLowerCase()}`;
-  const blockEntry = bruteForceBlockMap.get(blockKey);
-  if (blockEntry && now < blockEntry.blockedUntil) {
-    const remainingMin = Math.ceil((blockEntry.blockedUntil - now) / 60000);
+  const blockDecision = trackingBruteForceGuard.check(blockKey);
+  if (!blockDecision.allowed) {
     return {
       allowed: false,
-      reason: `Çok fazla hatalı deneme yapıldı. Güvenlik nedeniyle ${remainingMin} dakika sonra tekrar deneyiniz.`,
+      reason: `Çok fazla hatalı deneme yapıldı. Güvenlik nedeniyle ${blockDecision.remainingMinutes} dakika sonra tekrar deneyiniz.`,
     };
   }
 
-  // Check general IP rate limit
-  const ipEntry = ipTrackingRateMap.get(ip);
-  if (!ipEntry || now > ipEntry.resetAt) {
-    ipTrackingRateMap.set(ip, { count: 1, resetAt: now + 60000 });
-    return { allowed: true };
-  }
-
-  if (ipEntry.count >= 10) {
+  const ipDecision = ipTrackingLimiter.consume(ip);
+  if (!ipDecision.allowed) {
     return {
       allowed: false,
       reason: "Hız sınırı aşıldı. Lütfen dakikada en fazla 10 sorgulama yapınız.",
     };
   }
 
-  ipEntry.count++;
   return { allowed: true };
 }
 
 function recordFailedAttempt(ip: string, orderNumber: string) {
-  const now = Date.now();
   const blockKey = `${ip}:${orderNumber.trim().toLowerCase()}`;
-  const entry = bruteForceBlockMap.get(blockKey) || { failedCount: 0, blockedUntil: 0 };
-  entry.failedCount++;
-
-  if (entry.failedCount >= 5) {
-    entry.blockedUntil = now + 15 * 60 * 1000; // 15 min lock
-  }
-  bruteForceBlockMap.set(blockKey, entry);
+  trackingBruteForceGuard.recordFailure(blockKey);
 }
 
 const trackingRequestSchema = z.object({
