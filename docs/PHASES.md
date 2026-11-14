@@ -60,9 +60,10 @@ Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme s�
 - Kayıt, giriş, çıkış, e-posta ile şifre sıfırlama (süreli, tek kullanımlık bağlantı), profil, adres defteri, sipariş geçmişi. Medusa customer auth kullanılır.
 - Misafir siparişler, e-posta doğrulandıktan sonra hesaba bağlanır. Başkasının siparişi görülemez (yetki testi).
 - Güvenlik: giriş ve şifre sıfırlama hız sınırı, kullanıcı numaralandırma koruması (tek tip yanıt ve süre), httpOnly + SameSite oturum çerezi, parola kuralları.
-- KVKK: açık rıza kaydı, hesap silme/anonimleştirme, PII loga yazılmaz. Misafir checkout çalışmaya devam eder.
+- KVKK: açık rıza kaydı, hesap silme/anonimleştirme, PII loga yazılmaz. Misafir checkout çalışmaya devam eder. (Not: Hesap silme sonrası mali/sipariş kayıtlarının saklama süresi Faz 9 kapsamında avukat/muhasebeci — insan onayı — gerektirir.)
 - Şifre doğrulama, birden çok hash biçimini destekleyen **doğrulayıcı listesi** olarak tasarlanır. Şimdilik yalnızca Medusa biçimi vardır. Hesap kaydında "eski hash" için şifreli, API'de asla dönmeyen bir alan hazır tutulur. WooCommerce hash doğrulayıcıları (phpass `$P$` ve WP 6.8+ `$wp$2y$`) Faz 10'da eklenir. Giriş başarılıysa şifre Medusa biçimine yeniden hash'lenir ve eski hash silinir.
 - Kendi `verify-accounts` betiği: canlı HTTP ile kayıt, giriş, yanlış şifre, hız sınırı, yetkisiz sipariş erişimi, şifre sıfırlama, silme.
+- Tasarım ve uygulama planı: `docs/superpowers/specs/2026-11-11-customer-accounts-design.md`, `docs/superpowers/plans/2026-11-14-customer-accounts.md`.
 
 ### Faz 13 — Güvenlik sertleştirme
 

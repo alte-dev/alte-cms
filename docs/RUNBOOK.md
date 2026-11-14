@@ -147,7 +147,8 @@ pnpm verify:all
 7. `verify:notifications` (`scripts/verify-notifications.ts`)
 8. `verify:order-ops` (`scripts/verify-order-ops.ts`)
 9. `verify:quality` (`scripts/verify-quality.ts`)
-10. `verify-production-guard` (`scripts/verify-production-guard.ts`) — Rastgele boş bir port üzerinde `NODE_ENV=production` ile Medusa açılış korumalarını (Senaryo a, b, c, d) sınar ve sonunda geliştirici ödeme sağlayıcılarını geri yükler.
+10. `verify:accounts` (`scripts/verify-accounts.ts`) — Müşteri hesabı kayıt, parola politikası, e-posta doğrulama, misafir sipariş birleştirme, giriş hız sınırı/numaralandırma koruması, çapraz müşteri IDOR engeli, şifre sıfırlama, CSRF/Origin koruması, çıkış oturum iptali, misafir sepet bağlama, hesap silme/anonimleştirme, legacy verifier kancası ve log PII taramasını canlı HTTP ile doğrular.
+11. `verify-production-guard` (`scripts/verify-production-guard.ts`) — Rastgele boş bir port üzerinde `NODE_ENV=production` ile Medusa açılış korumalarını (Senaryo a, b, c, d) sınar ve sonunda geliştirici ödeme sağlayıcılarını geri yükler.
 
 - Her betiğin ham çıktısı `verify-logs/<betik>.log` dosyasına, özet tablosu ise `verify-logs/SUMMARY.md` dosyasına yazılır (`verify-logs/` dizini `.gitignore` içindedir).
 - Bir betik başarısız olsa bile kalan betikler çalışmaya devam eder; en sonda herhangi biri sıfır olmayan kod döndürdüyse `pnpm verify:all` çıkış kodu `1` ile sonlanır.

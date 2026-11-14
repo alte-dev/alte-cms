@@ -36,3 +36,10 @@ _\* `admin` rolü `super-admin` kullanıcı oluşturamaz, güncelleyemez veya si
    `Users` koleksiyonunun `email` alanında field-level read access tanımlıdır. Ziyaretçi bir blog yazısını okurken veya API'den çekerken `author.name` döner; `author.email` ise `undefined` olarak filtrelenir.
 3. **SVG Engellemesi (`ALLOWED_MIME_TYPES`)**:
    SVG formatı içerebileceği zararlı JavaScript ve XML entity saldırıları (XXE/XSS) nedeniyle dosya uzantısı ve MIME tipi bazında tamamen yasaklanmıştır.
+
+## Müşteri Hesapları ve İzolasyon (Faz 12)
+
+- **Müşteri (`customer`):** Yalnızca kendi `customer_account_state`, `customer_session`, `customer_consent`, adres defteri ve sipariş kayıtlarına erişebilir. Başka müşterinin siparişine veya adresine erişim fail-closed olarak HTTP 403/404 ile reddedilir (`orderOwnershipGuard`, `/api/account/orders/[id]` üzerinde `x-alte-internal` başlığı bilerek gönderilmez).
+- **Misafir (Anonim):** `/hesap/*` sayfaları anonim kullanıcıyı `/hesap/giris`'e yönlendirir. Misafir checkout çalışmaya devam eder; `/store/account/*` iç uç noktaları ve `/auth/customer/emailpass/*` doğrudan Medusa çağrıları `internalRouteGuard` / `authRouteGuard` tarafından HTTP 404 ile kapatılır.
+- **Yönetici / Editör:** Payload CMS rolleri (`admin`, `editor`) Medusa müşteri parolalarına veya `customer_legacy_credential` şifreli tablosuna erişemez.
+- **Rezerve Sluglar:** `hesap` slug'ı Payload `Pages` koleksiyonunda rezerve edilmiştir; CMS sayfası olarak oluşturulamaz.

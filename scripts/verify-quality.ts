@@ -23,6 +23,7 @@ const RESERVED_SLUGS = [
   "onizleme",
   "ara",
   "siparis-takip",
+  "hesap",
 ];
 
 const WEB_URL = process.env.WEB_URL || process.env.WEB_PUBLIC_URL || "http://127.0.0.1:3100";
