@@ -163,3 +163,12 @@ pnpm verify:all
 - **`inFlightCartCheckouts` (`Set<string>`):** Devam eden checkout isteği süresince sepeti kilitler ve `try ... finally` bloğu içinde her durumda temizlenir.
 - **`completedCartOrders` (`Map<string, { orderId, completedAt }>`):** Tamamlanan sepet kayıtlarını **1 saat TTL** (`3_600_000 ms`) ve **en fazla 5000 kayıt** sınırıyla bellekte tutar (kapasite dolduğunda en eski kayıt FIFO sırasıyla silinir, bellek sızıntısı önlenir).
 - **Mimari Not (Çoklu Süreç / Multi-Instance Uyarısı):** Bu kilit **süreç içi (in-process)** bellek üzerinde çalışır. Tek bir `next start` sürecinde eşzamanlı yarış durumlarını kesinkes engeller; ancak birden fazla Next.js sunucu örneği (cluster / yatay ölçekleme) çalıştırılacaksa, süreç içi kilit örnekler arasında paylaşılmaz (Faz 13 kapsamında hız sınırları ve kilitlerin Redis'e taşınması planlanmıştır). Üretimde Medusa veritabanı seviyesindeki sepet tamamlama kontrolü ikincil koruma katmanı olarak görev yapar.
+
+---
+
+## 6. Ters Vekil (Reverse Proxy) ve `TRUST_PROXY` Ayarı
+
+- Varsayılan olarak `TRUST_PROXY=false` (kapalı) gelir ve hiçbir `X-Real-IP` / `X-Forwarded-For` / `Forwarded` başlığına güvenilmez; tüm istekler `"unknown"` IP kovasına düşer ve e-posta/hesap bazlı hız sınırları (`loginIpEmailGuard`, `loginEmailGuard`, `registerEmailLimiter`, `resetEmailLimiter`, `resendVerificationCustomerLimiter`) başlık rotasyonuyla atlatılamaz.
+- Üretimde tek bir güvenilir ters vekil (ör. OpenLiteSpeed / CyberPanel / Nginx) arkasında gerçek istemci IP'si gerekiyorsa:
+  1. Ters vekilin istemciden gelen `X-Forwarded-For` ve `X-Real-IP` başlıklarını **üzerine yazdığından** (veya güvenilir zincirin sonuna gerçek istemci IP'sini eklediğinden) emin olun. Vekil başlıkları üzerine yazmıyorsa `TRUST_PROXY` kesinlikle `false` bırakılmalıdır.
+  2. `TRUST_PROXY=true` ve `TRUSTED_PROXY_HOPS=1` (vekil katmanı sayısı kadar) tanımlayın. `extractClientIp` yalnızca `X-Forwarded-For` listesinin **sonundan** `TRUSTED_PROXY_HOPS`. elemanı okur ve IPv4/IPv6 biçimini doğrular.

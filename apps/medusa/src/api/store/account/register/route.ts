@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   EMAIL_VERIFICATION_TTL_MS,
   generateOpaqueToken,
+  hashEmailLookup,
   normalizeEmail,
 } from "../../../../modules/customer-account/helpers";
 import { waitTimingFloor } from "../../../../utils/timing-floor";
@@ -13,6 +14,7 @@ import {
   findRegisteredCustomerByEmail,
   getPgConnection,
   getTrustedClientIp,
+  registerEmailLimiter,
   registerIpLimiter,
 } from "../_shared";
 
@@ -55,6 +57,13 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const data = parsed.data;
   const email = normalizeEmail(data.email);
+
+  const emailDecision = registerEmailLimiter.consume(hashEmailLookup(email));
+  if (!emailDecision.allowed) {
+    return res.status(429).json({
+      error: "Çok fazla kayıt denemesi yapıldı. Lütfen daha sonra tekrar deneyiniz.",
+    });
+  }
 
   const pwCheck = validateCustomerPassword(data.password, email);
   if (!pwCheck.valid) {

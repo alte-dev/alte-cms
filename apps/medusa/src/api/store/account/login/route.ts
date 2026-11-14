@@ -15,6 +15,7 @@ import {
   getTrustedClientIp,
   hmacRateKey,
   issueCustomerSession,
+  loginEmailGuard,
   loginIpEmailGuard,
   loginIpLimiter,
 } from "../_shared";
@@ -46,11 +47,17 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const email = normalizeEmail(parsed.data.email);
   const password = parsed.data.password;
   const rateKey = hmacRateKey(clientIp, email);
+  const emailRateKey = hashEmailLookup(email);
 
   const bruteCheck = loginIpEmailGuard.check(rateKey);
-  if (!bruteCheck.allowed) {
+  const emailBruteCheck = loginEmailGuard.check(emailRateKey);
+  if (!bruteCheck.allowed || !emailBruteCheck.allowed) {
+    const remainingMinutes = Math.max(
+      bruteCheck.remainingMinutes,
+      emailBruteCheck.remainingMinutes,
+    );
     return res.status(429).json({
-      error: `Çok fazla hatalı giriş denemesi yapıldı. Lütfen ${bruteCheck.remainingMinutes} dakika sonra tekrar deneyiniz.`,
+      error: `Çok fazla hatalı giriş denemesi yapıldı. Lütfen ${remainingMinutes} dakika sonra tekrar deneyiniz.`,
     });
   }
 
@@ -161,6 +168,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   if (!authenticatedCustomerId || !authenticatedAuthIdentityId) {
     loginIpEmailGuard.recordFailure(rateKey);
+    loginEmailGuard.recordFailure(emailRateKey);
     await waitTimingFloor(startMs);
     return res.status(401).json(UNIFORM_LOGIN_ERROR);
   }

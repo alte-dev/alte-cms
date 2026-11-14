@@ -942,6 +942,104 @@ async function main() {
     } catch (err) {
       recordStep(14, "Log sızıntısı kontrolü", false, (err as Error).message);
     }
+
+    // -------------------------------------------------------------------------
+    // 15. Sahte X-Real-IP / X-Forwarded-For rotasyonu + IP-bağımsız e-posta kilidi
+    // -------------------------------------------------------------------------
+    try {
+      const rotEmail = `header-rot-${runId}@example.test`;
+      const rotStatuses: number[] = [];
+      for (let i = 1; i <= 8; i++) {
+        const res = await fetch(`${WEB_URL}/api/account/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Origin: WEB_URL,
+            "X-Real-IP": `10.1.1.${i}`,
+            "X-Forwarded-For": `10.2.2.${i}`,
+          },
+          body: JSON.stringify({ email: rotEmail, password: "WrongPassword999!" }),
+        });
+        rotStatuses.push(res.status);
+      }
+
+      const firstFive401 = rotStatuses.slice(0, 5).every((s) => s === 401);
+      const hit429AfterRotation = rotStatuses.slice(5).some((s) => s === 429);
+
+      // Başka e-posta etkilenmemeli
+      const otherWebRes = await fetch(`${WEB_URL}/api/account/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: WEB_URL,
+          "X-Real-IP": "10.1.1.99",
+        },
+        body: JSON.stringify({
+          email: `other-rot-${runId}@example.test`,
+          password: "WrongPassword999!",
+        }),
+      });
+
+      // IP-bağımsız e-posta başı limit (farklı x-alte-client-ip ile 22 deneme -> 21. denemede 429)
+      const internalSecret = process.env.INTERNAL_API_SECRET || "";
+      const publishableKey = process.env.MEDUSA_PUBLISHABLE_KEY || "";
+      const perEmailTarget = `per-email-${runId}@example.test`;
+      const perEmailStatuses: number[] = [];
+      for (let i = 1; i <= 22; i++) {
+        const medusaHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+          "x-alte-internal": internalSecret,
+          "x-alte-client-ip": `198.51.100.${i}`,
+        };
+        if (publishableKey) {
+          medusaHeaders["x-publishable-api-key"] = publishableKey;
+        }
+        const res = await fetch(`${MEDUSA_URL}/store/account/login`, {
+          method: "POST",
+          headers: medusaHeaders,
+          body: JSON.stringify({ email: perEmailTarget, password: "WrongPassword999!" }),
+        });
+        perEmailStatuses.push(res.status);
+      }
+
+      const firstTwenty401 = perEmailStatuses.slice(0, 20).every((s) => s === 401);
+      const hit429PerEmail = perEmailStatuses[20] === 429 && perEmailStatuses[21] === 429;
+
+      // Farklı e-posta yeni IP'den hala 401 almalı (kilitlenmemiş)
+      const otherMedusaHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "x-alte-internal": internalSecret,
+        "x-alte-client-ip": "198.51.100.200",
+      };
+      if (publishableKey) {
+        otherMedusaHeaders["x-publishable-api-key"] = publishableKey;
+      }
+      const otherMedusaRes = await fetch(`${MEDUSA_URL}/store/account/login`, {
+        method: "POST",
+        headers: otherMedusaHeaders,
+        body: JSON.stringify({
+          email: `per-email-other-${runId}@example.test`,
+          password: "WrongPassword999!",
+        }),
+      });
+
+      const pass =
+        firstFive401 &&
+        hit429AfterRotation &&
+        otherWebRes.status === 401 &&
+        firstTwenty401 &&
+        hit429PerEmail &&
+        otherMedusaRes.status === 401;
+
+      recordStep(
+        15,
+        "Sahte başlık rotasyonu ve IP-bağımsız e-posta kaba kuvvet koruması",
+        pass,
+        `rotStatuses=${rotStatuses.join(",")}, otherWeb=${otherWebRes.status}, perEmail=${perEmailStatuses.slice(18).join(",")}, otherMedusa=${otherMedusaRes.status}`,
+      );
+    } catch (err) {
+      recordStep(15, "Başlık rotasyonu ve e-posta koruması", false, (err as Error).message);
+    }
   } finally {
     if (adminToken && savedSettingExists && previousEmailSetting) {
       await fetch(`${MEDUSA_URL}/admin/email-settings`, {

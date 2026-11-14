@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { NextResponse } from "next/server";
 
 export function getAllowedServerOrigins(): string[] {
@@ -50,16 +51,39 @@ export function requireAccountOrigin(req: Request): NextResponse | null {
   return null;
 }
 
+function parseTrustedProxyHops(): number {
+  const raw = process.env.TRUSTED_PROXY_HOPS;
+  if (!raw) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 10) {
+    return 1;
+  }
+  return parsed;
+}
+
 export function extractClientIp(req: Request): string {
   const trustProxy = process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1";
-  if (trustProxy) {
-    const xff = req.headers.get("x-forwarded-for");
-    if (xff) {
-      const first = xff.split(",")[0]?.trim();
-      if (first) return first;
-    }
+  if (!trustProxy) {
+    return "unknown";
   }
-  const realIp = req.headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
-  return "unknown";
+
+  const xff = req.headers.get("x-forwarded-for");
+  if (!xff) {
+    return "unknown";
+  }
+
+  const parts = xff
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  const hops = parseTrustedProxyHops();
+  if (parts.length < hops) {
+    return "unknown";
+  }
+
+  const candidate = parts[parts.length - hops];
+  if (!candidate || isIP(candidate) === 0) {
+    return "unknown";
+  }
+  return candidate;
 }

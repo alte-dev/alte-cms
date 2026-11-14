@@ -14,11 +14,19 @@ export const loginIpEmailGuard = new BruteForceGuard({
   maxFailures: 5,
   blockDurationMs: 15 * 60_000,
 });
+export const loginEmailGuard = new BruteForceGuard({
+  maxFailures: 20,
+  blockDurationMs: 15 * 60_000,
+});
 export const loginIpLimiter = new FixedWindowRateLimiter({
   maxRequests: 30,
   windowMs: 15 * 60_000,
 });
 export const registerIpLimiter = new FixedWindowRateLimiter({
+  maxRequests: 5,
+  windowMs: 60 * 60_000,
+});
+export const registerEmailLimiter = new FixedWindowRateLimiter({
   maxRequests: 5,
   windowMs: 60 * 60_000,
 });

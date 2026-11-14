@@ -29,18 +29,29 @@ export class FixedWindowRateLimiter {
     this.maxEntries = options.maxEntries ?? 10_000;
   }
 
-  private prune(currentTime: number): void {
+  get size(): number {
+    return this.entries.size;
+  }
+
+  private prune(currentTime: number, incomingKey: string): void {
     if (this.entries.size < this.maxEntries) return;
     for (const [k, v] of this.entries) {
       if (currentTime > v.resetAt) {
         this.entries.delete(k);
       }
     }
+    if (!this.entries.has(incomingKey)) {
+      while (this.entries.size >= this.maxEntries) {
+        const oldestKey = this.entries.keys().next().value;
+        if (oldestKey === undefined) break;
+        this.entries.delete(oldestKey);
+      }
+    }
   }
 
   consume(key: string): RateLimitDecision {
     const currentTime = this.now();
-    this.prune(currentTime);
+    this.prune(currentTime, key);
 
     const existing = this.entries.get(key);
     if (!existing || currentTime > existing.resetAt) {
@@ -103,11 +114,22 @@ export class BruteForceGuard {
     this.maxEntries = options.maxEntries ?? 10_000;
   }
 
-  private prune(currentTime: number): void {
+  get size(): number {
+    return this.entries.size;
+  }
+
+  private prune(currentTime: number, incomingKey: string): void {
     if (this.entries.size < this.maxEntries) return;
     for (const [k, v] of this.entries) {
       if (v.blockedUntil > 0 && currentTime >= v.blockedUntil) {
         this.entries.delete(k);
+      }
+    }
+    if (!this.entries.has(incomingKey)) {
+      while (this.entries.size >= this.maxEntries) {
+        const oldestKey = this.entries.keys().next().value;
+        if (oldestKey === undefined) break;
+        this.entries.delete(oldestKey);
       }
     }
   }
@@ -127,7 +149,7 @@ export class BruteForceGuard {
 
   recordFailure(key: string): void {
     const currentTime = this.now();
-    this.prune(currentTime);
+    this.prune(currentTime, key);
     const entry = this.entries.get(key) ?? { failedCount: 0, blockedUntil: 0 };
     if (entry.blockedUntil > 0 && currentTime >= entry.blockedUntil) {
       entry.failedCount = 0;

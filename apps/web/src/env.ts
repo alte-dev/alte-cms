@@ -52,6 +52,7 @@ export const webEnvSchema = z.object({
     .optional()
     .default("false")
     .transform((val) => val === "true" || val === "1"),
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(10).optional().default(1),
   NEXT_OUTPUT_STANDALONE: z.enum(["true", "false", "1", "0"]).optional().default("false"),
 });
 

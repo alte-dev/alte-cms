@@ -24,6 +24,23 @@ describe("FixedWindowRateLimiter", () => {
     now += 61_000;
     expect(limiter.consume("ip1").allowed).toBe(true);
   });
+
+  it("evicts oldest entries (FIFO) to stay strictly bounded by maxEntries", () => {
+    const limiter = new FixedWindowRateLimiter({
+      maxRequests: 5,
+      windowMs: 60_000,
+      maxEntries: 3,
+    });
+
+    limiter.consume("k1");
+    limiter.consume("k2");
+    limiter.consume("k3");
+    expect(limiter.size).toBe(3);
+
+    limiter.consume("k4");
+    limiter.consume("k5");
+    expect(limiter.size).toBe(3);
+  });
 });
 
 describe("BruteForceGuard", () => {
@@ -54,5 +71,22 @@ describe("BruteForceGuard", () => {
     expect(guard.check("k2").allowed).toBe(false);
     now += 15 * 60_000 + 1;
     expect(guard.check("k2").allowed).toBe(true);
+  });
+
+  it("evicts oldest entries (FIFO) to stay strictly bounded by maxEntries", () => {
+    const guard = new BruteForceGuard({
+      maxFailures: 5,
+      blockDurationMs: 15 * 60_000,
+      maxEntries: 3,
+    });
+
+    guard.recordFailure("e1");
+    guard.recordFailure("e2");
+    guard.recordFailure("e3");
+    expect(guard.size).toBe(3);
+
+    guard.recordFailure("e4");
+    guard.recordFailure("e5");
+    expect(guard.size).toBe(3);
   });
 });
