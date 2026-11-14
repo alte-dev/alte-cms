@@ -671,6 +671,128 @@ export async function sendEmailNotification(
 }
 
 /**
+ * Dispatches a transactional customer-account email (verification, password reset,
+ * or duplicate-registration notice) without storing PII or tokens in email_log.
+ */
+export async function sendAccountEmail(
+  pgConnection: any,
+  input: {
+    template: "account.verify_email" | "account.password_reset" | "account.duplicate_register";
+    recipientEmail: string;
+    referenceId: string;
+    actionUrl?: string;
+    storeName?: string;
+  },
+): Promise<{ success: boolean; status: string }> {
+  if (!isValidEmail(input.recipientEmail)) {
+    return { success: false, status: "invalid_email" };
+  }
+
+  const maskedRecipient = maskEmail(input.recipientEmail);
+  const storeName = escapeHtml(input.storeName || process.env.STORE_NAME || "Mağaza");
+  const safeUrl = input.actionUrl ? escapeHtml(input.actionUrl) : "";
+
+  let subject = "";
+  let html = "";
+  let text = "";
+
+  if (input.template === "account.verify_email") {
+    subject = `${storeName} — E-posta Adresinizi Doğrulayın`;
+    html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#111827;">
+        <h2 style="margin-top:0;">E-posta Doğrulama</h2>
+        <p>${storeName} hesabınızı doğrulamak için aşağıdaki bağlantıya tıklayınız (bağlantı 24 saat geçerlidir):</p>
+        <p><a href="${safeUrl}" style="display:inline-block;padding:12px 20px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;">E-postamı Doğrula</a></p>
+        <p style="font-size:12px;color:#6b7280;">Bu talebi siz oluşturmadıysanız bu e-postayı dikkate almayınız.</p>
+      </div>
+    `;
+    text = `E-posta adresinizi doğrulamak için bağlantıyı açınız (24 saat geçerlidir): ${input.actionUrl || ""}`;
+  } else if (input.template === "account.password_reset") {
+    subject = `${storeName} — Şifre Sıfırlama Talebi`;
+    html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#111827;">
+        <h2 style="margin-top:0;">Şifre Sıfırlama</h2>
+        <p>Şifrenizi sıfırlamak için aşağıdaki tek kullanımlık bağlantıya tıklayınız (15 dakika geçerlidir):</p>
+        <p><a href="${safeUrl}" style="display:inline-block;padding:12px 20px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;">Şifremi Sıfırla</a></p>
+        <p style="font-size:12px;color:#6b7280;">Bu talebi siz oluşturmadıysanız şifreniz değişmeyecektir.</p>
+      </div>
+    `;
+    text = `Şifrenizi sıfırlamak için bağlantıyı açınız (15 dakika geçerlidir): ${input.actionUrl || ""}`;
+  } else {
+    subject = `${storeName} — Hesabınız Zaten Kayıtlı`;
+    html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#111827;">
+        <h2 style="margin-top:0;">Kayıt Denemesi Bilgilendirmesi</h2>
+        <p>E-posta adresinizle yeni bir kayıt denemesi yapıldı. Zaten bir hesabınız bulunmaktadır.</p>
+        <p>Şifrenizi unuttuysanız şifre sıfırlama sayfasından yeni şifre oluşturabilirsiniz.</p>
+      </div>
+    `;
+    text = "E-posta adresinizle yeni bir kayıt denemesi yapıldı. Zaten bir hesabınız bulunmaktadır; şifrenizi unuttuysanız şifre sıfırlama sayfasını kullanabilirsiniz.";
+  }
+
+  const { transporter, settings } = await createTransporter(pgConnection);
+  const logId = `elog_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const idempotencyKey = `${input.referenceId}:${input.template}:${Date.now()}:${Math.random().toString(36).substring(2, 6)}`;
+
+  if (!transporter || !settings?.enabled) {
+    try {
+      await pgConnection("email_log").insert({
+        id: logId,
+        order_id: input.referenceId,
+        template: input.template,
+        idempotency_key: idempotencyKey,
+        recipient_masked: maskedRecipient,
+        subject,
+        status: "skipped",
+        error_code: "SMTP_DISABLED",
+        attempts: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+    } catch {
+      // ignore log error
+    }
+    return { success: false, status: "skipped" };
+  }
+
+  let status: "sent" | "failed" = "sent";
+  let errorCode: string | null = null;
+  try {
+    await transporter.sendMail({
+      from: `"${sanitizeHeader(settings.from_name)}" <${sanitizeHeader(settings.from_email)}>`,
+      to: sanitizeHeader(input.recipientEmail),
+      replyTo: settings.reply_to ? sanitizeHeader(settings.reply_to) : undefined,
+      subject,
+      html,
+      text,
+    });
+  } catch (err: any) {
+    status = "failed";
+    errorCode = (err?.code || err?.message || "SMTP_ERROR").slice(0, 60);
+  }
+
+  try {
+    await pgConnection("email_log").insert({
+      id: logId,
+      order_id: input.referenceId,
+      template: input.template,
+      idempotency_key: idempotencyKey,
+      recipient_masked: maskedRecipient,
+      subject,
+      status,
+      error_code: errorCode,
+      attempts: 1,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+  } catch {
+    // ignore log error
+  }
+
+  return { success: status === "sent", status };
+}
+
+/**
  * Retries a failed email log entry.
  */
 export async function retryEmailLog(
