@@ -63,6 +63,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/hesap/:path*",
+        headers: [
+          {
+            key: "Referrer-Policy",
+            value: "no-referrer",
+          },
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           {

@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ShoppingBag, ChevronDown } from "lucide-react";
+import { ShoppingBag, ChevronDown, User } from "lucide-react";
 import { getCategories } from "../lib/medusa/products";
 import { getCart } from "../lib/medusa/cart";
 import { getCartId } from "../lib/medusa/cookies";
@@ -119,7 +119,16 @@ export async function Navbar() {
           </div>
 
           {/* Cart Icon & Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link
+              href="/hesap"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+              aria-label="Hesabım"
+            >
+              <User className="w-5 h-5 text-stone-700" />
+              <span className="hidden sm:inline">Hesabım</span>
+            </Link>
+
             <Link
               href="/sepet"
               className="relative inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
