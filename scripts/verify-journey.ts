@@ -623,7 +623,7 @@ async function main() {
           (res) => res.url().indexOf("/api/checkout") !== -1 && res.request().method() === "POST",
           { timeout: 20000 },
         ),
-        pageA.locator("main form button[type='submit']:visible").first().click(),
+        pageA.locator("button:has-text('Siparişi Onayla ve Tamamla'):visible").click(),
       ]);
 
       const checkoutPayload = await checkoutRes.json();
