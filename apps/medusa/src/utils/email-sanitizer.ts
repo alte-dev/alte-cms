@@ -74,7 +74,8 @@ export function isValidHostname(host: string): boolean {
   const trimmed = host.trim();
   if (!trimmed || trimmed.length > 253) return false;
   if (trimmed === "localhost") return true;
-  const unwrapped = trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+  const unwrapped =
+    trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
   if (net.isIP(unwrapped) !== 0) return true;
   // Standard hostname regex
   return /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(trimmed);
@@ -124,7 +125,8 @@ export function validateSmtpHost(
   if (nodeEnv === "production" && isBlockedSmtpMetadataHost(host)) {
     return {
       valid: false,
-      error: "Link-local veya bulut metadata adresleri üretim ortamında SMTP sunucusu olarak kullanılamaz.",
+      error:
+        "Link-local veya bulut metadata adresleri üretim ortamında SMTP sunucusu olarak kullanılamaz.",
     };
   }
   return { valid: true };

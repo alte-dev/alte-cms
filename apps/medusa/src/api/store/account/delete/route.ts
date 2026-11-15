@@ -115,9 +115,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     // 3. Delete auth identity & provider identity so login is permanently impossible
-    await trx("provider_identity")
-      .where({ auth_identity_id: verifyAuth.authIdentity!.id })
-      .del();
+    await trx("provider_identity").where({ auth_identity_id: verifyAuth.authIdentity!.id }).del();
     await trx("auth_identity").where({ id: verifyAuth.authIdentity!.id }).del();
 
     // 4. Revoke all sessions, delete verification/reset tokens & legacy credentials (keep consent audit rows)

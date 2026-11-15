@@ -31,6 +31,7 @@
 ### Task 1: SEC-030 — Multi-step writes in transactions & ordered password reset
 
 **Files:**
+
 - Modify: `apps/medusa/src/api/store/account/_shared.ts` (`issueCustomerSession` optional `trxPg` param)
 - Modify: `apps/medusa/src/api/store/account/delete/route.ts`
 - Modify: `apps/medusa/src/api/store/account/password-reset/confirm/route.ts`
@@ -50,6 +51,7 @@
 ### Task 2: SEC-029 — Password-verification rate limiting on `/store/account/password` & `/store/account/delete`
 
 **Files:**
+
 - Modify: `apps/medusa/src/api/store/account/_shared.ts`
 - Modify: `apps/medusa/src/api/store/account/password/route.ts`
 - Modify: `apps/medusa/src/api/store/account/delete/route.ts`
@@ -65,6 +67,7 @@
 ### Task 3: SEC-028 — Strict customer session guard on `/store/customers/me`, `/store/orders`, `/auth/session`
 
 **Files:**
+
 - Modify: `apps/medusa/src/api/middleware-guards.ts` (add `strictCustomerSessionGuard`)
 - Modify: `apps/medusa/src/api/middlewares.ts` (use `strictCustomerSessionGuard` on `/store/customers/me`, `/store/orders`, `/auth/session`)
 - Test: `apps/medusa/src/api/middleware-guards.test.ts`
@@ -79,6 +82,7 @@
 ### Task 4: SEC-033 & SEC-035 — Error message sanitization, checkout tolerance, CORS production guard, manual-refunds 500
 
 **Files:**
+
 - Modify: `apps/web/src/lib/medusa/format.ts` (`mapMedusaError` final fallback)
 - Test: `apps/web/src/lib/medusa/format.test.ts`
 - Modify: `scripts/verify-checkout.ts` (~line 855: `<= 100` -> `<= 0.01`)
@@ -97,6 +101,7 @@
 ### Task 5: SEC-032 & SEC-022 (first half) — Remove script secret fallbacks, scope `.gitleaks.toml`, tighten `verify-production-guard.ts`
 
 **Files:**
+
 - Modify: `scripts/verify-quality.ts`
 - Modify: `scripts/measure-quality.ts`
 - Modify: `.gitleaks.toml`
@@ -112,6 +117,7 @@
 ### Task 6: SEC-027 (modified) — SMTP hostname validation, link-local/metadata SSRF block, HTML escaping
 
 **Files:**
+
 - Modify: `apps/medusa/src/utils/email-sanitizer.ts` (add `isBlockedSmtpMetadataHost` for `169.254.0.0/16`, `fe80::/10`, `100.64.0.0/10` + IPv4/IPv6 literal support in `isValidHostname` if needed for RFC1918)
 - Test: `apps/medusa/src/utils/email-sanitizer.test.ts`
 - Modify: `apps/medusa/src/api/admin/email-settings/route.ts`
@@ -128,6 +134,7 @@
 ### Task 7: CI non-superuser `medusa_user` & Documentation & Full Verification
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml` (remove `SUPERUSER` from `medusa_user`)
 - Modify: `docs/SECURITY-DESIGN.md` (document SEC-027 metadata-only block rationale and SEC-029 two-tier thresholds)
 - Modify: `docs/PHASES.md` (add Faz 12.3 and list deferred items SEC-017, SEC-022 second half, SEC-036, SEC-037 with reasons)

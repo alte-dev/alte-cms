@@ -59,9 +59,11 @@ describe("SEC-030: Multi-step account writes use transactions & safe ordering", 
         whereRaw: () => chain,
         whereNull: () => chain,
         select: () => chain,
-        first: vi.fn().mockResolvedValue(
-          table === "customer" ? { id: "cust_1", email: "user@example.test" } : null,
-        ),
+        first: vi
+          .fn()
+          .mockResolvedValue(
+            table === "customer" ? { id: "cust_1", email: "user@example.test" } : null,
+          ),
         then: (resolve: any) => resolve([]),
         update: vi.fn(async () => {
           (isTrx ? trxMutationCalls : directMutationCalls).push(`${table}.update`);
@@ -136,15 +138,17 @@ describe("SEC-030: Multi-step account writes use transactions & safe ordering", 
         whereNull: () => chain,
         andWhere: () => chain,
         select: () => chain,
-        first: vi.fn().mockResolvedValue(
-          table === "customer_password_reset"
-            ? { customer_id: "cust_1" }
-            : table === "customer"
-              ? { id: "cust_1", email: "user@example.test" }
-              : table === "provider_identity"
-                ? { id: "prov_1" }
-                : null,
-        ),
+        first: vi
+          .fn()
+          .mockResolvedValue(
+            table === "customer_password_reset"
+              ? { customer_id: "cust_1" }
+              : table === "customer"
+                ? { id: "cust_1", email: "user@example.test" }
+                : table === "provider_identity"
+                  ? { id: "prov_1" }
+                  : null,
+          ),
         update: (data: any) => {
           if (table === "customer_password_reset") {
             tokenUpdateSpy(data);
@@ -216,15 +220,17 @@ describe("SEC-030: Multi-step account writes use transactions & safe ordering", 
         whereNull: () => chain,
         andWhere: () => chain,
         select: () => chain,
-        first: vi.fn().mockResolvedValue(
-          table === "customer_password_reset"
-            ? { customer_id: "cust_1" }
-            : table === "customer"
-              ? { id: "cust_1", email: "user@example.test" }
-              : table === "provider_identity"
-                ? { id: "prov_1" }
-                : null,
-        ),
+        first: vi
+          .fn()
+          .mockResolvedValue(
+            table === "customer_password_reset"
+              ? { customer_id: "cust_1" }
+              : table === "customer"
+                ? { id: "cust_1", email: "user@example.test" }
+                : table === "provider_identity"
+                  ? { id: "prov_1" }
+                  : null,
+          ),
         update: vi.fn(() => {
           (isTrx ? trxMutationCalls : directMutationCalls).push(`${table}.update`);
           if (isTrx && table === "customer_session") {
@@ -296,9 +302,11 @@ describe("SEC-030: Multi-step account writes use transactions & safe ordering", 
         where: () => chain,
         whereNull: () => chain,
         select: () => chain,
-        first: vi.fn().mockResolvedValue(
-          table === "customer" ? { id: "cust_1", email: "user@example.test" } : null,
-        ),
+        first: vi
+          .fn()
+          .mockResolvedValue(
+            table === "customer" ? { id: "cust_1", email: "user@example.test" } : null,
+          ),
         update: vi.fn(async () => {
           (isTrx ? trxMutationCalls : directMutationCalls).push(`${table}.update`);
           return 1;

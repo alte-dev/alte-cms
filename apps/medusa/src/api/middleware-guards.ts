@@ -140,12 +140,7 @@ export function blockRoute(_req: any, res: any) {
   return res.status(404).json({ message: "Not Found" });
 }
 
-async function verifySessionTokenOrReject(
-  token: string,
-  req: any,
-  res: any,
-  next: () => void,
-) {
+async function verifySessionTokenOrReject(token: string, req: any, res: any, next: () => void) {
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
     return res.status(401).json({ message: "Unauthorized" });

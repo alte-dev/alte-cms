@@ -90,7 +90,9 @@ describe("SEC-027: SMTP hostname validation, metadata-only SSRF block & HTML esc
     const resMeta = makeMockRes();
     await testEmailPost(
       {
-        scope: { resolve: (k: string) => (k === ContainerRegistrationKeys.PG_CONNECTION ? {} : {}) },
+        scope: {
+          resolve: (k: string) => (k === ContainerRegistrationKeys.PG_CONNECTION ? {} : {}),
+        },
         user: { id: "u1", email: "admin@example.test" },
         ip: "127.0.0.1",
       } as any,

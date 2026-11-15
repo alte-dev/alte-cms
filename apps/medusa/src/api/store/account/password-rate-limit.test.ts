@@ -55,9 +55,11 @@ describe("SEC-029: Password verification rate limit & tiered session revocation"
         whereRaw: () => chain,
         whereNull: () => chain,
         select: () => chain,
-        first: vi.fn().mockResolvedValue(
-          table === "customer" ? { id: customerId, email: `${customerId}@example.test` } : null,
-        ),
+        first: vi
+          .fn()
+          .mockResolvedValue(
+            table === "customer" ? { id: customerId, email: `${customerId}@example.test` } : null,
+          ),
         update: vi.fn(async () => {
           if (table === "customer_session") {
             revokeSpy();
@@ -93,11 +95,13 @@ describe("SEC-029: Password verification rate limit & tiered session revocation"
           }
           if (key === Modules.AUTH) {
             return {
-              authenticate: vi.fn().mockResolvedValue(
-                authSuccess
-                  ? { success: true, authIdentity: { id: "auth_1" } }
-                  : { success: false },
-              ),
+              authenticate: vi
+                .fn()
+                .mockResolvedValue(
+                  authSuccess
+                    ? { success: true, authIdentity: { id: "auth_1" } }
+                    : { success: false },
+                ),
               updateProvider: vi.fn().mockResolvedValue({ success: true }),
             };
           }
@@ -149,7 +153,12 @@ describe("SEC-029: Password verification rate limit & tiered session revocation"
     for (let i = 0; i < 10; i++) {
       const res = makeMockRes();
       await deletePost(
-        buildReq(customerId, { password: "WrongPassword1!", confirmation: "SİL" }, false, revokeSpy),
+        buildReq(
+          customerId,
+          { password: "WrongPassword1!", confirmation: "SİL" },
+          false,
+          revokeSpy,
+        ),
         res,
       );
       expect([401, 429]).toContain(res.statusCode);

@@ -8,7 +8,8 @@ describe("SEC-033: mapMedusaError sanitizes unmapped raw Medusa messages", () =>
 
   it("returns fixed Turkish generic message instead of leaking raw error message", () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const rawMsg = "SQLSTATE[42P01]: relation customer_secret_table does not match user@example.test";
+    const rawMsg =
+      "SQLSTATE[42P01]: relation customer_secret_table does not match user@example.test";
     const result = mapMedusaError({ message: rawMsg, code: "INTERNAL", status: 500 });
 
     expect(result).toBe("İşlem gerçekleştirilemedi. Lütfen daha sonra tekrar deneyin.");
