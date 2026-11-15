@@ -133,8 +133,10 @@ Next.js 15 App Router üzerinde sayfa ve veri önbelleklemesi etiket (tag) taban
 Tüm fazların uçtan uca canlı HTTP doğrulama betikleri tek bir komut altında toplanmıştır:
 
 ```bash
-pnpm verify:all
+VERIFY_ALLOW_DB_MUTATION=true pnpm verify:all
 ```
+
+> **Uyarı (`VERIFY_ALLOW_DB_MUTATION=true`):** `verify:all` içindeki `verify-production-guard` betiği ödeme sağlayıcı bağlantılarını geçici olarak değiştirir; bu nedenle yalnızca atılabilir/izole veritabanında `VERIFY_ALLOW_DB_MUTATION=true` ile çalıştırılmalıdır (`NODE_ENV=production` iken her koşulda reddedilir).
 
 ### Çalışma Sırası ve Günlükler:
 

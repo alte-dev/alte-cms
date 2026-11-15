@@ -173,14 +173,14 @@ export async function customerSessionGuard(req: any, res: any, next: () => void)
  * while still allowing non-customer (admin user) JWTs and validating customer sessions.
  */
 export async function strictCustomerSessionGuard(req: any, res: any, next: () => void) {
+  const token = extractBearerToken(req);
+  if (token) {
+    return verifySessionTokenOrReject(token, req, res, next);
+  }
   if (hasValidInternalSecret(req)) {
     return next();
   }
-  const token = extractBearerToken(req);
-  if (!token) {
-    return res.status(401).json({ message: "Oturum açmanız gerekiyor." });
-  }
-  return verifySessionTokenOrReject(token, req, res, next);
+  return res.status(401).json({ message: "Oturum açmanız gerekiyor." });
 }
 
 export async function blockCustomerTokenRefresh(req: any, res: any, next: () => void) {

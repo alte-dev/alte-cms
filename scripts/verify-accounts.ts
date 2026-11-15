@@ -698,11 +698,16 @@ async function main() {
           expiredStatus = expRes.status;
         }
 
-        // Old session cookieA must be invalidated
-        const meOld = await fetch(`${WEB_URL}/api/account/me`, {
-          headers: { Cookie: cookieA },
-        });
-        oldSessionAfterReset = meOld.status;
+        // Old session cookieA must be invalidated across all account routes
+        const [meOld, ordersOld, addressesOld] = await Promise.all([
+          fetch(`${WEB_URL}/api/account/me`, { headers: { Cookie: cookieA } }),
+          fetch(`${WEB_URL}/api/account/orders`, { headers: { Cookie: cookieA } }),
+          fetch(`${WEB_URL}/api/account/addresses`, { headers: { Cookie: cookieA } }),
+        ]);
+        oldSessionAfterReset =
+          meOld.status === 401 && ordersOld.status === 401 && addressesOld.status === 401
+            ? 401
+            : Math.max(meOld.status, ordersOld.status, addressesOld.status);
 
         // Login with new password
         const loginNew = await fetch(`${WEB_URL}/api/account/login`, {
@@ -770,15 +775,31 @@ async function main() {
         method: "POST",
         headers: { Origin: WEB_URL, Cookie: cookieANew },
       });
-      const meAfterLogout = await fetch(`${WEB_URL}/api/account/me`, {
-        headers: { Cookie: cookieANew },
+      const [meAfterLogout, ordersAfterLogout, addressesAfterLogout] = await Promise.all([
+        fetch(`${WEB_URL}/api/account/me`, { headers: { Cookie: cookieANew } }),
+        fetch(`${WEB_URL}/api/account/orders`, { headers: { Cookie: cookieANew } }),
+        fetch(`${WEB_URL}/api/account/addresses`, { headers: { Cookie: cookieANew } }),
+      ]);
+      const revokedToken = cookieANew.replace(/^alte_customer_session=/, "");
+      const internalSecret = process.env.INTERNAL_API_SECRET || "";
+      const directMedusaRes = await fetch(`${MEDUSA_URL}/store/orders`, {
+        headers: {
+          "x-publishable-api-key": pubKey,
+          ...(internalSecret ? { "x-alte-internal": internalSecret } : {}),
+          Authorization: `Bearer ${revokedToken}`,
+        },
       });
-      const pass = logoutRes.status === 200 && meAfterLogout.status === 401;
+      const pass =
+        logoutRes.status === 200 &&
+        meAfterLogout.status === 401 &&
+        ordersAfterLogout.status === 401 &&
+        addressesAfterLogout.status === 401 &&
+        directMedusaRes.status === 401;
       recordStep(
         10,
-        "Çıkış sonrası eski çerez geçersiz (401)",
+        "Çıkış sonrası eski çerez tüm rotalarda ve doğrudan Medusa'da geçersiz (401)",
         pass,
-        `logout=${logoutRes.status}, meAfter=${meAfterLogout.status}`,
+        `logout=${logoutRes.status}, me=${meAfterLogout.status}, orders=${ordersAfterLogout.status}, addresses=${addressesAfterLogout.status}, medusaDirect=${directMedusaRes.status}`,
       );
     } catch (err) {
       recordStep(10, "Çıkış oturum iptali", false, (err as Error).message);
@@ -1039,6 +1060,139 @@ async function main() {
       );
     } catch (err) {
       recordStep(15, "Başlık rotasyonu ve e-posta koruması", false, (err as Error).message);
+    }
+
+    // -------------------------------------------------------------------------
+    // 16. SEC-029: Parola doğrulama kademeli kaba kuvvet koruması (/password ve /delete)
+    // -------------------------------------------------------------------------
+    try {
+      const pwUserEmail = `sec029-pw-${runId}@example.test`;
+      const pwInit = "Sec029InitPass!1";
+      const pwUpdated = "Sec029NextPass!2";
+
+      await fetch(`${WEB_URL}/api/account/register`, {
+        method: "POST",
+        headers: originHeaders,
+        body: JSON.stringify({
+          firstName: "Sec",
+          lastName: "PwTest",
+          email: pwUserEmail,
+          password: pwInit,
+          kvkkNotice: true,
+        }),
+      });
+      const loginPw = await fetch(`${WEB_URL}/api/account/login`, {
+        method: "POST",
+        headers: originHeaders,
+        body: JSON.stringify({ email: pwUserEmail, password: pwInit }),
+      });
+      const pwCookie1 = extractSetCookieValue(loginPw, "alte_customer_session") || "";
+
+      // (a) Valid current password change succeeds (200)
+      const changeOkRes = await fetch(`${WEB_URL}/api/account/password`, {
+        method: "POST",
+        headers: { ...originHeaders, Cookie: pwCookie1 },
+        body: JSON.stringify({ currentPassword: pwInit, newPassword: pwUpdated }),
+      });
+      const loginPw2 = await fetch(`${WEB_URL}/api/account/login`, {
+        method: "POST",
+        headers: originHeaders,
+        body: JSON.stringify({ email: pwUserEmail, password: pwUpdated }),
+      });
+      const pwCookie2 = extractSetCookieValue(loginPw2, "alte_customer_session") || "";
+
+      // (b) 5 wrong current passwords -> 401, 6th -> 429 (cooldown, session preserved)
+      const pwStatuses: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        const res = await fetch(`${WEB_URL}/api/account/password`, {
+          method: "POST",
+          headers: { ...originHeaders, Cookie: pwCookie2 },
+          body: JSON.stringify({ currentPassword: "WrongCurrentPassword!99", newPassword: pwInit }),
+        });
+        pwStatuses.push(res.status);
+      }
+      const meDuringCooldown = await fetch(`${WEB_URL}/api/account/me`, {
+        headers: { Cookie: pwCookie2 },
+      });
+
+      // (c) Attempts 7..10 -> 10th revokes all sessions -> /api/account/me 401
+      for (let i = 6; i < 10; i++) {
+        const res = await fetch(`${WEB_URL}/api/account/password`, {
+          method: "POST",
+          headers: { ...originHeaders, Cookie: pwCookie2 },
+          body: JSON.stringify({ currentPassword: "WrongCurrentPassword!99", newPassword: pwInit }),
+        });
+        pwStatuses.push(res.status);
+      }
+      const meAfterPwRevoke = await fetch(`${WEB_URL}/api/account/me`, {
+        headers: { Cookie: pwCookie2 },
+      });
+
+      // (d) Same tiered cooldown + revocation on /api/account/delete (confirmation: "SİL")
+      const delUserEmail = `sec029-del-${runId}@example.test`;
+      const delPass = "Sec029DelPass!1";
+      await fetch(`${WEB_URL}/api/account/register`, {
+        method: "POST",
+        headers: originHeaders,
+        body: JSON.stringify({
+          firstName: "Sec",
+          lastName: "DelTest",
+          email: delUserEmail,
+          password: delPass,
+          kvkkNotice: true,
+        }),
+      });
+      const loginDel = await fetch(`${WEB_URL}/api/account/login`, {
+        method: "POST",
+        headers: originHeaders,
+        body: JSON.stringify({ email: delUserEmail, password: delPass }),
+      });
+      const delCookie = extractSetCookieValue(loginDel, "alte_customer_session") || "";
+
+      const delStatuses: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        const res = await fetch(`${WEB_URL}/api/account/delete`, {
+          method: "POST",
+          headers: { ...originHeaders, Cookie: delCookie },
+          body: JSON.stringify({ password: "WrongDeletePassword!99", confirmation: "SİL" }),
+        });
+        delStatuses.push(res.status);
+      }
+      const meDelDuringCooldown = await fetch(`${WEB_URL}/api/account/me`, {
+        headers: { Cookie: delCookie },
+      });
+      for (let i = 6; i < 10; i++) {
+        const res = await fetch(`${WEB_URL}/api/account/delete`, {
+          method: "POST",
+          headers: { ...originHeaders, Cookie: delCookie },
+          body: JSON.stringify({ password: "WrongDeletePassword!99", confirmation: "SİL" }),
+        });
+        delStatuses.push(res.status);
+      }
+      const meAfterDelRevoke = await fetch(`${WEB_URL}/api/account/me`, {
+        headers: { Cookie: delCookie },
+      });
+
+      const pass =
+        changeOkRes.status === 200 &&
+        Boolean(pwCookie2) &&
+        pwStatuses.slice(0, 5).every((s) => s === 401) &&
+        pwStatuses.slice(5).every((s) => s === 429) &&
+        meDuringCooldown.status === 200 &&
+        meAfterPwRevoke.status === 401 &&
+        delStatuses.slice(0, 5).every((s) => s === 401) &&
+        delStatuses.slice(5).every((s) => s === 429) &&
+        meDelDuringCooldown.status === 200 &&
+        meAfterDelRevoke.status === 401;
+
+      recordStep(
+        16,
+        "SEC-029 parola doğrulama kademeli hız sınırı ve 10. denemede oturum iptali (/password, /delete)",
+        pass,
+        `changeOk=${changeOkRes.status}, pwCooldownMe=${meDuringCooldown.status}, pwRevokeMe=${meAfterPwRevoke.status}, delCooldownMe=${meDelDuringCooldown.status}, delRevokeMe=${meAfterDelRevoke.status}`,
+      );
+    } catch (err) {
+      recordStep(16, "SEC-029 parola doğrulama hız sınırı", false, (err as Error).message);
     }
   } finally {
     if (adminToken && savedSettingExists && previousEmailSetting) {

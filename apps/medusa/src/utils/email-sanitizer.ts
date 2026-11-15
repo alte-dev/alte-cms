@@ -89,27 +89,24 @@ export function isValidHostname(host: string): boolean {
  * - 100.64.0.0/10 (Carrier-grade NAT / Alibaba Cloud metadata 100.100.100.200)
  * Note: 127.0.0.1 and RFC1918 private addresses are intentionally allowed for local/LAN mail relays.
  */
+const SMTP_METADATA_BLOCKLIST = new net.BlockList();
+SMTP_METADATA_BLOCKLIST.addSubnet("169.254.0.0", 16, "ipv4");
+SMTP_METADATA_BLOCKLIST.addSubnet("100.64.0.0", 10, "ipv4");
+SMTP_METADATA_BLOCKLIST.addSubnet("fe80::", 10, "ipv6");
+
 export function isBlockedSmtpMetadataHost(host: string): boolean {
   if (!host || typeof host !== "string") return false;
   let normalized = host.trim().toLowerCase();
   if (normalized.startsWith("[") && normalized.endsWith("]")) {
     normalized = normalized.slice(1, -1);
   }
-  if (normalized.startsWith("::ffff:")) {
-    normalized = normalized.slice("::ffff:".length);
-  }
 
   if (net.isIPv4(normalized)) {
-    const parts = normalized.split(".").map((n) => Number.parseInt(n, 10));
-    const [a, b] = parts;
-    if (a === 169 && b === 254) return true; // 169.254.0.0/16
-    if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10
-    return false;
+    return SMTP_METADATA_BLOCKLIST.check(normalized, "ipv4");
   }
 
   if (net.isIPv6(normalized)) {
-    // fe80::/10 covers fe80..febf in the first hextet
-    if (/^fe[89ab][0-9a-f]?:/i.test(normalized)) return true;
+    return SMTP_METADATA_BLOCKLIST.check(normalized, "ipv6");
   }
 
   return false;

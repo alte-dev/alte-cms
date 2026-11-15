@@ -117,6 +117,11 @@ function assertSafeIsolatedTestDb(dbUrl: string): void {
   if (process.env.NODE_ENV === "production") {
     throw new Error("ABORT: verify-production-guard.ts cannot mutate a production database.");
   }
+  if (process.env.VERIFY_ALLOW_DB_MUTATION !== "true") {
+    throw new Error(
+      "ABORT: verify-production-guard.ts mutates payment provider links. Set VERIFY_ALLOW_DB_MUTATION=true on an isolated/disposable database to run.",
+    );
+  }
   const parsed = new URL(dbUrl);
   const host = parsed.hostname.toLowerCase();
   const dbName = parsed.pathname.replace(/^\//, "").toLowerCase();

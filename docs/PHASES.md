@@ -68,6 +68,8 @@ Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme s�
 
 - Admin için 2FA, denetim günlüğü (kim neyi değiştirdi), oturum süreleri.
 - Hız sınırlarının Redis'e taşınması (çoklu süreç), CSP nonce'a geçiş (`unsafe-inline`/`unsafe-eval` azaltma).
+- Parola sıfırlama onayında token tüketiminin parola güncellemesinden önce atomik yapılması (eşzamanlı çift kullanım yarışını önlemek için).
+- `verify:journey` ve `verify:accounts` betiklerinin sabit ürün stoğunu tüketmemesi için admin API ile kendi geçici test ürününü/stoğunu oluşturup bitince temizlemesi (ardışık çalıştırmalarda idempotent geçiş).
 - Bağımlılık güncelleme akışı (Dependabot PR'ları, major güncelleme planı), bağımsız güvenlik gözden geçirme.
 
 ### Faz 14 — İsteğe bağlı büyüme özellikleri (insan öncelik verirse)

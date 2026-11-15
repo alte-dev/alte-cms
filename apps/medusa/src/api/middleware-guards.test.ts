@@ -172,7 +172,7 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
       nextAdmin,
     );
     expect(nextAdmin).toHaveBeenCalledOnce();
-    // Valid internal secret (e.g., server-side /siparis-onay getOrder) -> next()
+    // Valid internal secret WITHOUT Bearer token (e.g., server-side /siparis-onay getOrder) -> next()
     const nextInternal = vi.fn();
     await strictCustomerSessionGuard(
       {
@@ -182,6 +182,33 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
       nextInternal,
     );
     expect(nextInternal).toHaveBeenCalledOnce();
+
+    // Valid internal secret WITH revoked/invalid Bearer token -> 401 (must not bypass token verification)
+    const nextInternalRevoked = vi.fn();
+    const resInternalRevoked = createMockRes();
+    await strictCustomerSessionGuard(
+      {
+        headers: {
+          "x-alte-internal": SECRET,
+          authorization: "Bearer invalid-or-revoked-token",
+        },
+      } as any,
+      resInternalRevoked,
+      nextInternalRevoked,
+    );
+    expect(resInternalRevoked.statusCode).toBe(401);
+    expect(nextInternalRevoked).not.toHaveBeenCalled();
+
+    // Missing token AND missing internal secret -> 401
+    const nextBothMissing = vi.fn();
+    const resBothMissing = createMockRes();
+    await strictCustomerSessionGuard(
+      { headers: { "x-alte-internal": "wrong-secret" } } as any,
+      resBothMissing,
+      nextBothMissing,
+    );
+    expect(resBothMissing.statusCode).toBe(401);
+    expect(nextBothMissing).not.toHaveBeenCalled();
   });
 
   it("orderOwnershipGuard denies unauthenticated or non-owner requests with 404, allows owner or internal secret", async () => {

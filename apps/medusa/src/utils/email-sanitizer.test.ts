@@ -99,7 +99,13 @@ describe("email-sanitizer utilities", () => {
       expect(isBlockedSmtpMetadataHost("169.254.169.254")).toBe(true);
       expect(isBlockedSmtpMetadataHost("169.254.0.1")).toBe(true);
       expect(isBlockedSmtpMetadataHost("fe80::1")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("FE80::1")).toBe(true);
       expect(isBlockedSmtpMetadataHost("[fe80::1]")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("::ffff:169.254.169.254")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("::ffff:a9fe:a9fe")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("[::ffff:a9fe:a9fe]")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("0:0:0:0:0:ffff:a9fe:a9fe")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("::ffff:6440:0001")).toBe(true);
       expect(isBlockedSmtpMetadataHost("100.64.0.1")).toBe(true);
       expect(isBlockedSmtpMetadataHost("100.127.255.254")).toBe(true);
     });
