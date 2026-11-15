@@ -128,6 +128,14 @@ export function mapMedusaError(error: any): string {
   }
 
   if (
+    lowerMsg.includes("kupon kodu") ||
+    lowerMsg.includes("promotion") ||
+    lowerMsg.includes("coupon")
+  ) {
+    return "Geçersiz veya süresi dolmuş kupon kodu.";
+  }
+
+  if (
     /^[a-zA-Z0-9_\s.,:'"-]+$/.test(message) &&
     (lowerMsg.includes("invalid") || lowerMsg.includes("error") || lowerMsg.includes("failed"))
   ) {
