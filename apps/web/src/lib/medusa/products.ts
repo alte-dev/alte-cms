@@ -155,7 +155,7 @@ export async function getProducts(
   queryParams.set("offset", String(offset));
   queryParams.set(
     "fields",
-    "*variants.calculated_price,*variants.options,*options,*categories,*collection",
+    "*variants.calculated_price,*variants.options,+variants.inventory_quantity,*options,*categories,*collection",
   );
 
   if (params.category_id) {
@@ -240,7 +240,7 @@ export async function getProductByHandle(handle: string): Promise<StoreProduct |
   }
   queryParams.set(
     "fields",
-    "*variants.calculated_price,*variants.options,*options,*categories,*collection",
+    "*variants.calculated_price,*variants.options,+variants.inventory_quantity,*options,*categories,*collection",
   );
 
   try {

@@ -6,6 +6,12 @@ import { Check, ShoppingBag, AlertCircle } from "lucide-react";
 import { addToCartAction } from "../app/(store)/actions";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreProduct, StoreProductVariant } from "../lib/medusa/types";
+import {
+  getInitialSelectedOptions,
+  isOptionValueSelectable,
+  isVariantOutOfStock,
+  resolveOptionsOnChange,
+} from "../lib/medusa/variant-stock";
 
 interface AddToCartButtonProps {
   product: StoreProduct;
@@ -15,15 +21,9 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
   const variants = product.variants || [];
   const options = product.options || [];
 
-  // Default option values from first variant
-  const initialOptions: Record<string, string> = {};
-  if (variants[0]?.options) {
-    for (const opt of variants[0].options) {
-      initialOptions[opt.option_id] = opt.value;
-    }
-  }
-
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(initialOptions);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
+    getInitialSelectedOptions(variants),
+  );
   const [quantity, setQuantity] = useState<number>(1);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -37,11 +37,7 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
     }) || variants[0];
 
   // Stock availability check
-  const isOutOfStock =
-    selectedVariant?.manage_inventory &&
-    !selectedVariant?.allow_backorder &&
-    selectedVariant?.inventory_quantity !== undefined &&
-    selectedVariant.inventory_quantity <= 0;
+  const isOutOfStock = isVariantOutOfStock(selectedVariant);
 
   const currentPrice =
     selectedVariant?.calculated_price?.calculated_amount ??
@@ -51,7 +47,7 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
   const isDiscounted = originalPrice > currentPrice;
 
   const handleOptionChange = (optionId: string, value: string) => {
-    setSelectedOptions((prev) => ({ ...prev, [optionId]: value }));
+    setSelectedOptions((prev) => resolveOptionsOnChange(variants, prev, optionId, value));
     setErrorMsg(null);
     setAddedSuccess(false);
   };
@@ -113,7 +109,7 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
       </div>
 
       {/* Option Selectors (Size, Color, etc.) */}
-      {options.map((option) => (
+      {options.map((option, optionIndex) => (
         <div key={option.id} className="space-y-2">
           <label className="block text-sm font-medium text-stone-700">
             {option.title}:{" "}
@@ -124,16 +120,28 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
           <div className="flex flex-wrap gap-2">
             {option.values.map((val) => {
               const isSelected = selectedOptions[option.id] === val.value;
+              const isSelectable = isOptionValueSelectable(
+                variants,
+                options,
+                selectedOptions,
+                optionIndex,
+                option.id,
+                val.value,
+              );
               return (
                 <button
                   key={val.id}
                   type="button"
+                  disabled={!isSelectable}
                   aria-pressed={isSelected}
+                  title={!isSelectable ? "Stokta yok" : undefined}
                   onClick={() => handleOptionChange(option.id, val.value)}
                   className={`px-4 py-2 text-sm font-medium rounded-md border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 ${
-                    isSelected
-                      ? "border-stone-900 bg-stone-900 text-white"
-                      : "border-stone-300 bg-white text-stone-700 hover:border-stone-400"
+                    !isSelectable
+                      ? "border-stone-200 bg-stone-100 text-stone-400 line-through cursor-not-allowed opacity-60"
+                      : isSelected
+                        ? "border-stone-900 bg-stone-900 text-white"
+                        : "border-stone-300 bg-white text-stone-700 hover:border-stone-400"
                   }`}
                 >
                   {val.value}

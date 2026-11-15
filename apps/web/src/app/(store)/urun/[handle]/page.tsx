@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductByHandle } from "@/lib/medusa/products";
+import { isVariantOutOfStock } from "@/lib/medusa/variant-stock";
 import { AddToCartForm } from "@/components/add-to-cart-button";
 import { PlaceholderImage } from "@/components/placeholder-image";
 import { getSiteSettings } from "@/lib/payload/content";
@@ -69,10 +70,9 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     primaryVariant?.calculated_price?.calculated_amount ?? primaryVariant?.prices?.[0]?.amount ?? 0;
 
   const isOutOfStock =
-    primaryVariant?.manage_inventory &&
-    !primaryVariant?.allow_backorder &&
-    primaryVariant?.inventory_quantity !== undefined &&
-    primaryVariant.inventory_quantity <= 0;
+    (product.variants?.length ?? 0) > 0
+      ? product.variants!.every((v) => isVariantOutOfStock(v))
+      : true;
 
   const settings = await getSiteSettings().catch(() => null);
   const storeName = settings?.storeName || "Mağaza";

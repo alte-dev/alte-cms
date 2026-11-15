@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { medusaFetch } from "./client";
-import { getCategoryBySlug, getCollectionByHandle, getProductByHandle } from "./products";
+import {
+  getCategoryBySlug,
+  getCollectionByHandle,
+  getProductByHandle,
+  getProducts,
+} from "./products";
 
 vi.mock("./client", () => ({
   medusaFetch: vi.fn(),
@@ -62,5 +67,27 @@ describe("medusa products handle decoding", () => {
 
     const col = await getCollectionByHandle("yeni-%C3%BCr%C3%BCnler");
     expect(col?.id).toBe("col_1");
+  });
+
+  it("requests +variants.inventory_quantity in getProductByHandle and getProducts fields", async () => {
+    mockedMedusaFetch.mockImplementation(async (path: string) => {
+      if (path.startsWith("/store/regions")) {
+        return { regions: [{ id: "reg_tr", countries: [{ iso_2: "tr" }] }] };
+      }
+      return { products: [], count: 0 };
+    });
+
+    await getProductByHandle("test-urun");
+    const byHandleCall = mockedMedusaFetch.mock.calls.find(([path]) =>
+      path.startsWith("/store/products?handle="),
+    );
+    expect(decodeURIComponent(byHandleCall?.[0] ?? "")).toContain("+variants.inventory_quantity");
+
+    mockedMedusaFetch.mockClear();
+    await getProducts({ limit: 4 });
+    const listCall = mockedMedusaFetch.mock.calls.find(([path]) =>
+      path.startsWith("/store/products?"),
+    );
+    expect(decodeURIComponent(listCall?.[0] ?? "")).toContain("+variants.inventory_quantity");
   });
 });
