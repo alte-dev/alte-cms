@@ -4,6 +4,7 @@ import {
   customerSessionGuard,
   defaultAdminProductOrder,
   hasValidInternalSecret,
+  normalizeDefaultProductOption,
   orderOwnershipGuard,
   requireInternalSecret,
 } from "./middleware-guards";
@@ -239,6 +240,59 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
     const next2 = vi.fn();
     defaultAdminProductOrder(reqWithOrder, createMockRes(), next2);
     expect(reqWithOrder.query.order).toBe("title");
+    expect(next2).toHaveBeenCalledOnce();
+  });
+
+  it("normalizeDefaultProductOption translates Default option/value to Varsayılan/Standart and leaves custom options untouched", () => {
+    const reqDefault: any = {
+      body: {
+        title: "Test Kolye",
+        options: [{ title: "Default option", values: ["Default option value"] }],
+        variants: [
+          {
+            title: "Default variant",
+            options: { "Default option": "Default option value" },
+          },
+        ],
+      },
+      validatedBody: {
+        title: "Test Kolye",
+        options: [{ title: "Default option", values: ["Default option value"] }],
+        variants: [
+          {
+            title: "Default option value",
+            options: { "Default option": "Default option value" },
+          },
+        ],
+      },
+    };
+    const next1 = vi.fn();
+    normalizeDefaultProductOption(reqDefault, createMockRes(), next1);
+    expect(reqDefault.body.options).toEqual([{ title: "Varsayılan", values: ["Standart"] }]);
+    expect(reqDefault.body.variants[0]).toEqual({
+      title: "Standart",
+      options: { Varsayılan: "Standart" },
+    });
+    expect(reqDefault.validatedBody.options).toEqual([
+      { title: "Varsayılan", values: ["Standart"] },
+    ]);
+    expect(reqDefault.validatedBody.variants[0]).toEqual({
+      title: "Standart",
+      options: { Varsayılan: "Standart" },
+    });
+    expect(next1).toHaveBeenCalledOnce();
+
+    const reqCustom: any = {
+      body: {
+        title: "Özel Yüzük",
+        options: [{ title: "Beden", values: ["12", "14"] }],
+        variants: [{ title: "12", options: { Beden: "12" } }],
+      },
+    };
+    const next2 = vi.fn();
+    normalizeDefaultProductOption(reqCustom, createMockRes(), next2);
+    expect(reqCustom.body.options).toEqual([{ title: "Beden", values: ["12", "14"] }]);
+    expect(reqCustom.body.variants[0]).toEqual({ title: "12", options: { Beden: "12" } });
     expect(next2).toHaveBeenCalledOnce();
   });
 });

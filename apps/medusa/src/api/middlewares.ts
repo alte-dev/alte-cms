@@ -4,6 +4,7 @@ import {
   blockRoute,
   customerSessionGuard,
   defaultAdminProductOrder,
+  normalizeDefaultProductOption,
   orderOwnershipGuard,
   requireInternalSecret,
 } from "./middleware-guards";
@@ -68,6 +69,12 @@ export default defineMiddlewares({
       method: ["GET"],
       matcher: "/admin/products",
       middlewares: [defaultAdminProductOrder],
+    },
+    // Translate Medusa Admin default option ("Default option" / "Default option value") to Turkish ("Varsayılan" / "Standart")
+    {
+      method: ["POST"],
+      matcher: "/admin/products",
+      middlewares: [normalizeDefaultProductOption],
     },
   ],
 });
