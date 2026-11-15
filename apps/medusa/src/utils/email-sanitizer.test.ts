@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   escapeHtml,
+  isBlockedSmtpMetadataHost,
   isValidEmail,
   isValidHostname,
   isValidSmtpPort,
@@ -82,12 +83,40 @@ describe("email-sanitizer utilities", () => {
   });
 
   describe("isValidHostname", () => {
-    it("validates hostnames", () => {
+    it("validates hostnames and IP addresses", () => {
       expect(isValidHostname("smtp.gmail.com")).toBe(true);
       expect(isValidHostname("mail.example.test")).toBe(true);
       expect(isValidHostname("localhost")).toBe(true);
       expect(isValidHostname("127.0.0.1")).toBe(true);
+      expect(isValidHostname("192.168.1.10")).toBe(true);
+      expect(isValidHostname("10.0.0.5")).toBe(true);
       expect(isValidHostname("invalid_host!name")).toBe(false);
+    });
+  });
+
+  describe("isBlockedSmtpMetadataHost", () => {
+    it("blocks link-local and cloud metadata ranges (169.254.0.0/16, fe80::/10, 100.64.0.0/10)", () => {
+      expect(isBlockedSmtpMetadataHost("169.254.169.254")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("169.254.0.1")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("fe80::1")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("FE80::1")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("[fe80::1]")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("::ffff:169.254.169.254")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("::ffff:a9fe:a9fe")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("[::ffff:a9fe:a9fe]")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("0:0:0:0:0:ffff:a9fe:a9fe")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("::ffff:6440:0001")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("100.64.0.1")).toBe(true);
+      expect(isBlockedSmtpMetadataHost("100.127.255.254")).toBe(true);
+    });
+
+    it("allows localhost, 127.0.0.1, RFC1918 private IPs, and normal SMTP domains", () => {
+      expect(isBlockedSmtpMetadataHost("smtp.example.test")).toBe(false);
+      expect(isBlockedSmtpMetadataHost("127.0.0.1")).toBe(false);
+      expect(isBlockedSmtpMetadataHost("localhost")).toBe(false);
+      expect(isBlockedSmtpMetadataHost("192.168.1.10")).toBe(false);
+      expect(isBlockedSmtpMetadataHost("10.0.0.5")).toBe(false);
+      expect(isBlockedSmtpMetadataHost("172.16.0.5")).toBe(false);
     });
   });
 });

@@ -51,6 +51,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
     }
   } catch (err: any) {
     console.error("[Manual Refunds API] Error fetching manual refund sessions:", err.message);
+    res.status(500).json({ error: "Manuel iade listesi yüklenemedi." });
+    return;
   }
 
   res.status(200).json({

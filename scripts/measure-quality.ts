@@ -64,13 +64,45 @@ async function isServerRunning(url: string): Promise<boolean> {
   }
 }
 
+async function resolvePublishableKey(): Promise<string> {
+  const envKey =
+    process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || process.env.MEDUSA_PUBLISHABLE_KEY;
+  if (envKey) return envKey;
+
+  const email = process.env.MEDUSA_ADMIN_EMAIL;
+  const password = process.env.MEDUSA_ADMIN_PASSWORD;
+  if (email && password) {
+    const authRes = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (authRes.ok) {
+      const { token } = (await authRes.json()) as { token?: string };
+      if (token) {
+        const keysRes = await fetch(`${MEDUSA_URL}/admin/api-keys`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (keysRes.ok) {
+          const data = (await keysRes.json()) as any;
+          const pub = data.api_keys?.find((k: any) => k.type === "publishable" && !k.revoked_at);
+          if (pub?.token) return pub.token;
+        }
+      }
+    }
+  }
+
+  throw new Error(
+    "Publishable key bulunamadı. NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY/MEDUSA_PUBLISHABLE_KEY veya MEDUSA_ADMIN_EMAIL/MEDUSA_ADMIN_PASSWORD tanımlayın.",
+  );
+}
+
 async function resolveDynamicTargetPages(): Promise<
   Array<{ name: string; path: string; appRoute: string }>
 > {
-  const pubKey =
-    process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ||
-    process.env.MEDUSA_PUBLISHABLE_KEY ||
-    "pk_d7276af353492091a49cbd91c3ed5105f3943e9bac06ff9fb4b5dd6560b3d139";
+  const pubKey = await resolvePublishableKey();
 
   let productHandle = "test-urun-sabit-1";
   try {

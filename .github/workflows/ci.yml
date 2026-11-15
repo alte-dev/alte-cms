@@ -228,7 +228,7 @@ jobs:
               });
               const roleRes = await adminPool.query("SELECT 1 FROM pg_roles WHERE rolname = '\''medusa_user'\''");
               if (roleRes.rowCount === 0) {
-                await adminPool.query("CREATE USER medusa_user WITH PASSWORD '\''dev-only-medusa-password'\'' SUPERUSER");
+                await adminPool.query("CREATE USER medusa_user WITH PASSWORD '\''dev-only-medusa-password'\''");
               }
               const dbRes = await adminPool.query("SELECT 1 FROM pg_database WHERE datname = '\''medusa_db'\''");
               if (dbRes.rowCount === 0) {
@@ -324,6 +324,8 @@ jobs:
           pnpm --filter @alte/web test src/tests/a11y-axe.test.ts src/tests/keyboard-nav.test.ts src/tests/responsive-pagination.test.ts src/tests/shipping-selection.test.ts
 
       - name: Run All Live Verification Scripts (pnpm verify:all)
+        env:
+          VERIFY_ALLOW_DB_MUTATION: "true"
         run: pnpm verify:all
 
       # Pinned to commit SHA: actions/upload-artifact@v4.6.2

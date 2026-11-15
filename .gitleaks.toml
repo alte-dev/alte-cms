@@ -15,6 +15,5 @@ regexes = [
   '''dev-only-password''',
   '''dev_db_password''',
   '''dev_redis_password''',
-  '''example\.com''',
   '''dev-secret-key-do-not-use-in-production-must-be-min-32-chars''',
 ]

@@ -551,6 +551,7 @@ async function main() {
   // ADIM 7: Kargo Kuralları Eşiği (1500 TL altı / üstü Ücretsiz Kargo kontrolü)
   // -------------------------------------------------------------------------
   let validShippingOptionId = "";
+  let validShippingOptionAmount = 0;
   try {
     const cartId = sessionCookies["cart_id"];
 
@@ -627,6 +628,7 @@ async function main() {
     }
     const standardOption = options.find((o: any) => o.name === "Standart Kargo") || options[0];
     validShippingOptionId = standardOption.id;
+    validShippingOptionAmount = Number(standardOption.amount || 0);
     recordStep(
       8,
       "Kargo seçeneği tespiti",
@@ -850,15 +852,16 @@ async function main() {
     const order = orderData.order;
 
     const orderTotal = order?.total || 0;
+    const expectedOrderTotal = cartTotalBeforeOrder + validShippingOptionAmount;
     const totalsMatch =
       orderTotal > 0 &&
-      (orderTotal === cartTotalBeforeOrder || Math.abs(orderTotal - cartTotalBeforeOrder) <= 100);
+      (orderTotal === expectedOrderTotal || Math.abs(orderTotal - expectedOrderTotal) <= 0.01);
 
     recordStep(
       13,
       "Sipariş toplamı sepet toplamıyla eşleşiyor (KDV Dahil)",
       totalsMatch,
-      `Sepet Toplamı: ${cartTotalBeforeOrder} TL, Sipariş Toplamı: ${orderTotal} TL (KDV Dahil: ${order?.tax_total} TL vergi)`,
+      `Sepet: ${cartTotalBeforeOrder} TL + Kargo: ${validShippingOptionAmount} TL = Beklenen: ${expectedOrderTotal} TL, Sipariş Toplamı: ${orderTotal} TL (KDV Dahil: ${order?.tax_total} TL vergi)`,
     );
   } catch (err: any) {
     recordStep(13, "Sipariş toplamı kontrolü", false, err.message);
@@ -903,12 +906,14 @@ async function main() {
   // -------------------------------------------------------------------------
   // ADIM 15: Sipariş Metadata Doğrulaması (Fatura Tipi & 2 Yasal Onay Zaman Damgası)
   // -------------------------------------------------------------------------
+  let completedOrderDisplayId = "";
   try {
     const adminToken = await getAdminToken();
     const orderRes = await fetch(`${MEDUSA_URL}/admin/orders/${completedOrderId}`, {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
     const orderData = await orderRes.json();
+    completedOrderDisplayId = orderData.order?.display_id ? String(orderData.order.display_id) : "";
     const metadata = orderData.order?.metadata || {};
 
     const hasInvoiceType = metadata.invoice_type === "corporate";
@@ -964,16 +969,17 @@ async function main() {
     });
 
     const pageHtml = await confirmPageRes.text();
-    const pageRendered =
-      confirmPageRes.status === 200 &&
-      pageHtml.includes("Siparişiniz Başarıyla Alındı") &&
-      pageHtml.includes(completedOrderId.slice(0, 8));
+    const hasHeading = pageHtml.includes("Siparişiniz Başarıyla Alındı");
+    const hasOrderRef =
+      pageHtml.includes(completedOrderId.slice(0, 8)) ||
+      (completedOrderDisplayId ? pageHtml.includes(`#${completedOrderDisplayId}`) : false);
+    const pageRendered = confirmPageRes.status === 200 && hasHeading && hasOrderRef;
 
     recordStep(
       17,
       "Çerezli /siparis-onay sipariş gösterimi",
       pageRendered,
-      `Status: ${confirmPageRes.status}, Sipariş Başlığı: GÖRÜNTÜLENDİ, Sipariş ID: GÖRÜNTÜLENDİ`,
+      `Status: ${confirmPageRes.status}, Sipariş Başlığı: ${hasHeading ? "GÖRÜNTÜLENDİ" : "YOK"}, Sipariş ID/No: ${hasOrderRef ? "GÖRÜNTÜLENDİ" : "YOK"}`,
     );
   } catch (err: any) {
     recordStep(17, "Çerezli /siparis-onay gösterimi", false, err.message);

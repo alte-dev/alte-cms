@@ -92,4 +92,19 @@ describe("Medusa Environment & Cookie Security Defaults", () => {
     process.env.INTERNAL_API_SECRET = "secret-internal-key-that-is-32-chars!";
     expect(() => envModule.validateMedusaEnv()).toThrow();
   });
+
+  it("rejects wildcard '*' in ADMIN_CORS, AUTH_CORS, and STORE_CORS in production", () => {
+    process.env.NODE_ENV = "production";
+
+    process.env.ADMIN_CORS = "*";
+    expect(() => envModule.validateMedusaEnv()).toThrow(/ADMIN_CORS/);
+
+    process.env.ADMIN_CORS = "http://localhost:9000";
+    process.env.AUTH_CORS = "https://admin.example.test, *";
+    expect(() => envModule.validateMedusaEnv()).toThrow(/AUTH_CORS/);
+
+    process.env.AUTH_CORS = "http://localhost:9000";
+    process.env.STORE_CORS = "*";
+    expect(() => envModule.validateMedusaEnv()).toThrow(/STORE_CORS/);
+  });
 });

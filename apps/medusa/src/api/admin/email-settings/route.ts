@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { getMaskedEmailSettings, updateEmailSettings } from "../../../services/email-service";
 import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
+import { validateSmtpHost } from "../../../utils/email-sanitizer";
 
 const updateEmailSettingsSchema = z.object({
   enabled: z.boolean().optional(),
@@ -32,6 +33,7 @@ const updateEmailSettingsSchema = z.object({
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   if (!(await checkAdminSettingsRole(req, res))) return;
+
   try {
     const pgConnection =
       req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
@@ -55,6 +57,13 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
       error: `Geçersiz ayar verisi: ${errorMsg}`,
       details: parseResult.error.format(),
     });
+  }
+
+  if (parseResult.data.host !== undefined) {
+    const hostCheck = validateSmtpHost(parseResult.data.host);
+    if (!hostCheck.valid) {
+      return res.status(400).json({ error: hostCheck.error });
+    }
   }
 
   try {

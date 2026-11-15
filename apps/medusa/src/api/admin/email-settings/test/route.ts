@@ -1,7 +1,12 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { createTransporter, getOrCreateEmailSettings } from "../../../../services/email-service";
-import { isValidEmail, sanitizeHeader } from "../../../../utils/email-sanitizer";
+import {
+  escapeHtml,
+  isValidEmail,
+  sanitizeHeader,
+  validateSmtpHost,
+} from "../../../../utils/email-sanitizer";
 import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
 
 // In-memory rate limiter for test email: max 3 per 5 minutes per admin
@@ -48,6 +53,13 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       });
     }
 
+    if (settings.host) {
+      const hostCheck = validateSmtpHost(settings.host);
+      if (!hostCheck.valid) {
+        return res.status(400).json({ error: hostCheck.error });
+      }
+    }
+
     const { transporter } = await createTransporter(pgConnection);
 
     if (!transporter) {
@@ -72,7 +84,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
           <h2 style="color:#16a34a;margin-top:0;">✓ E-posta Bağlantısı Başarılı</h2>
           <p>Bu bir test e-postasıdır. E-posta bildirim ayarlarınız başarıyla doğrulanmıştır.</p>
           <div style="background:#fafaf9;padding:12px;border-radius:6px;font-size:14px;">
-            <p style="margin:4px 0;"><strong>Sunucu:</strong> ${settings.host}:${settings.port}</p>
+            <p style="margin:4px 0;"><strong>Sunucu:</strong> ${escapeHtml(settings.host)}:${escapeHtml(settings.port)}</p>
             <p style="margin:4px 0;"><strong>TLS:</strong> ${settings.secure ? "Açık" : "Kapalı"}</p>
             <p style="margin:4px 0;"><strong>Zaman:</strong> ${sentTime}</p>
           </div>

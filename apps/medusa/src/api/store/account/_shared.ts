@@ -50,6 +50,38 @@ export const resendVerificationCustomerLimiter = new FixedWindowRateLimiter({
   windowMs: 60 * 60_000,
 });
 
+// Tiered password-verification brute-force guards (keyed by customerId):
+// Tier 1: 5 wrong current-password attempts -> 429 + 15 min cooldown (session preserved)
+// Tier 2: 10 wrong/blocked attempts -> revoke all active customer sessions
+export const passwordVerifyCooldownGuard = new BruteForceGuard({
+  maxFailures: 5,
+  blockDurationMs: 15 * 60_000,
+});
+export const passwordVerifyRevokeGuard = new BruteForceGuard({
+  maxFailures: 10,
+  blockDurationMs: 15 * 60_000,
+});
+
+export async function recordPasswordVerifyFailureAndMaybeRevoke(
+  pgConnection: any,
+  customerId: string,
+): Promise<boolean> {
+  passwordVerifyCooldownGuard.recordFailure(customerId);
+  passwordVerifyRevokeGuard.recordFailure(customerId);
+  const revokeDecision = passwordVerifyRevokeGuard.check(customerId);
+  if (!revokeDecision.allowed) {
+    await revokeAllCustomerSessions(pgConnection, customerId);
+    passwordVerifyRevokeGuard.clear(customerId);
+    return true;
+  }
+  return false;
+}
+
+export function resetPasswordVerifyGuards(customerId: string): void {
+  passwordVerifyCooldownGuard.clear(customerId);
+  passwordVerifyRevokeGuard.clear(customerId);
+}
+
 export function getPgConnection(req: any): any {
   return (
     req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
@@ -100,10 +132,11 @@ export async function issueCustomerSession(
   req: any,
   customerId: string,
   authIdentityId: string,
+  pgOverride?: any,
 ): Promise<{ token: string; expiresAt: Date }> {
   const config = req.scope.resolve(ContainerRegistrationKeys.CONFIG_MODULE);
   const { http } = config.projectConfig;
-  const pgConnection = getPgConnection(req);
+  const pgConnection = pgOverride || getPgConnection(req);
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_ABSOLUTE_TTL_MS);
