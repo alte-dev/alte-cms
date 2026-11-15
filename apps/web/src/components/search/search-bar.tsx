@@ -124,8 +124,8 @@ export function SearchBar({
 
   const inputClasses =
     variant === "underline"
-      ? "w-full pl-7 pr-10 py-1.5 text-xs sm:text-sm bg-transparent text-stone-900 placeholder:text-stone-500 border-0 border-b border-stone-400 focus:border-stone-900 rounded-none outline-none transition"
-      : "w-full pl-9 pr-14 py-1.5 text-xs sm:text-sm bg-stone-100/80 hover:bg-stone-100 focus:bg-white text-stone-900 placeholder:text-stone-600 rounded-full border border-stone-200 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 outline-none transition";
+      ? "w-full pl-7 pr-10 py-1.5 text-base md:text-sm bg-transparent text-stone-900 placeholder:text-stone-500 border-0 border-b border-stone-400 focus:border-stone-900 rounded-none outline-none transition"
+      : "w-full pl-9 pr-14 py-1.5 text-base md:text-sm bg-stone-100/80 hover:bg-stone-100 focus:bg-white text-stone-900 placeholder:text-stone-600 rounded-full border border-stone-200 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 outline-none transition";
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
