@@ -2,15 +2,12 @@
  * E2E Live Verification Script for Contact Form & 3-Tier Roles
  *
  * Strict LIVE HTTP Verification:
- * 1. GET /iletisim returns HTTP 200 and renders contact form
- * 2. Anonymous GET /api/contact-messages is rejected (401/403)
+ * 1. GET /iletisim returns HTTP 200 and renders contact form, contact info, and Google Maps embed
+ * 2. Anonymous GET /admin/contact-messages on Medusa is rejected (401)
  * 3. POST /api/contact rejects cross-origin (403), invalid payload (400), honeypot (400)
- * 4. POST /api/contact accepts valid submission (201)
- * 5. Editor role cannot read /api/contact-messages (403)
- * 6. Shop-Manager role CAN read and update /api/contact-messages (200),
- *    CANNOT update /api/globals/site-settings (403),
- *    CANNOT delete /api/contact-messages/:id (403)
- * 7. Admin role cleans up test message (DELETE 200)
+ * 4. POST /api/contact accepts valid submission (201) and persists to Medusa
+ * 5. Payload shop-manager CANNOT update /api/globals/site-settings (403)
+ * 6. Medusa Admin GET / PATCH / DELETE /admin/contact-messages works end-to-end
  */
 
 import path from "path";
@@ -18,15 +15,28 @@ import dotenv from "dotenv";
 import { createStepRecorder } from "./lib/verify-step";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
+dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config();
 
 const STORE_URL =
   process.env.STOREFRONT_URL || process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3100";
+const MEDUSA_URL = (process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000").replace(/\/+$/, "");
 const { results, recordStep } = createStepRecorder({ format: "step" });
 
 interface AuthResult {
   cookie: string;
   headers: Record<string, string>;
+}
+
+async function loginMedusaAdmin(email: string, password: string): Promise<string | null> {
+  const res = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json().catch(() => ({}))) as { token?: string };
+  return data.token || null;
 }
 
 async function loginPayloadUser(email: string, password: string): Promise<AuthResult | null> {
@@ -72,19 +82,24 @@ async function ensureStaffUser(
 async function main() {
   console.log(`\n🚀 Başlatılıyor: verify:contact (${STORE_URL})\n`);
 
-  // 1. /iletisim page renders 200
+  // 1. /iletisim page renders 200 with form, contact info and Google Maps
   const pageRes = await fetch(`${STORE_URL}/iletisim`);
   const pageHtml = await pageRes.text();
   recordStep(
-    "1. /iletisim sayfası canlı HTTP 200",
-    pageRes.ok && pageHtml.includes("contact-name") && pageHtml.includes("contact-kvkk"),
+    "1. /iletisim sayfası canlı HTTP 200 (form + harita + iletişim)",
+    pageRes.ok &&
+      pageHtml.includes("contact-name") &&
+      pageHtml.includes("contact-kvkk") &&
+      pageHtml.includes("maps.google.com/maps") &&
+      pageHtml.includes("tel:") &&
+      pageHtml.includes("mailto:"),
     `status=${pageRes.status}`,
   );
 
-  // 2. Anonymous GET /api/contact-messages blocked
-  const anonReadRes = await fetch(`${STORE_URL}/api/contact-messages`);
+  // 2. Anonymous GET /admin/contact-messages on Medusa blocked
+  const anonReadRes = await fetch(`${MEDUSA_URL}/admin/contact-messages`);
   recordStep(
-    "2. Anonim /api/contact-messages okuma engelli (401/403)",
+    "2. Anonim Medusa /admin/contact-messages okuma engelli (401/403)",
     anonReadRes.status === 401 || anonReadRes.status === 403,
     `status=${anonReadRes.status}`,
   );
@@ -175,18 +190,16 @@ async function main() {
     `status=${validRes.status}, id=${createdMessageId ?? "none"}`,
   );
 
-  // 5-7. Role checks (admin, shop-manager, editor)
+  // 5. Payload shop-manager cannot update site-settings (403)
   const adminEmail = process.env.PAYLOAD_ADMIN_EMAIL || "admin@example.test";
   const adminPass = process.env.PAYLOAD_ADMIN_PASSWORD || "test-admin-password-123";
   const adminAuth = await loginPayloadUser(adminEmail, adminPass);
 
   if (!adminAuth) {
-    recordStep("5. Admin oturumu açılamadı", false, "Admin girişi başarısız");
+    recordStep("5. Payload Admin oturumu açılamadı", false, "Admin girişi başarısız");
   } else {
     const managerEmail = "verify-shop-manager@example.test";
     const managerPass = "ShopMgr123456!";
-    const editorEmail = "verify-editor@example.test";
-    const editorPass = "Editor123456!";
 
     await ensureStaffUser(
       adminAuth.headers,
@@ -195,82 +208,78 @@ async function main() {
       "shop-manager",
       "Mağaza Yöneticisi",
     );
-    await ensureStaffUser(adminAuth.headers, editorEmail, editorPass, "editor", "Editör");
-
-    const editorAuth = await loginPayloadUser(editorEmail, editorPass);
-    if (editorAuth) {
-      const editorRead = await fetch(`${STORE_URL}/api/contact-messages`, {
-        headers: editorAuth.headers,
-      });
-      recordStep(
-        "5. Editor rolü /api/contact-messages okuyamaz (403)",
-        editorRead.status === 403,
-        `status=${editorRead.status}`,
-      );
-    } else {
-      recordStep("5. Editor oturumu açılamadı", false, "Editor girişi başarısız");
-    }
 
     const managerAuth = await loginPayloadUser(managerEmail, managerPass);
-    if (managerAuth && createdMessageId) {
-      const mgrRead = await fetch(`${STORE_URL}/api/contact-messages/${createdMessageId}`, {
-        headers: managerAuth.headers,
-      });
-      recordStep(
-        "6a. Mağaza yöneticisi (shop-manager) iletişim mesajını okuyabilir (200)",
-        mgrRead.status === 200,
-        `status=${mgrRead.status}`,
-      );
-
-      const mgrPatch = await fetch(`${STORE_URL}/api/contact-messages/${createdMessageId}`, {
-        method: "PATCH",
-        headers: managerAuth.headers,
-        body: JSON.stringify({
-          status: "in_progress",
-          internalNote: "Canlı doğrulama inceleme notu",
-        }),
-      });
-      recordStep(
-        "6b. Mağaza yöneticisi mesaj durumunu/notunu güncelleyebilir (200)",
-        mgrPatch.status === 200,
-        `status=${mgrPatch.status}`,
-      );
-
+    if (managerAuth) {
       const mgrSettings = await fetch(`${STORE_URL}/api/globals/site-settings`, {
         method: "POST",
         headers: managerAuth.headers,
         body: JSON.stringify({ storeName: "Yetkisiz Değişiklik" }),
       });
       recordStep(
-        "6c. Mağaza yöneticisi Site Ayarlarını değiştiremez (403)",
+        "5. Mağaza yöneticisi Site Ayarlarını değiştiremez (403)",
         mgrSettings.status === 403,
         `status=${mgrSettings.status}`,
       );
-
-      const mgrDelete = await fetch(`${STORE_URL}/api/contact-messages/${createdMessageId}`, {
-        method: "DELETE",
-        headers: managerAuth.headers,
-      });
-      recordStep(
-        "6d. Mağaza yöneticisi iletişim mesajını silemez (403)",
-        mgrDelete.status === 403,
-        `status=${mgrDelete.status}`,
-      );
     } else {
-      recordStep("6. Mağaza yöneticisi oturumu/mesaj kontrolü", false, "Giriş veya mesaj eksik");
+      recordStep("5. Mağaza yöneticisi oturumu açılamadı", false, "Giriş başarısız");
     }
+  }
 
-    if (createdMessageId) {
-      const adminDelete = await fetch(`${STORE_URL}/api/contact-messages/${createdMessageId}`, {
-        method: "DELETE",
-        headers: adminAuth.headers,
-      });
-      recordStep(
-        "7. Admin test iletişim mesajını temizler (200)",
-        adminDelete.status === 200,
-        `status=${adminDelete.status}`,
-      );
-    }
+  // 6. Medusa Admin contact-messages list, update, and cleanup
+  const medusaEmail = process.env.MEDUSA_ADMIN_EMAIL || "";
+  const medusaPass = process.env.MEDUSA_ADMIN_PASSWORD || "";
+  const medusaToken =
+    medusaEmail && medusaPass ? await loginMedusaAdmin(medusaEmail, medusaPass) : null;
+
+  if (!medusaToken) {
+    recordStep(
+      "6. Medusa Admin oturumu açılamadı",
+      false,
+      "MEDUSA_ADMIN_EMAIL/PASSWORD eksik veya hatalı",
+    );
+  } else if (createdMessageId) {
+    const medusaHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${medusaToken}`,
+    };
+
+    const listRes = await fetch(`${MEDUSA_URL}/admin/contact-messages`, {
+      headers: medusaHeaders,
+    });
+    const listJson = (await listRes.json().catch(() => ({}))) as {
+      contact_messages?: Array<{ id: string }>;
+    };
+    const found = Boolean(listJson.contact_messages?.some((m) => m.id === createdMessageId));
+    recordStep(
+      "6a. Medusa Admin /admin/contact-messages listesi kaydedilen mesajı döner (200)",
+      listRes.status === 200 && found,
+      `status=${listRes.status}, found=${found}`,
+    );
+
+    const patchRes = await fetch(`${MEDUSA_URL}/admin/contact-messages/${createdMessageId}`, {
+      method: "PATCH",
+      headers: medusaHeaders,
+      body: JSON.stringify({
+        status: "in_progress",
+        internal_note: "Canlı doğrulama inceleme notu",
+      }),
+    });
+    recordStep(
+      "6b. Medusa Admin iletişim mesajı durumunu/notunu güncelleyebilir (200)",
+      patchRes.status === 200,
+      `status=${patchRes.status}`,
+    );
+
+    const delRes = await fetch(`${MEDUSA_URL}/admin/contact-messages/${createdMessageId}`, {
+      method: "DELETE",
+      headers: medusaHeaders,
+    });
+    recordStep(
+      "6c. Medusa Admin test iletişim mesajını temizler (200)",
+      delRes.status === 200,
+      `status=${delRes.status}`,
+    );
   }
 
   const failed = results.filter((r) => !r.passed);

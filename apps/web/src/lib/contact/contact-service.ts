@@ -99,6 +99,16 @@ function getInternalSecretHeader(): Record<string, string> {
   return secret ? { "x-alte-internal": secret } : {};
 }
 
+export async function submitContactMessageToMedusa(
+  payload: ContactSubmissionEmailPayload,
+): Promise<{ ok: boolean; id?: string; emailSent?: boolean }> {
+  return medusaFetch("/store/internal/contact-messages", {
+    method: "POST",
+    headers: getInternalSecretHeader(),
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function sendContactSubmissionEmails(
   payload: ContactSubmissionEmailPayload,
 ): Promise<{ ok: boolean; sent?: { storeNotification: boolean; customerAutoReply: boolean } }> {

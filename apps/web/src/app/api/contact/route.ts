@@ -3,7 +3,7 @@ import { getPayloadClient } from "../../../lib/payload/content";
 import {
   checkContactRateLimit,
   contactSubmissionSchema,
-  sendContactSubmissionEmails,
+  submitContactMessageToMedusa,
 } from "../../../lib/contact/contact-service";
 import { extractClientIp, requireAccountOrigin } from "../../../lib/security/origin-guard";
 
@@ -63,20 +63,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const created = await payload.create({
-      collection: "contact-messages",
-      overrideAccess: true,
-      data: {
-        name: data.name,
-        email: data.email,
-        phone: data.phone || "",
-        subject: data.subject,
-        message: data.message,
-        kvkkAccepted: true,
-        status: "new",
-      },
-    });
-
     const storeName = String(siteSettings?.storeName || "Mağaza");
     const recipientEmail =
       (typeof contactSettings.recipientEmail === "string" &&
@@ -84,28 +70,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       (typeof siteSettings?.contactEmail === "string" && siteSettings.contactEmail.trim()) ||
       undefined;
 
-    let emailSent = false;
-    try {
-      const mailRes = await sendContactSubmissionEmails({
-        storeName,
-        customerName: data.name,
-        customerEmail: data.email,
-        customerPhone: data.phone || undefined,
-        subject: data.subject,
-        message: data.message,
-        recipientEmail,
-        autoReplyEnabled: contactSettings.autoReplyEnabled !== false,
-        autoReplySubject: String(contactSettings.autoReplySubject || "Mesajınızı aldık"),
-        autoReplyIntro: String(
-          contactSettings.autoReplyIntro ||
-            "Mesajınız bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecektir.",
-        ),
-      });
-      emailSent = Boolean(mailRes?.ok);
-    } catch {
-      // Do not log PII; submission is already persisted in contact-messages
-      console.warn("[Contact API] İletişim e-postası gönderilemedi (mesaj kaydedildi).");
-    }
+    const medusaRes = await submitContactMessageToMedusa({
+      storeName,
+      customerName: data.name,
+      customerEmail: data.email,
+      customerPhone: data.phone || undefined,
+      subject: data.subject,
+      message: data.message,
+      recipientEmail,
+      autoReplyEnabled: contactSettings.autoReplyEnabled !== false,
+      autoReplySubject: String(contactSettings.autoReplySubject || "Mesajınızı aldık"),
+      autoReplyIntro: String(
+        contactSettings.autoReplyIntro ||
+          "Mesajınız bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecektir.",
+      ),
+    });
 
     const successMessage = String(
       contactSettings.successMessage ||
@@ -115,8 +94,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json(
       {
         ok: true,
-        id: created.id,
-        emailSent,
+        id: medusaRes.id,
+        emailSent: Boolean(medusaRes.emailSent),
         message: successMessage,
       },
       { status: 201 },

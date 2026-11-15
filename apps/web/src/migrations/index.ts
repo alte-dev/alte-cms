@@ -1,6 +1,7 @@
 import * as migration_20261109_133208_init from "./20261109_133208_init";
 import * as migration_20261110_143652_add_catalog_listing_mode from "./20261110_143652_add_catalog_listing_mode";
 import * as migration_20261114_232001_add_contact_form_and_messages from "./20261114_232001_add_contact_form_and_messages";
+import * as migration_20261115_000116_add_contact_page_content_and_map from "./20261115_000116_add_contact_page_content_and_map";
 
 export const migrations = [
   {
@@ -17,5 +18,10 @@ export const migrations = [
     up: migration_20261114_232001_add_contact_form_and_messages.up,
     down: migration_20261114_232001_add_contact_form_and_messages.down,
     name: "20261114_232001_add_contact_form_and_messages",
+  },
+  {
+    up: migration_20261115_000116_add_contact_page_content_and_map.up,
+    down: migration_20261115_000116_add_contact_page_content_and_map.down,
+    name: "20261115_000116_add_contact_page_content_and_map",
   },
 ];

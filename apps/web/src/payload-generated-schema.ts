@@ -692,6 +692,19 @@ export const site_settings = pgTable(
     contactForm_successMessage: varchar("contact_form_success_message").default(
       "Mesajınız başarıyla iletildi. En kısa sürede size dönüş yapacağız.",
     ),
+    contactForm_pageTitle: varchar("contact_form_page_title").default("Bizimle İletişime Geçin"),
+    contactForm_pageSubtitle: varchar("contact_form_page_subtitle").default(
+      "Sorularınız, siparişleriniz veya özel talepleriniz için bize her zaman ulaşabilirsiniz.",
+    ),
+    contactForm_topContent: varchar("contact_form_top_content"),
+    contactForm_bottomContent: varchar("contact_form_bottom_content").default(
+      "Müşteri temsilcilerimiz ilettiğiniz tüm taleplere iş günleri içinde en geç 24 saat içerisinde dönüş yapmaktadır.",
+    ),
+    contactForm_workingHours: varchar("contact_form_working_hours").default(
+      "Hafta içi: 09:00 - 18:00",
+    ),
+    contactForm_showMap: boolean("contact_form_show_map").default(true),
+    contactForm_mapQuery: varchar("contact_form_map_query"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
   },
