@@ -1,12 +1,13 @@
 import React from "react";
 import Link from "next/link";
-import { ShoppingBag, ChevronDown, User } from "lucide-react";
+import { ShoppingBag, User } from "lucide-react";
 import { getCategories } from "../lib/medusa/products";
 import { getCart } from "../lib/medusa/cart";
 import { getCartId } from "../lib/medusa/cookies";
 import { getNavigation, getSiteSettings } from "../lib/payload/content";
 import { safeHref } from "../lib/safe-href";
 import { MobileMenu, type MenuItem } from "./mobile-menu";
+import { DesktopNavLinks } from "./desktop-nav-links";
 import { SearchBar } from "./search/search-bar";
 
 export async function Navbar() {
@@ -21,8 +22,12 @@ export async function Navbar() {
   const itemCount = cart?.items?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
 
   const storeName = settingsGlobal?.storeName || "Mağaza";
+  const logoObj = settingsGlobal?.logo as { url?: string; alt?: string } | null | undefined;
+  const logoUrl = logoObj?.url ? safeHref(logoObj.url, "") : "";
+  const instagramRaw = (settingsGlobal?.socialMedia as { instagram?: string } | undefined)
+    ?.instagram;
+  const instagramUrl = instagramRaw ? safeHref(instagramRaw, "") : "";
 
-  // Build nav items: Prefer Payload navigation global, fallback to default
   let navItems: MenuItem[] = [];
   if (
     navigationGlobal?.headerMenu &&
@@ -42,7 +47,6 @@ export async function Navbar() {
         : undefined,
     }));
   } else {
-    // Fallback menu
     navItems = [
       { label: "Anasayfa", href: "/" },
       { label: "Tüm Ürünler", href: "/urunler" },
@@ -55,7 +59,7 @@ export async function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-stone-200">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-stone-200">
       {/* Top Banner */}
       <div className="bg-stone-900 text-stone-100 text-xs py-2 px-4 text-center font-medium">
         <span>
@@ -63,86 +67,145 @@ export async function Navbar() {
         </span>
       </div>
 
-      {/* Main Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Mobile Menu Button + Brand */}
-          <div className="flex items-center gap-4">
-            <MobileMenu items={navItems} />
+      {/* Desktop 2-Row Boutique Header */}
+      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Row 1: Social Left | Centered Logo | Account & Cart Right */}
+        <div className="grid grid-cols-3 items-center py-3 gap-4">
+          <div className="justify-self-start">
+            {instagramUrl ? (
+              <a
+                href={instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-xs sm:text-sm text-stone-700 hover:text-stone-900 transition"
+              >
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                </svg>
+                <span>{storeName}</span>
+              </a>
+            ) : (
+              <span className="text-xs text-stone-500 font-medium tracking-wide">{storeName}</span>
+            )}
+          </div>
 
+          <div className="justify-self-center">
             <Link
               href="/"
-              className="text-xl font-bold tracking-tight text-stone-900 hover:text-stone-700 transition"
+              className="inline-flex items-center justify-center hover:opacity-85 transition"
+              aria-label={`${storeName} Anasayfa`}
             >
-              {storeName}
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={logoObj?.alt || storeName}
+                  className="h-14 w-auto max-w-[220px] object-contain"
+                />
+              ) : (
+                <span className="text-2xl font-bold tracking-tight text-stone-900">
+                  {storeName}
+                </span>
+              )}
             </Link>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-stone-600">
-            {navItems.map((item, idx) => (
-              <div key={idx} className="relative group">
-                <Link
-                  href={safeHref(item.href)}
-                  target={item.openInNewTab ? "_blank" : undefined}
-                  rel={item.openInNewTab ? "noopener noreferrer" : undefined}
-                  className="hover:text-stone-900 transition flex items-center gap-1 py-2"
-                >
-                  <span>{item.label}</span>
-                  {item.children && item.children.length > 0 && (
-                    <ChevronDown className="w-3.5 h-3.5 opacity-60 group-hover:rotate-180 transition-transform" />
-                  )}
-                </Link>
-
-                {item.children && item.children.length > 0 && (
-                  <div className="absolute left-0 top-full hidden group-hover:flex flex-col bg-white border border-stone-200 rounded-lg shadow-lg py-2 min-w-[180px] z-50">
-                    {item.children.map((child, cIdx) => (
-                      <Link
-                        key={cIdx}
-                        href={safeHref(child.href)}
-                        target={child.openInNewTab ? "_blank" : undefined}
-                        rel={child.openInNewTab ? "noopener noreferrer" : undefined}
-                        className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition"
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-
-          {/* Header Search Bar */}
-          <div className="flex-1 max-w-[200px] sm:max-w-xs md:max-w-sm mx-2 sm:mx-4">
-            <SearchBar />
-          </div>
-
-          {/* Cart Icon & Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="justify-self-end flex items-center gap-4">
             <Link
               href="/hesap"
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
               aria-label="Hesabım"
             >
-              <User className="w-5 h-5 text-stone-700" />
-              <span className="hidden sm:inline">Hesabım</span>
+              <User className="w-4 h-4 text-stone-700" />
+              <span>Hesabım</span>
             </Link>
 
             <Link
               href="/sepet"
-              className="relative inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+              className="relative inline-flex items-center gap-2 px-2.5 py-1.5 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
               aria-label={`Sepet (${itemCount} ürün)`}
             >
-              <ShoppingBag className="w-5 h-5 text-stone-700" />
-              <span className="hidden sm:inline">Sepet</span>
+              <span className="relative inline-flex items-center">
+                <ShoppingBag className="w-5 h-5 text-stone-700" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold leading-none text-white bg-stone-900 rounded-full">
+                    {itemCount}
+                  </span>
+                )}
+              </span>
+              <span>Sepet</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Row 2: Centered Navigation + Underline Search */}
+        <div className="flex items-center justify-center gap-8 pb-2.5 pt-0.5">
+          <DesktopNavLinks items={navItems} />
+          <SearchBar variant="underline" inputId="store-search-input" className="w-56 lg:w-64" />
+        </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="md:hidden max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-14 gap-2">
+          <MobileMenu items={navItems} />
+
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center truncate"
+            aria-label={`${storeName} Anasayfa`}
+          >
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={logoObj?.alt || storeName}
+                className="h-10 w-auto max-w-[160px] object-contain"
+              />
+            ) : (
+              <span className="text-lg font-bold tracking-tight text-stone-900 truncate">
+                {storeName}
+              </span>
+            )}
+          </Link>
+
+          <div className="flex items-center gap-1">
+            <Link
+              href="/hesap"
+              className="p-2 text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+              aria-label="Hesabım"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+
+            <Link
+              href="/sepet"
+              className="relative p-2 text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+              aria-label={`Sepet (${itemCount} ürün)`}
+            >
+              <ShoppingBag className="w-5 h-5" />
               {itemCount > 0 && (
-                <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-stone-900 rounded-full">
+                <span className="absolute top-0.5 right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 text-[10px] font-bold leading-none text-white bg-stone-900 rounded-full">
                   {itemCount}
                 </span>
               )}
             </Link>
           </div>
+        </div>
+
+        <div className="pb-2.5">
+          <SearchBar variant="underline" inputId="store-search-input-mobile" />
         </div>
       </div>
     </header>

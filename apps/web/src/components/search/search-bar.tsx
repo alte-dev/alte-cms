@@ -14,7 +14,17 @@ interface SuggestionItem {
   formattedPrice?: string;
 }
 
-export function SearchBar() {
+interface SearchBarProps {
+  variant?: "pill" | "underline";
+  inputId?: string;
+  className?: string;
+}
+
+export function SearchBar({
+  variant = "pill",
+  inputId = "store-search-input",
+  className = "",
+}: SearchBarProps = {}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
@@ -112,16 +122,21 @@ export function SearchBar() {
     inputRef.current?.focus();
   };
 
+  const inputClasses =
+    variant === "underline"
+      ? "w-full pl-7 pr-10 py-1.5 text-xs sm:text-sm bg-transparent text-stone-900 placeholder:text-stone-500 border-0 border-b border-stone-400 focus:border-stone-900 rounded-none outline-none transition"
+      : "w-full pl-9 pr-14 py-1.5 text-xs sm:text-sm bg-stone-100/80 hover:bg-stone-100 focus:bg-white text-stone-900 placeholder:text-stone-600 rounded-full border border-stone-200 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 outline-none transition";
+
   return (
-    <div ref={containerRef} className="relative w-full max-w-xs sm:max-w-sm lg:max-w-md">
+    <div ref={containerRef} className={`relative w-full ${className}`}>
       <form onSubmit={handleSubmit} role="search" className="relative flex items-center">
-        <label htmlFor="store-search-input" className="sr-only">
+        <label htmlFor={inputId} className="sr-only">
           Ürünlerde Ara
         </label>
         <div className="relative w-full flex items-center">
           <input
             ref={inputRef}
-            id="store-search-input"
+            id={inputId}
             type="search"
             role="combobox"
             aria-haspopup="listbox"
@@ -131,15 +146,19 @@ export function SearchBar() {
               if (suggestions.length > 0) setIsOpen(true);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ürün, kategori veya stil ara..."
+            placeholder="Ürün, kategori ara..."
             autoComplete="off"
             aria-autocomplete="list"
             aria-expanded={isOpen}
-            aria-controls="search-suggestions-list"
-            className="w-full pl-9 pr-14 py-1.5 text-xs sm:text-sm bg-stone-100/80 hover:bg-stone-100 focus:bg-white text-stone-900 placeholder:text-stone-600 rounded-full border border-stone-200 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 outline-none transition"
+            aria-controls={`${inputId}-suggestions`}
+            className={inputClasses}
           />
 
-          <Search className="absolute left-3 w-4 h-4 text-stone-500 pointer-events-none" />
+          <Search
+            className={`absolute ${
+              variant === "underline" ? "left-1" : "left-3"
+            } w-4 h-4 text-stone-500 pointer-events-none`}
+          />
 
           <div className="absolute right-3 flex items-center gap-1">
             {isLoading && (
@@ -162,7 +181,7 @@ export function SearchBar() {
       {/* Autocomplete Dropdown Popover */}
       {isOpen && suggestions.length > 0 && (
         <div
-          id="search-suggestions-list"
+          id={`${inputId}-suggestions`}
           role="listbox"
           aria-label="Arama önerileri"
           className="absolute left-0 right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-stone-200 py-2 z-50 overflow-hidden max-h-96 overflow-y-auto divide-y divide-stone-100"
