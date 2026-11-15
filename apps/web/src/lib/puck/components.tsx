@@ -557,3 +557,7 @@ export function LatestPostsComponent({
 }
 
 export { SliderComponent, type SliderProps } from "./components/slider";
+export {
+  ContactFormBlockComponent,
+  type ContactFormBlockProps,
+} from "./components/contact-form-block";

@@ -361,4 +361,26 @@ describe("Puck Data Security & Structural Validation", () => {
     expect(res.valid).toBe(false);
     expect(res.error).toContain("Güvenli olmayan bağlantı");
   });
+
+  it("accepts valid ContactForm component with layout options", () => {
+    const contactData = {
+      content: [
+        {
+          type: "ContactForm",
+          props: {
+            id: "contact-form-1",
+            title: "Bize Yazın",
+            subtitle: "Sorularınız için formu doldurun.",
+            layout: "split-left",
+            sideTitle: "İletişim Bilgileri",
+            email: "iletisim@example.test",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(contactData);
+    expect(res.valid).toBe(true);
+    expect(res.totalComponents).toBe(1);
+  });
 });

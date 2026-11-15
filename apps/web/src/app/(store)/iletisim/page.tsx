@@ -1,7 +1,9 @@
 import React from "react";
 import type { Metadata } from "next";
-import { getSiteSettings } from "@/lib/payload/content";
+import { getPublishedPageBySlug, getSiteSettings } from "@/lib/payload/content";
 import { ContactFormClient } from "@/components/contact/ContactFormClient";
+import { RenderPuckContent } from "@/lib/puck/render";
+import { safeParsePuckData } from "@/lib/puck/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,21 @@ export const metadata: Metadata = {
 };
 
 export default async function IletisimPage() {
-  const siteSettings = (await getSiteSettings()) as any;
+  const [pageDoc, siteSettings] = await Promise.all([
+    getPublishedPageBySlug("iletisim"),
+    getSiteSettings() as Promise<any>,
+  ]);
+
+  const safePuck =
+    pageDoc && pageDoc._status === "published" ? safeParsePuckData(pageDoc.puckData) : null;
+
+  if (safePuck) {
+    return (
+      <article className="w-full">
+        <RenderPuckContent data={safePuck} />
+      </article>
+    );
+  }
 
   const storeName = String(siteSettings?.storeName || "Mağaza");
   const contactEmail =

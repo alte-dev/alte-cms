@@ -25,6 +25,7 @@ export const ALLOWED_PUCK_COMPONENTS = [
   "Accordion",
   "Banner",
   "ContactInfo",
+  "ContactForm",
   // Commerce
   "ProductGrid",
   "FeaturedProducts",
@@ -207,6 +208,21 @@ export const SliderPropsSchema = z
   })
   .strict();
 
+export const ContactFormPropsSchema = z
+  .object({
+    id: z.string(),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    layout: z.enum(["full", "split-left", "split-right"]).optional(),
+    sideTitle: z.string().optional(),
+    sideText: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    workingHours: z.string().optional(),
+  })
+  .strict();
+
 export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> = {
   Hero: HeroPropsSchema,
   Slider: SliderPropsSchema,
@@ -218,6 +234,7 @@ export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> 
   Accordion: AccordionPropsSchema,
   Banner: BannerPropsSchema,
   ContactInfo: ContactInfoPropsSchema,
+  ContactForm: ContactFormPropsSchema,
   ProductGrid: ProductGridPropsSchema,
   FeaturedProducts: FeaturedProductsPropsSchema,
   CategoryList: CategoryListPropsSchema,

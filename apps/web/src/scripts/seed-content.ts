@@ -72,17 +72,17 @@ async function seedContent() {
         { label: "Anasayfa", href: "/" },
         { label: "Tüm Ürünler", href: "/urunler" },
         { label: "Blog", href: "/blog" },
-        { label: "Hakkımızda", href: "/sayfa/hakkimizda" },
-        { label: "İletişim", href: "/sayfa/iletisim" },
+        { label: "Hakkımızda", href: "/hakkimizda" },
+        { label: "İletişim", href: "/iletisim" },
       ],
       footerMenu: [
         {
           title: "Kurumsal",
           items: [
-            { label: "Hakkımızda", href: "/sayfa/hakkimizda" },
-            { label: "İletişim", href: "/sayfa/iletisim" },
-            { label: "Mesafeli Satış Sözleşmesi", href: "/sayfa/mesafeli-satis-sozlesmesi" },
-            { label: "KVKK Aydınlatma Metni", href: "/sayfa/kvkk" },
+            { label: "Hakkımızda", href: "/hakkimizda" },
+            { label: "İletişim", href: "/iletisim" },
+            { label: "Mesafeli Satış Sözleşmesi", href: "/mesafeli-satis-sozlesmesi" },
+            { label: "KVKK Aydınlatma Metni", href: "/kvkk" },
           ],
         },
         {
@@ -528,10 +528,13 @@ async function seedContent() {
           },
         },
         {
-          type: "ContactInfo",
+          type: "ContactForm",
           props: {
-            id: "iletisim-info",
-            title: "Müşteri Hizmetleri & Atölye",
+            id: "iletisim-form",
+            title: "Bize Yazın",
+            subtitle: "Sorularınız, siparişleriniz ve iş birliği talepleriniz için formu doldurun.",
+            layout: "split-left",
+            sideTitle: "Müşteri Hizmetleri & Atölye",
             email: "iletisim@example.test",
             phone: "0850 000 00 00",
             address: "Nişantaşı Mah. Abdi İpekçi Cad. No: 42/3 Şişli / İstanbul",

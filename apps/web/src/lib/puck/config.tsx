@@ -10,6 +10,7 @@ import {
   AccordionComponent,
   BannerComponent,
   ContactInfoComponent,
+  ContactFormBlockComponent,
   ProductGridComponent,
   FeaturedProductsComponent,
   CategoryListComponent,
@@ -25,6 +26,7 @@ import {
   type AccordionProps,
   type BannerProps,
   type ContactInfoProps,
+  type ContactFormBlockProps,
   type ProductGridProps,
   type FeaturedProductsProps,
   type CategoryListProps,
@@ -43,6 +45,7 @@ export type ComponentConfigProps = {
   Accordion: AccordionProps;
   Banner: BannerProps;
   ContactInfo: ContactInfoProps;
+  ContactForm: ContactFormBlockProps;
   ProductGrid: ProductGridProps;
   FeaturedProducts: FeaturedProductsProps;
   CategoryList: CategoryListProps;
@@ -254,6 +257,30 @@ export const puckConfig: Config<ComponentConfigProps> = {
         workingHours: { type: "text", label: "Çalışma Saatleri" },
       },
       render: (props) => <ContactInfoComponent {...props} />,
+    },
+
+    ContactForm: {
+      label: "İletişim Formu (Contact Form)",
+      fields: {
+        title: { type: "text", label: "Form Başlığı" },
+        subtitle: { type: "textarea", label: "Form Alt Başlığı" },
+        layout: {
+          type: "select",
+          label: "Yerleşim (Konum)",
+          options: [
+            { label: "Bilgi Solda, Form Sağda", value: "split-left" },
+            { label: "Form Solda, Bilgi Sağda", value: "split-right" },
+            { label: "Sadece Form (Tam Genişlik)", value: "full" },
+          ],
+        },
+        sideTitle: { type: "text", label: "Yan Panel Başlığı" },
+        sideText: { type: "textarea", label: "Yan Panel Metni" },
+        email: { type: "text", label: "E-posta" },
+        phone: { type: "text", label: "Telefon" },
+        address: { type: "textarea", label: "Adres" },
+        workingHours: { type: "text", label: "Çalışma Saatleri" },
+      },
+      render: (props) => <ContactFormBlockComponent {...props} />,
     },
 
     ProductGrid: {
