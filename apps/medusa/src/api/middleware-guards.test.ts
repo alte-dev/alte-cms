@@ -223,13 +223,19 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
   });
 
   it("defaultAdminProductOrder sets order=-created_at when missing and preserves explicit order", () => {
-    const reqWithoutOrder: any = { query: {} };
+    const reqWithoutOrder: any = {
+      query: {},
+      queryConfig: { pagination: { skip: 0, take: 20, order: undefined } },
+      listConfig: {},
+    };
     const next1 = vi.fn();
     defaultAdminProductOrder(reqWithoutOrder, createMockRes(), next1);
     expect(reqWithoutOrder.query.order).toBe("-created_at");
+    expect(reqWithoutOrder.queryConfig.pagination.order).toEqual({ created_at: "DESC" });
+    expect(reqWithoutOrder.listConfig.order).toEqual({ created_at: "DESC" });
     expect(next1).toHaveBeenCalledOnce();
 
-    const reqWithOrder: any = { query: { order: "title" } };
+    const reqWithOrder: any = { query: { order: "title" }, validatedQuery: { order: "title" } };
     const next2 = vi.fn();
     defaultAdminProductOrder(reqWithOrder, createMockRes(), next2);
     expect(reqWithOrder.query.order).toBe("title");

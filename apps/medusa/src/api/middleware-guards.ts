@@ -216,8 +216,25 @@ export function defaultAdminProductOrder(req: any, _res: any, next: () => void) 
   if (!req.query) {
     req.query = {};
   }
-  if (!req.query.order) {
+  const hasExplicitOrder = Boolean(req.query.order || req.validatedQuery?.order);
+  if (!hasExplicitOrder) {
     req.query.order = "-created_at";
+    const defaultOrder = { created_at: "DESC" };
+    if (req.queryConfig) {
+      req.queryConfig.pagination = {
+        ...(req.queryConfig.pagination ?? {}),
+        order: defaultOrder,
+      };
+    }
+    if (req.remoteQueryConfig && req.remoteQueryConfig !== req.queryConfig) {
+      req.remoteQueryConfig.pagination = {
+        ...(req.remoteQueryConfig.pagination ?? {}),
+        order: defaultOrder,
+      };
+    }
+    if (req.listConfig) {
+      req.listConfig.order = defaultOrder;
+    }
   }
   return next();
 }
