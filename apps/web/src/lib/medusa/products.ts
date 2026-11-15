@@ -68,14 +68,23 @@ export async function getCategories(options?: {
   }
 }
 
+function safeDecodeParam(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 /**
  * Finds a single product category by slug/handle.
  */
 export async function getCategoryBySlug(slug: string): Promise<StoreProductCategory | null> {
+  const normalizedSlug = safeDecodeParam(slug);
   const categories = await getCategories();
   const searchTree = (cats: StoreProductCategory[]): StoreProductCategory | null => {
     for (const c of cats) {
-      if (c.handle === slug) return c;
+      if (c.handle === normalizedSlug) return c;
       if (c.category_children && c.category_children.length > 0) {
         const found = searchTree(c.category_children);
         if (found) return found;
@@ -105,8 +114,9 @@ export async function getCollections(): Promise<any[]> {
  * Retrieves a collection by handle.
  */
 export async function getCollectionByHandle(handle: string): Promise<any | null> {
+  const normalizedHandle = safeDecodeParam(handle);
   const collections = await getCollections();
-  return collections.find((c) => c.handle === handle) || null;
+  return collections.find((c) => c.handle === normalizedHandle) || null;
 }
 
 export interface GetProductsParams {
@@ -221,6 +231,7 @@ export async function getProducts(
  * Retrieves a single product by handle.
  */
 export async function getProductByHandle(handle: string): Promise<StoreProduct | null> {
+  const normalizedHandle = safeDecodeParam(handle);
   const region = await getDefaultRegion();
   const queryParams = new URLSearchParams();
 
@@ -234,7 +245,7 @@ export async function getProductByHandle(handle: string): Promise<StoreProduct |
 
   try {
     const data = await medusaFetch<{ products: StoreProduct[] }>(
-      `/store/products?handle=${encodeURIComponent(handle)}&${queryParams.toString()}`,
+      `/store/products?handle=${encodeURIComponent(normalizedHandle)}&${queryParams.toString()}`,
       { cache: "no-store" },
     );
 
