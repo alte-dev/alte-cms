@@ -4,6 +4,7 @@ import { getPayload } from "payload";
 import configPromise from "@payload-config";
 import { isStaffRole } from "@/access/content";
 import { PuckEditorClient } from "@/components/puck/PuckEditorClient";
+import "@/app/(store)/globals.css";
 
 interface Props {
   params: Promise<{ id: string }>;

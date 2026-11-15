@@ -3,6 +3,8 @@ import {
   blockCustomerTokenRefresh,
   blockRoute,
   customerSessionGuard,
+  defaultAdminProductOrder,
+  normalizeDefaultProductOption,
   orderOwnershipGuard,
   requireInternalSecret,
 } from "./middleware-guards";
@@ -26,6 +28,10 @@ export default defineMiddlewares({
     // Protect internal service endpoints (e.g. contact form emails) with internal secret
     {
       matcher: "/store/internal",
+      middlewares: [requireInternalSecret],
+    },
+    {
+      matcher: "/internal",
       middlewares: [requireInternalSecret],
     },
     // Prevent bypassing registration via direct POST /store/customers
@@ -57,6 +63,18 @@ export default defineMiddlewares({
     {
       matcher: "/store/orders/:id/transfer",
       middlewares: [blockRoute],
+    },
+    // Default Medusa Admin products list to newest first (-created_at) when no explicit order is given
+    {
+      method: ["GET"],
+      matcher: "/admin/products",
+      middlewares: [defaultAdminProductOrder],
+    },
+    // Translate Medusa Admin default option ("Default option" / "Default option value") to Turkish ("Varsayılan" / "Standart")
+    {
+      method: ["POST"],
+      matcher: "/admin/products",
+      middlewares: [normalizeDefaultProductOption],
     },
   ],
 });

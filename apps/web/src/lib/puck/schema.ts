@@ -16,6 +16,7 @@ import { isSafeHref } from "../safe-href";
 export const ALLOWED_PUCK_COMPONENTS = [
   // Sections
   "Hero",
+  "Slider",
   "RichText",
   "ImageBlock",
   "Columns",
@@ -24,6 +25,7 @@ export const ALLOWED_PUCK_COMPONENTS = [
   "Accordion",
   "Banner",
   "ContactInfo",
+  "ContactForm",
   // Commerce
   "ProductGrid",
   "FeaturedProducts",
@@ -183,8 +185,47 @@ export const LatestPostsPropsSchema = z
   })
   .strict();
 
+export const SliderPropsSchema = z
+  .object({
+    id: z.string(),
+    autoPlaySeconds: z.number().min(0).max(30).optional(),
+    height: z.enum(["compact", "medium", "tall"]).optional(),
+    slide1Title: z.string().optional(),
+    slide1Subtitle: z.string().optional(),
+    slide1ImageUrl: z.string().optional(),
+    slide1ButtonText: z.string().optional(),
+    slide1ButtonHref: z.string().optional(),
+    slide2Title: z.string().optional(),
+    slide2Subtitle: z.string().optional(),
+    slide2ImageUrl: z.string().optional(),
+    slide2ButtonText: z.string().optional(),
+    slide2ButtonHref: z.string().optional(),
+    slide3Title: z.string().optional(),
+    slide3Subtitle: z.string().optional(),
+    slide3ImageUrl: z.string().optional(),
+    slide3ButtonText: z.string().optional(),
+    slide3ButtonHref: z.string().optional(),
+  })
+  .strict();
+
+export const ContactFormPropsSchema = z
+  .object({
+    id: z.string(),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    layout: z.enum(["full", "split-left", "split-right"]).optional(),
+    sideTitle: z.string().optional(),
+    sideText: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    workingHours: z.string().optional(),
+  })
+  .strict();
+
 export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> = {
   Hero: HeroPropsSchema,
+  Slider: SliderPropsSchema,
   RichText: RichTextPropsSchema,
   ImageBlock: ImageBlockPropsSchema,
   Columns: ColumnsPropsSchema,
@@ -193,6 +234,7 @@ export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> 
   Accordion: AccordionPropsSchema,
   Banner: BannerPropsSchema,
   ContactInfo: ContactInfoPropsSchema,
+  ContactForm: ContactFormPropsSchema,
   ProductGrid: ProductGridPropsSchema,
   FeaturedProducts: FeaturedProductsPropsSchema,
   CategoryList: CategoryListPropsSchema,

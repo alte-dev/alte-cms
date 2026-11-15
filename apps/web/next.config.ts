@@ -63,6 +63,26 @@ const nextConfig: NextConfig = {
   experimental: {
     globalNotFound: true,
   },
+  async rewrites() {
+    const medusaBackend = (process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000").replace(
+      /\/+$/,
+      "",
+    );
+    return [
+      {
+        source: "/app",
+        destination: `${medusaBackend}/app`,
+      },
+      {
+        source: "/app/:path*",
+        destination: `${medusaBackend}/app/:path*`,
+      },
+      {
+        source: "/medusa-api/:path*",
+        destination: `${medusaBackend}/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {

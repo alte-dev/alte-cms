@@ -72,17 +72,17 @@ async function seedContent() {
         { label: "Anasayfa", href: "/" },
         { label: "Tüm Ürünler", href: "/urunler" },
         { label: "Blog", href: "/blog" },
-        { label: "Hakkımızda", href: "/sayfa/hakkimizda" },
+        { label: "Hakkımızda", href: "/hakkimizda" },
         { label: "İletişim", href: "/iletisim" },
       ],
       footerMenu: [
         {
           title: "Kurumsal",
           items: [
-            { label: "Hakkımızda", href: "/sayfa/hakkimizda" },
+            { label: "Hakkımızda", href: "/hakkimizda" },
             { label: "İletişim", href: "/iletisim" },
-            { label: "Mesafeli Satış Sözleşmesi", href: "/sayfa/mesafeli-satis-sozlesmesi" },
-            { label: "KVKK Aydınlatma Metni", href: "/sayfa/kvkk" },
+            { label: "Mesafeli Satış Sözleşmesi", href: "/mesafeli-satis-sozlesmesi" },
+            { label: "KVKK Aydınlatma Metni", href: "/kvkk" },
           ],
         },
         {
@@ -338,6 +338,111 @@ async function seedContent() {
   // 5. Pages with Puck Data (Idempotent)
   console.log("📄 Seeding Pages with Visual Blocks (Puck)...");
 
+  // Page 0: Anasayfa (Jewelry & Accessories Storefront Template with Slider)
+  const existingHome = await payload.find({
+    collection: "pages",
+    where: {
+      or: [{ isHome: { equals: true } }, { slug: { equals: "index" } }],
+    },
+    limit: 1,
+  });
+
+  if (existingHome.docs.length > 0) {
+    console.log("  - Home page ('index' / isHome) already exists.");
+  } else {
+    await payload.create({
+      collection: "pages",
+      data: {
+        title: "Anasayfa",
+        slug: "index",
+        isHome: true,
+        _status: "published" as const,
+        puckData: {
+          root: { props: { title: "Anasayfa" } },
+          content: [
+            {
+              type: "Slider",
+              props: {
+                id: "home-jewelry-slider",
+                autoPlaySeconds: 5,
+                height: "tall",
+                slide1Title: "Altın Işıltısı, Zamansız Zarafet",
+                slide1Subtitle:
+                  "El işçiliğiyle hazırlanan 925 ayar gümüş ve altın kaplama kolye, küpe ve yüzük koleksiyonları.",
+                slide1ImageUrl:
+                  "https://images.pexels.com/photos/13155693/pexels-photo-13155693.jpeg?auto=compress&cs=tinysrgb&w=1600",
+                slide1ButtonText: "Koleksiyonu Keşfet",
+                slide1ButtonHref: "/urunler",
+                slide2Title: "Minimalist Günlük Dokunuşlar",
+                slide2Subtitle:
+                  "Her kombine uyum sağlayan ince zincir kolyeler ve zarif bilekliklerle stilinizi tamamlayın.",
+                slide2ImageUrl:
+                  "https://images.pexels.com/photos/13292930/pexels-photo-13292930.jpeg?auto=compress&cs=tinysrgb&w=1600",
+                slide2ButtonText: "Tüm Ürünleri Gör",
+                slide2ButtonHref: "/urunler",
+                slide3Title: "Özel Günler İçin Işıltılı Hediyeler",
+                slide3Subtitle:
+                  "Özel kadife kutusunda, sertifikalı ve sigortalı kargo avantajıyla sevdiklerinize değer katın.",
+                slide3ImageUrl:
+                  "https://images.pexels.com/photos/7700270/pexels-photo-7700270.jpeg?auto=compress&cs=tinysrgb&w=1600",
+                slide3ButtonText: "Hediye Seçenekleri",
+                slide3ButtonHref: "/urunler",
+              },
+            },
+            {
+              type: "FreeShippingBar",
+              props: {
+                id: "home-shipping-bar",
+                threshold: 1500,
+                message: "1.500 TL ve üzeri siparişlerde sigortalı ücretsiz kargo!",
+              },
+            },
+            {
+              type: "CategoryList",
+              props: {
+                id: "home-categories",
+                title: "Takı & Aksesuar Kategorileri",
+              },
+            },
+            {
+              type: "ProductGrid",
+              props: {
+                id: "home-featured-products",
+                title: "Öne Çıkan Tasarımlar",
+                limit: 8,
+              },
+            },
+            {
+              type: "Columns",
+              props: {
+                id: "home-trust-columns",
+                columns: "3",
+                col1Title: "925 Ayar Gümüş & Altın Kaplama",
+                col1Content:
+                  "Cilt dostu, antialerjik ve kararmaya karşı özel koruyucu kaplamalı özgün tasarımlar.",
+                col2Title: "Sigortalı & Hızlı Teslimat",
+                col2Content:
+                  "Saat 15:00'e kadar verilen siparişler aynı gün özenle paketlenip sigortalı kargoya teslim edilir.",
+                col3Title: "Özel Hediye Paketi",
+                col3Content:
+                  "Tüm takılar özel tasarım mücevher kutusu, bakım bezi ve hediye notu ile gönderilir.",
+              },
+            },
+            {
+              type: "LatestPosts",
+              props: {
+                id: "home-latest-posts",
+                title: "Takı & Stil Rehberi",
+                limit: 3,
+              },
+            },
+          ],
+        },
+      },
+    });
+    console.log("  + Home page ('index' / isHome) created and published with Slider.");
+  }
+
   // Page 1: Hakkımızda (Published)
   const hakkimizdaData = {
     title: "Hakkımızda",
@@ -423,10 +528,13 @@ async function seedContent() {
           },
         },
         {
-          type: "ContactInfo",
+          type: "ContactForm",
           props: {
-            id: "iletisim-info",
-            title: "Müşteri Hizmetleri & Atölye",
+            id: "iletisim-form",
+            title: "Bize Yazın",
+            subtitle: "Sorularınız, siparişleriniz ve iş birliği talepleriniz için formu doldurun.",
+            layout: "split-left",
+            sideTitle: "Müşteri Hizmetleri & Atölye",
             email: "iletisim@example.test",
             phone: "0850 000 00 00",
             address: "Nişantaşı Mah. Abdi İpekçi Cad. No: 42/3 Şişli / İstanbul",

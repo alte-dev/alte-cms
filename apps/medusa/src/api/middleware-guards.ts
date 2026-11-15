@@ -211,3 +211,88 @@ export async function orderOwnershipGuard(req: any, res: any, next: () => void) 
 
   return next();
 }
+
+export function defaultAdminProductOrder(req: any, _res: any, next: () => void) {
+  if (!req.query) {
+    req.query = {};
+  }
+  const hasExplicitOrder = Boolean(req.query.order || req.validatedQuery?.order);
+  if (!hasExplicitOrder) {
+    req.query.order = "-created_at";
+    const defaultOrder = { created_at: "DESC" };
+    if (req.queryConfig) {
+      req.queryConfig.pagination = {
+        ...(req.queryConfig.pagination ?? {}),
+        order: defaultOrder,
+      };
+    }
+    if (req.remoteQueryConfig && req.remoteQueryConfig !== req.queryConfig) {
+      req.remoteQueryConfig.pagination = {
+        ...(req.remoteQueryConfig.pagination ?? {}),
+        order: defaultOrder,
+      };
+    }
+    if (req.listConfig) {
+      req.listConfig.order = defaultOrder;
+    }
+  }
+  return next();
+}
+
+const DEFAULT_OPTION_TITLE = "Default option";
+const DEFAULT_OPTION_VALUE = "Default option value";
+const DEFAULT_VARIANT_TITLE = "Default variant";
+const TR_OPTION_TITLE = "Varsayılan";
+const TR_OPTION_VALUE = "Standart";
+
+function rewriteDefaultOptionPayload(payload: any): void {
+  if (!payload || typeof payload !== "object") {
+    return;
+  }
+
+  if (Array.isArray(payload.options)) {
+    for (const opt of payload.options) {
+      if (!opt || typeof opt !== "object") continue;
+      if (opt.title === DEFAULT_OPTION_TITLE) {
+        opt.title = TR_OPTION_TITLE;
+      }
+      if (Array.isArray(opt.values)) {
+        opt.values = opt.values.map((v: unknown) =>
+          v === DEFAULT_OPTION_VALUE ? TR_OPTION_VALUE : v,
+        );
+      }
+    }
+  }
+
+  if (Array.isArray(payload.variants)) {
+    for (const variant of payload.variants) {
+      if (!variant || typeof variant !== "object") continue;
+      if (variant.title === DEFAULT_VARIANT_TITLE || variant.title === DEFAULT_OPTION_VALUE) {
+        variant.title = TR_OPTION_VALUE;
+      }
+      if (variant.options && typeof variant.options === "object") {
+        const opts = variant.options as Record<string, unknown>;
+        if (Object.prototype.hasOwnProperty.call(opts, DEFAULT_OPTION_TITLE)) {
+          const val = opts[DEFAULT_OPTION_TITLE];
+          delete opts[DEFAULT_OPTION_TITLE];
+          if (!Object.prototype.hasOwnProperty.call(opts, TR_OPTION_TITLE)) {
+            opts[TR_OPTION_TITLE] = val === DEFAULT_OPTION_VALUE ? TR_OPTION_VALUE : val;
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Translates Medusa Admin's built-in English default option/value
+ * ("Default option" / "Default option value") to Turkish ("Varsayılan" / "Standart")
+ * when creating a new product without custom variants.
+ */
+export function normalizeDefaultProductOption(req: any, _res: any, next: () => void) {
+  rewriteDefaultOptionPayload(req.body);
+  if (req.validatedBody && req.validatedBody !== req.body) {
+    rewriteDefaultOptionPayload(req.validatedBody);
+  }
+  return next();
+}

@@ -1,6 +1,7 @@
 import React from "react";
 import {
   HeroComponent,
+  SliderComponent,
   RichTextComponent,
   ImageBlockComponent,
   ColumnsComponent,
@@ -9,6 +10,7 @@ import {
   AccordionComponent,
   BannerComponent,
   ContactInfoComponent,
+  ContactFormBlockComponent,
   ProductGridComponent,
   FeaturedProductsComponent,
   CategoryListComponent,
@@ -30,6 +32,7 @@ export interface PuckDataStructure {
 
 const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   Hero: HeroComponent,
+  Slider: SliderComponent,
   RichText: RichTextComponent,
   ImageBlock: ImageBlockComponent,
   Columns: ColumnsComponent,
@@ -38,6 +41,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   Accordion: AccordionComponent,
   Banner: BannerComponent,
   ContactInfo: ContactInfoComponent,
+  ContactForm: ContactFormBlockComponent,
   ProductGrid: ProductGridComponent,
   FeaturedProducts: FeaturedProductsComponent,
   CategoryList: CategoryListComponent,

@@ -315,4 +315,72 @@ describe("Puck Data Security & Structural Validation", () => {
     expect(res.valid).toBe(false);
     expect(res.error).toContain("izin verilen 512 KB sınırını aşıyor");
   });
+
+  it("accepts valid Slider component with safe image URLs and hrefs", () => {
+    const sliderData = {
+      content: [
+        {
+          type: "Slider",
+          props: {
+            id: "home-slider",
+            autoPlaySeconds: 5,
+            height: "tall",
+            slide1Title: "Altın Kaplama Zarafeti",
+            slide1Subtitle: "Özel tasarım kolye ve yüzükler",
+            slide1ImageUrl: "https://images.pexels.com/photos/13155693/pexels-photo-13155693.jpeg",
+            slide1ButtonText: "Koleksiyonu Keşfet",
+            slide1ButtonHref: "/urunler",
+            slide2Title: "Minimalist Dokunuşlar",
+            slide2ImageUrl: "https://images.pexels.com/photos/13292930/pexels-photo-13292930.jpeg",
+            slide2ButtonHref: "/kategori/aksesuar",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(sliderData);
+    expect(res.valid).toBe(true);
+    expect(res.totalComponents).toBe(1);
+  });
+
+  it("rejects unsafe javascript: URL inside Slider slide1ButtonHref", () => {
+    const unsafeSlider = {
+      content: [
+        {
+          type: "Slider",
+          props: {
+            id: "bad-slider",
+            slide1Title: "Test",
+            slide1ButtonHref: "javascript:alert(1)",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(unsafeSlider);
+    expect(res.valid).toBe(false);
+    expect(res.error).toContain("Güvenli olmayan bağlantı");
+  });
+
+  it("accepts valid ContactForm component with layout options", () => {
+    const contactData = {
+      content: [
+        {
+          type: "ContactForm",
+          props: {
+            id: "contact-form-1",
+            title: "Bize Yazın",
+            subtitle: "Sorularınız için formu doldurun.",
+            layout: "split-left",
+            sideTitle: "İletişim Bilgileri",
+            email: "iletisim@example.test",
+          },
+        },
+      ],
+    };
+
+    const res = validatePuckData(contactData);
+    expect(res.valid).toBe(true);
+    expect(res.totalComponents).toBe(1);
+  });
 });

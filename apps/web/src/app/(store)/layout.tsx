@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" suppressHydrationWarning>
       <body
         className={`${inter.className} min-h-screen flex flex-col bg-stone-50 text-stone-900 antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
       >

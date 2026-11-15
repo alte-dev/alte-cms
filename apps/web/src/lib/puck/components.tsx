@@ -411,7 +411,7 @@ export function ProductGridComponent({ title = "Öne Çıkan Ürünler", limit =
             key={idx}
             className="group relative rounded-xl border border-zinc-200 p-4 hover:shadow-md transition-shadow"
           >
-            <div className="aspect-square bg-zinc-100 rounded-lg mb-3 flex items-center justify-center text-zinc-400">
+            <div className="aspect-square bg-zinc-100 rounded-lg mb-3 flex items-center justify-center text-zinc-600">
               <span className="text-xs">Ürün Görseli</span>
             </div>
             <h3 className="text-sm font-medium text-zinc-900 truncate">Örnek Ürün {idx + 1}</h3>
@@ -445,7 +445,7 @@ export function FeaturedProductsComponent({
             key={num}
             className="rounded-xl border border-zinc-200 p-4 bg-white hover:border-zinc-400 transition-colors"
           >
-            <div className="aspect-[4/5] bg-zinc-100 rounded-lg mb-4 flex items-center justify-center text-zinc-400">
+            <div className="aspect-[4/5] bg-zinc-100 rounded-lg mb-4 flex items-center justify-center text-zinc-600">
               <span className="text-xs">Öne Çıkan Ürün</span>
             </div>
             <h3 className="font-medium text-zinc-900">Sezon Özel Serisi {num}</h3>
@@ -539,7 +539,7 @@ export function LatestPostsComponent({
             key={idx}
             className="group rounded-xl border border-zinc-200 p-5 hover:border-zinc-400 transition-colors"
           >
-            <div className="aspect-[16/9] bg-zinc-100 rounded-lg mb-4 flex items-center justify-center text-zinc-400">
+            <div className="aspect-[16/9] bg-zinc-100 rounded-lg mb-4 flex items-center justify-center text-zinc-600">
               <span className="text-xs">Blog Görseli</span>
             </div>
             <time className="text-xs text-zinc-500">8 Kasım 2026</time>
@@ -555,3 +555,9 @@ export function LatestPostsComponent({
     </section>
   );
 }
+
+export { SliderComponent, type SliderProps } from "./components/slider";
+export {
+  ContactFormBlockComponent,
+  type ContactFormBlockProps,
+} from "./components/contact-form-block";
