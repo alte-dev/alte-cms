@@ -852,7 +852,7 @@ async function main() {
     const orderTotal = order?.total || 0;
     const totalsMatch =
       orderTotal > 0 &&
-      (orderTotal === cartTotalBeforeOrder || Math.abs(orderTotal - cartTotalBeforeOrder) <= 100);
+      (orderTotal === cartTotalBeforeOrder || Math.abs(orderTotal - cartTotalBeforeOrder) <= 0.01);
 
     recordStep(
       13,

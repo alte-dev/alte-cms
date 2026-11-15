@@ -134,5 +134,11 @@ export function mapMedusaError(error: any): string {
     return "İşlem gerçekleştirilemedi. Lütfen bilgilerinizi kontrol edip tekrar deneyin.";
   }
 
-  return message || "İşlem gerçekleştirilemedi.";
+  console.error("[MedusaError] Unmapped error", {
+    code: code || undefined,
+    type: type || undefined,
+    status: typeof error.status === "number" ? error.status : undefined,
+  });
+
+  return "İşlem gerçekleştirilemedi. Lütfen daha sonra tekrar deneyin.";
 }

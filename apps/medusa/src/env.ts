@@ -95,6 +95,20 @@ export function validateMedusaEnv(): MedusaEnv {
         "[Security] DEV_PAYTR_USER_IP yalnızca geliştirme ortamında kullanılabilir. Production modunda tanımlanamaz.",
       );
     }
+    for (const corsKey of ["ADMIN_CORS", "AUTH_CORS", "STORE_CORS"] as const) {
+      const val = process.env[corsKey];
+      if (
+        val &&
+        val
+          .split(",")
+          .map((origin) => origin.trim())
+          .includes("*")
+      ) {
+        throw new Error(
+          `[Security] ${corsKey} production ortamında '*' (wildcard) olamaz. Açık origin belirtiniz.`,
+        );
+      }
+    }
   }
 
   const result = medusaEnvSchema.safeParse(process.env);
