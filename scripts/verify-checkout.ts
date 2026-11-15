@@ -551,6 +551,7 @@ async function main() {
   // ADIM 7: Kargo Kuralları Eşiği (1500 TL altı / üstü Ücretsiz Kargo kontrolü)
   // -------------------------------------------------------------------------
   let validShippingOptionId = "";
+  let validShippingOptionAmount = 0;
   try {
     const cartId = sessionCookies["cart_id"];
 
@@ -627,6 +628,7 @@ async function main() {
     }
     const standardOption = options.find((o: any) => o.name === "Standart Kargo") || options[0];
     validShippingOptionId = standardOption.id;
+    validShippingOptionAmount = Number(standardOption.amount || 0);
     recordStep(
       8,
       "Kargo seçeneği tespiti",
@@ -850,15 +852,16 @@ async function main() {
     const order = orderData.order;
 
     const orderTotal = order?.total || 0;
+    const expectedOrderTotal = cartTotalBeforeOrder + validShippingOptionAmount;
     const totalsMatch =
       orderTotal > 0 &&
-      (orderTotal === cartTotalBeforeOrder || Math.abs(orderTotal - cartTotalBeforeOrder) <= 0.01);
+      (orderTotal === expectedOrderTotal || Math.abs(orderTotal - expectedOrderTotal) <= 0.01);
 
     recordStep(
       13,
       "Sipariş toplamı sepet toplamıyla eşleşiyor (KDV Dahil)",
       totalsMatch,
-      `Sepet Toplamı: ${cartTotalBeforeOrder} TL, Sipariş Toplamı: ${orderTotal} TL (KDV Dahil: ${order?.tax_total} TL vergi)`,
+      `Sepet: ${cartTotalBeforeOrder} TL + Kargo: ${validShippingOptionAmount} TL = Beklenen: ${expectedOrderTotal} TL, Sipariş Toplamı: ${orderTotal} TL (KDV Dahil: ${order?.tax_total} TL vergi)`,
     );
   } catch (err: any) {
     recordStep(13, "Sipariş toplamı kontrolü", false, err.message);
