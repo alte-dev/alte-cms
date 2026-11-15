@@ -155,6 +155,55 @@ export const SiteSettings: GlobalConfig = {
           defaultValue: "Mesajınız başarıyla iletildi. En kısa sürede size dönüş yapacağız.",
           label: "Form Gönderim Başarı Mesajı",
         },
+        {
+          name: "pageTitle",
+          type: "text",
+          defaultValue: "Bizimle İletişime Geçin",
+          label: "İletişim Sayfası Başlığı",
+        },
+        {
+          name: "pageSubtitle",
+          type: "textarea",
+          defaultValue:
+            "Sorularınız, siparişleriniz veya özel talepleriniz için bize her zaman ulaşabilirsiniz.",
+          label: "İletişim Sayfası Alt Başlığı",
+        },
+        {
+          name: "topContent",
+          type: "textarea",
+          label: "Form Üstü Metin / Duyuru (İsteğe Bağlı)",
+          admin: {
+            description: "İletişim formunun hemen üzerinde gösterilecek bilgilendirme metni.",
+          },
+        },
+        {
+          name: "bottomContent",
+          type: "textarea",
+          defaultValue:
+            "Müşteri temsilcilerimiz ilettiğiniz tüm taleplere iş günleri içinde en geç 24 saat içerisinde dönüş yapmaktadır.",
+          label: "Form Altı Metin / Bilgilendirme",
+        },
+        {
+          name: "workingHours",
+          type: "text",
+          defaultValue: "Hafta içi: 09:00 - 18:00",
+          label: "Çalışma Saatleri",
+        },
+        {
+          name: "showMap",
+          type: "checkbox",
+          defaultValue: true,
+          label: "Google Haritasını Göster",
+        },
+        {
+          name: "mapQuery",
+          type: "text",
+          label: "Google Harita Konumu (Adres veya Koordinat)",
+          admin: {
+            description:
+              "Örn: Nişantaşı, Şişli, İstanbul. Boş bırakılırsa mağaza adresi kullanılır.",
+          },
+        },
       ],
     },
   ],

@@ -719,6 +719,19 @@ export interface SiteSetting {
     autoReplySubject?: string | null;
     autoReplyIntro?: string | null;
     successMessage?: string | null;
+    pageTitle?: string | null;
+    pageSubtitle?: string | null;
+    /**
+     * İletişim formunun hemen üzerinde gösterilecek bilgilendirme metni.
+     */
+    topContent?: string | null;
+    bottomContent?: string | null;
+    workingHours?: string | null;
+    showMap?: boolean | null;
+    /**
+     * Örn: Nişantaşı, Şişli, İstanbul. Boş bırakılırsa mağaza adresi kullanılır.
+     */
+    mapQuery?: string | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -801,6 +814,13 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         autoReplySubject?: T;
         autoReplyIntro?: T;
         successMessage?: T;
+        pageTitle?: T;
+        pageSubtitle?: T;
+        topContent?: T;
+        bottomContent?: T;
+        workingHours?: T;
+        showMap?: T;
+        mapQuery?: T;
       };
   updatedAt?: T;
   createdAt?: T;

@@ -73,14 +73,14 @@ async function seedContent() {
         { label: "Tüm Ürünler", href: "/urunler" },
         { label: "Blog", href: "/blog" },
         { label: "Hakkımızda", href: "/sayfa/hakkimizda" },
-        { label: "İletişim", href: "/sayfa/iletisim" },
+        { label: "İletişim", href: "/iletisim" },
       ],
       footerMenu: [
         {
           title: "Kurumsal",
           items: [
             { label: "Hakkımızda", href: "/sayfa/hakkimizda" },
-            { label: "İletişim", href: "/sayfa/iletisim" },
+            { label: "İletişim", href: "/iletisim" },
             { label: "Mesafeli Satış Sözleşmesi", href: "/sayfa/mesafeli-satis-sozlesmesi" },
             { label: "KVKK Aydınlatma Metni", href: "/sayfa/kvkk" },
           ],
