@@ -59,21 +59,20 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const tokenHash = hashToken(token);
   const now = new Date();
 
-  // Atomic single-use consumption
-  const consumedRows = await pgConnection("customer_password_reset")
+  // 1. Validate reset token without consuming it yet (password update is external to pgConnection.transaction)
+  const pendingToken = await pgConnection("customer_password_reset")
     .where({ token_hash: tokenHash })
     .whereNull("used_at")
     .whereNull("deleted_at")
     .andWhere("expires_at", ">", now)
-    .update({ used_at: now, updated_at: now })
-    .returning(["customer_id"]);
+    .select("customer_id")
+    .first();
 
-  const consumed = consumedRows?.[0];
-  if (!consumed?.customer_id) {
+  if (!pendingToken?.customer_id) {
     return res.status(400).json(UNIFORM_TOKEN_ERROR);
   }
 
-  const customerId = consumed.customer_id;
+  const customerId = pendingToken.customer_id;
   const customer = await pgConnection("customer")
     .where({ id: customerId, has_account: true })
     .whereNull("deleted_at")
@@ -84,6 +83,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json(UNIFORM_TOKEN_ERROR);
   }
 
+  // 2. Update password BEFORE consuming token so a failed password update never burns the token
   const authService = req.scope.resolve(Modules.AUTH);
   const email = normalizeEmail(customer.email);
   const existingProvider = await pgConnection("provider_identity")
@@ -118,13 +118,32 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     });
   }
 
-  // Delete any legacy credential and invalidate all other reset tokens & all active sessions
-  await pgConnection("customer_legacy_credential").where({ customer_id: customerId }).del();
-  await pgConnection("customer_password_reset")
-    .where({ customer_id: customerId })
-    .whereNull("used_at")
-    .update({ used_at: now, updated_at: now });
-  await revokeAllCustomerSessions(pgConnection, customerId);
+  // 3. Atomically consume token, clear legacy credentials, and revoke all active sessions
+  const tokenConsumed = await pgConnection.transaction(async (trx: any) => {
+    const consumedRows = await trx("customer_password_reset")
+      .where({ token_hash: tokenHash })
+      .whereNull("used_at")
+      .whereNull("deleted_at")
+      .andWhere("expires_at", ">", now)
+      .update({ used_at: now, updated_at: now })
+      .returning(["customer_id"]);
+
+    if (!consumedRows?.[0]?.customer_id) {
+      return false;
+    }
+
+    await trx("customer_legacy_credential").where({ customer_id: customerId }).del();
+    await trx("customer_password_reset")
+      .where({ customer_id: customerId })
+      .whereNull("used_at")
+      .update({ used_at: now, updated_at: now });
+    await revokeAllCustomerSessions(trx, customerId);
+    return true;
+  });
+
+  if (!tokenConsumed) {
+    return res.status(400).json(UNIFORM_TOKEN_ERROR);
+  }
 
   return res.status(200).json({
     ok: true,

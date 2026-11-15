@@ -7,6 +7,9 @@ import {
   getCustomerIdFromRequest,
   getPgConnection,
   issueCustomerSession,
+  passwordVerifyCooldownGuard,
+  recordPasswordVerifyFailureAndMaybeRevoke,
+  resetPasswordVerifyGuards,
   revokeAllCustomerSessions,
 } from "../_shared";
 
@@ -37,6 +40,16 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(401).json({ error: "Oturum geçersiz." });
   }
 
+  const cooldownDecision = passwordVerifyCooldownGuard.check(customerId);
+  if (!cooldownDecision.allowed) {
+    const revoked = await recordPasswordVerifyFailureAndMaybeRevoke(pgConnection, customerId);
+    return res.status(429).json({
+      error: revoked
+        ? "Çok fazla hatalı parola denemesi nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın."
+        : `Çok fazla hatalı parola denemesi. Lütfen ${cooldownDecision.remainingMinutes} dakika sonra tekrar deneyin.`,
+    });
+  }
+
   const email = normalizeEmail(customer.email);
   const pwCheck = validateCustomerPassword(parsed.data.new_password, email);
   if (!pwCheck.valid) {
@@ -53,8 +66,11 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   });
 
   if (!verifyCurrent.success || !verifyCurrent.authIdentity) {
+    await recordPasswordVerifyFailureAndMaybeRevoke(pgConnection, customerId);
     return res.status(401).json({ error: "Mevcut parola hatalı." });
   }
+
+  resetPasswordVerifyGuards(customerId);
 
   const updateRes = await authService.updateProvider("emailpass", {
     entity_id: email,
@@ -64,13 +80,11 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json({ error: "Parola güncellenemedi." });
   }
 
-  // Revoke all sessions, then issue a fresh session for the current device
-  await revokeAllCustomerSessions(pgConnection, customerId);
-  const { token, expiresAt } = await issueCustomerSession(
-    req,
-    customerId,
-    verifyCurrent.authIdentity.id,
-  );
+  // Revoke all sessions and issue a fresh session atomically in a single transaction
+  const { token, expiresAt } = await pgConnection.transaction(async (trx: any) => {
+    await revokeAllCustomerSessions(trx, customerId);
+    return issueCustomerSession(req, customerId, verifyCurrent.authIdentity!.id, trx);
+  });
 
   return res.status(200).json({
     ok: true,
