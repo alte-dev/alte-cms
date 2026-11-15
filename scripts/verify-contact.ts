@@ -248,9 +248,9 @@ async function main() {
       headers: medusaHeaders,
     });
     const listJson = (await listRes.json().catch(() => ({}))) as {
-      contact_messages?: Array<{ id: string }>;
+      messages?: Array<{ id: string }>;
     };
-    const found = Boolean(listJson.contact_messages?.some((m) => m.id === createdMessageId));
+    const found = Boolean(listJson.messages?.some((m) => m.id === createdMessageId));
     recordStep(
       "6a. Medusa Admin /admin/contact-messages listesi kaydedilen mesajı döner (200)",
       listRes.status === 200 && found,
