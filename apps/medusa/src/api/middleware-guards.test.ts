@@ -172,6 +172,16 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
       nextAdmin,
     );
     expect(nextAdmin).toHaveBeenCalledOnce();
+    // Valid internal secret (e.g., server-side /siparis-onay getOrder) -> next()
+    const nextInternal = vi.fn();
+    await strictCustomerSessionGuard(
+      {
+        headers: { "x-alte-internal": SECRET },
+      } as any,
+      createMockRes(),
+      nextInternal,
+    );
+    expect(nextInternal).toHaveBeenCalledOnce();
   });
 
   it("orderOwnershipGuard denies unauthenticated or non-owner requests with 404, allows owner or internal secret", async () => {

@@ -27,7 +27,11 @@ const RESERVED_SLUGS = [
 ];
 
 const WEB_URL = process.env.WEB_URL || process.env.WEB_PUBLIC_URL || "http://127.0.0.1:3100";
-const REVALIDATE_SECRET = process.env.REVALIDATION_SECRET || process.env.PAYLOAD_SECRET || "";
+const REVALIDATE_SECRET =
+  process.env.REVALIDATE_SECRET ||
+  process.env.PAYLOAD_SECRET ||
+  process.env.REVALIDATION_SECRET ||
+  "";
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
 
 const { results, recordStep } = createStepRecorder({ format: "quality" });

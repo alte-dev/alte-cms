@@ -906,12 +906,14 @@ async function main() {
   // -------------------------------------------------------------------------
   // ADIM 15: Sipariş Metadata Doğrulaması (Fatura Tipi & 2 Yasal Onay Zaman Damgası)
   // -------------------------------------------------------------------------
+  let completedOrderDisplayId = "";
   try {
     const adminToken = await getAdminToken();
     const orderRes = await fetch(`${MEDUSA_URL}/admin/orders/${completedOrderId}`, {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
     const orderData = await orderRes.json();
+    completedOrderDisplayId = orderData.order?.display_id ? String(orderData.order.display_id) : "";
     const metadata = orderData.order?.metadata || {};
 
     const hasInvoiceType = metadata.invoice_type === "corporate";
@@ -967,16 +969,17 @@ async function main() {
     });
 
     const pageHtml = await confirmPageRes.text();
-    const pageRendered =
-      confirmPageRes.status === 200 &&
-      pageHtml.includes("Siparişiniz Başarıyla Alındı") &&
-      pageHtml.includes(completedOrderId.slice(0, 8));
+    const hasHeading = pageHtml.includes("Siparişiniz Başarıyla Alındı");
+    const hasOrderRef =
+      pageHtml.includes(completedOrderId.slice(0, 8)) ||
+      (completedOrderDisplayId ? pageHtml.includes(`#${completedOrderDisplayId}`) : false);
+    const pageRendered = confirmPageRes.status === 200 && hasHeading && hasOrderRef;
 
     recordStep(
       17,
       "Çerezli /siparis-onay sipariş gösterimi",
       pageRendered,
-      `Status: ${confirmPageRes.status}, Sipariş Başlığı: GÖRÜNTÜLENDİ, Sipariş ID: GÖRÜNTÜLENDİ`,
+      `Status: ${confirmPageRes.status}, Sipariş Başlığı: ${hasHeading ? "GÖRÜNTÜLENDİ" : "YOK"}, Sipariş ID/No: ${hasOrderRef ? "GÖRÜNTÜLENDİ" : "YOK"}`,
     );
   } catch (err: any) {
     recordStep(17, "Çerezli /siparis-onay gösterimi", false, err.message);
