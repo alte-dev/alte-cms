@@ -405,7 +405,7 @@ async function seedContent() {
               },
             },
             {
-              type: "FeaturedProducts",
+              type: "ProductGrid",
               props: {
                 id: "home-featured-products",
                 title: "Öne Çıkan Tasarımlar",
