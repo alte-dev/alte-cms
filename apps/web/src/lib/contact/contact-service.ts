@@ -80,6 +80,7 @@ export interface ContactSubmissionEmailPayload {
   customerPhone?: string;
   subject: string;
   message: string;
+  kvkkAccepted?: boolean;
   recipientEmail?: string;
   autoReplyEnabled: boolean;
   autoReplySubject: string;

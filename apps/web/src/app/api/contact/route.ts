@@ -77,6 +77,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       customerPhone: data.phone || undefined,
       subject: data.subject,
       message: data.message,
+      kvkkAccepted: true,
       recipientEmail,
       autoReplyEnabled: contactSettings.autoReplyEnabled !== false,
       autoReplySubject: String(contactSettings.autoReplySubject || "Mesajınızı aldık"),
