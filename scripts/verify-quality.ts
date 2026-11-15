@@ -27,12 +27,8 @@ const RESERVED_SLUGS = [
 ];
 
 const WEB_URL = process.env.WEB_URL || process.env.WEB_PUBLIC_URL || "http://127.0.0.1:3100";
-const PAYLOAD_SECRET = process.env.PAYLOAD_SECRET || "dev-payload-super-secret-key-32-chars-long!";
+const REVALIDATE_SECRET = process.env.REVALIDATION_SECRET || process.env.PAYLOAD_SECRET || "";
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://127.0.0.1:9000";
-const MEDUSA_KEY =
-  process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ||
-  process.env.MEDUSA_PUBLISHABLE_KEY ||
-  "pk_d7276af353492091a49cbd91c3ed5105f3943e9bac06ff9fb4b5dd6560b3d139";
 
 const { results, recordStep } = createStepRecorder({ format: "quality" });
 
@@ -281,6 +277,10 @@ async function main() {
 
   // Adım 9: Önbellek ve Canlı HTTP Revalidation Testi
   try {
+    if (!REVALIDATE_SECRET) {
+      throw new Error("REVALIDATION_SECRET veya PAYLOAD_SECRET ortam değişkeni tanımlı değil.");
+    }
+
     // 1. Yetkisiz istek 401
     const unauthRes = await fetch(`${WEB_URL}/api/revalidate`, {
       method: "POST",
@@ -289,7 +289,7 @@ async function main() {
     });
 
     // 2. Query param ?secret= ile istek (reddedilmeli, yalnızca header kabul)
-    const queryParamRes = await fetch(`${WEB_URL}/api/revalidate?secret=${PAYLOAD_SECRET}`, {
+    const queryParamRes = await fetch(`${WEB_URL}/api/revalidate?secret=${REVALIDATE_SECRET}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tag: "pages" }),
@@ -300,7 +300,7 @@ async function main() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-revalidate-secret": PAYLOAD_SECRET,
+        "x-revalidate-secret": REVALIDATE_SECRET,
       },
       body: JSON.stringify({ tag: "pages" }),
     });

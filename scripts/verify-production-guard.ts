@@ -113,11 +113,28 @@ async function runMedusaProcess(
   });
 }
 
+function assertSafeIsolatedTestDb(dbUrl: string): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("ABORT: verify-production-guard.ts cannot mutate a production database.");
+  }
+  const parsed = new URL(dbUrl);
+  const host = parsed.hostname.toLowerCase();
+  const dbName = parsed.pathname.replace(/^\//, "").toLowerCase();
+  const isLocalHost = host === "127.0.0.1" || host === "localhost" || host === "::1";
+  const isTestDb = dbName === "medusa_db" || dbName.includes("test");
+  if (!isLocalHost || !isTestDb) {
+    throw new Error(
+      `ABORT: verify-production-guard.ts refuses to mutate non-isolated database (${host}/${dbName}).`,
+    );
+  }
+}
+
 async function main() {
   console.log("===============================================================");
   console.log(" FAZ 4.1 — PRODUCTION STARTUP PAYMENT GUARD VERIFICATION");
   console.log("===============================================================\n");
 
+  assertSafeIsolatedTestDb(DB_URL);
   const client = await pool.connect();
 
   try {
@@ -145,13 +162,8 @@ async function main() {
     );
 
     const resA = await runMedusaProcess({});
-
-    const failedClosedA =
-      resA.code === 1 ||
-      resA.stderr.includes("FAIL-CLOSED") ||
-      resA.stdout.includes("FAIL-CLOSED") ||
-      resA.stderr.includes("pp_system_default") ||
-      resA.stdout.includes("pp_system_default");
+    const outputA = `${resA.stderr}\n${resA.stdout}`;
+    const failedClosedA = resA.code === 1 && outputA.includes("FAIL-CLOSED");
 
     console.log(`Exit Code: ${resA.code}`);
     const summaryA = (resA.stderr || resA.stdout)
@@ -179,9 +191,8 @@ async function main() {
     );
 
     const resB = await runMedusaProcess({});
-
-    const failedClosedB =
-      resB.code === 1 || resB.stderr.includes("FAIL-CLOSED") || resB.stdout.includes("FAIL-CLOSED");
+    const outputB = `${resB.stderr}\n${resB.stdout}`;
+    const failedClosedB = resB.code === 1 && outputB.includes("FAIL-CLOSED");
 
     console.log(`Exit Code: ${resB.code}`);
     const summaryB = (resB.stderr || resB.stdout)
@@ -206,11 +217,8 @@ async function main() {
     const resD1 = await runMedusaProcess({
       PAYTR_API_BASE: "https://mock.test",
     });
-
-    const failedClosedD1 =
-      resD1.code === 1 ||
-      resD1.stderr.includes("PAYTR_API_BASE") ||
-      resD1.stdout.includes("PAYTR_API_BASE");
+    const outputD1 = `${resD1.stderr}\n${resD1.stdout}`;
+    const failedClosedD1 = resD1.code === 1 && outputD1.includes("PAYTR_API_BASE");
 
     if (!failedClosedD1) {
       throw new Error("TEST (d1) BAŞARISIZ: PAYTR_API_BASE üretimde tanımlıyken kapanmadı!");
@@ -220,11 +228,8 @@ async function main() {
     const resD2 = await runMedusaProcess({
       DEV_PAYTR_USER_IP: "1.2.3.4",
     });
-
-    const failedClosedD2 =
-      resD2.code === 1 ||
-      resD2.stderr.includes("DEV_PAYTR_USER_IP") ||
-      resD2.stdout.includes("DEV_PAYTR_USER_IP");
+    const outputD2 = `${resD2.stderr}\n${resD2.stdout}`;
+    const failedClosedD2 = resD2.code === 1 && outputD2.includes("DEV_PAYTR_USER_IP");
 
     if (!failedClosedD2) {
       throw new Error("TEST (d2) BAŞARISIZ: DEV_PAYTR_USER_IP üretimde tanımlıyken kapanmadı!");
@@ -309,8 +314,9 @@ async function main() {
     console.log(" ✅ TÜM ÜRETİM AÇILIŞ KORUMASI SENARYOLARI (a, b, c, d) BAŞARIYLA DOĞRULANDI!");
     console.log("===============================================================");
   } finally {
-    // Restore dev configuration (pp_system_default + pp_paytr_paytr + pp_cod_cod)
+    // Restore dev configuration (pp_system_default + pp_paytr_paytr + pp_cod_cod) only on verified local test DB
     try {
+      assertSafeIsolatedTestDb(DB_URL);
       const regionRes = await client.query("SELECT id FROM region LIMIT 1;");
       if (regionRes.rows.length > 0) {
         const regId = regionRes.rows[0].id;
