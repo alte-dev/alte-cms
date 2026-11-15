@@ -2,15 +2,12 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { Modules } from "@medusajs/framework/utils";
 
 const ALLOWED_SETTINGS_ROLES = new Set(["admin", "super-admin"]);
+const ALLOWED_SHOP_OPS_ROLES = new Set(["admin", "super-admin", "shop-manager"]);
 
-/**
- * Ensures only admin or super-admin users can access or modify system settings
- * (email-settings, payment-settings). Blocks shop-manager, editor, and author roles.
- */
-export async function checkAdminSettingsRole(
+async function resolveAdminRole(
   req: MedusaRequest,
   res: MedusaResponse,
-): Promise<boolean> {
+): Promise<{ ok: true; role: string } | { ok: false }> {
   const anyReq = req as any;
   let role: string | undefined =
     anyReq.user?.role ||
@@ -26,20 +23,51 @@ export async function checkAdminSettingsRole(
         role = userRecord?.metadata?.role || userRecord?.role;
       }
     } catch {
-      // Fail closed if actor lookup errors when auth_context exists
       res.status(403).json({
-        error: "Yetkisiz erişim: Ayarlara erişim yetkisi doğrulanamadı.",
+        error: "Yetkisiz erişim: Kullanıcı rolü doğrulanamadı.",
       });
-      return false;
+      return { ok: false };
     }
   }
 
-  // Default Medusa admin user without custom metadata.role is treated as admin
-  const effectiveRole = role || "admin";
+  return { ok: true, role: role || "admin" };
+}
 
-  if (!ALLOWED_SETTINGS_ROLES.has(effectiveRole)) {
+/**
+ * Ensures only admin or super-admin users can access or modify system settings
+ * (email-settings, payment-settings) or delete contact messages.
+ */
+export async function checkAdminSettingsRole(
+  req: MedusaRequest,
+  res: MedusaResponse,
+): Promise<boolean> {
+  const resolved = await resolveAdminRole(req, res);
+  if (!resolved.ok) return false;
+
+  if (!ALLOWED_SETTINGS_ROLES.has(resolved.role)) {
     res.status(403).json({
       error: "Yetkisiz erişim: Ayarları yalnızca admin veya super-admin yönetebilir.",
+    });
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Ensures admin, super-admin, or shop-manager can access operational views
+ * (contact messages, order operations). Blocks editor/author roles.
+ */
+export async function checkAdminOrShopManagerRole(
+  req: MedusaRequest,
+  res: MedusaResponse,
+): Promise<boolean> {
+  const resolved = await resolveAdminRole(req, res);
+  if (!resolved.ok) return false;
+
+  if (!ALLOWED_SHOP_OPS_ROLES.has(resolved.role)) {
+    res.status(403).json({
+      error: "Yetkisiz erişim: Bu işlem için mağaza yöneticisi veya admin yetkisi gereklidir.",
     });
     return false;
   }

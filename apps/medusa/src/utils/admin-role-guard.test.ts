@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { checkAdminSettingsRole } from "./admin-role-guard";
+import { checkAdminSettingsRole, checkAdminOrShopManagerRole } from "./admin-role-guard";
 
 function createMockRes() {
   const res: any = {
@@ -77,5 +77,23 @@ describe("checkAdminSettingsRole (Medusa settings access guard)", () => {
 
     const ok = await checkAdminSettingsRole(req, res);
     expect(ok).toBe(true);
+  });
+});
+
+describe("checkAdminOrShopManagerRole (Medusa contact/order ops guard)", () => {
+  it("allows admin, super-admin, and shop-manager, blocks editor", async () => {
+    for (const role of ["admin", "super-admin", "shop-manager"]) {
+      const res = createMockRes();
+      const ok = await checkAdminOrShopManagerRole({ user: { role } } as any, res);
+      expect(ok).toBe(true);
+    }
+
+    const resEditor = createMockRes();
+    const okEditor = await checkAdminOrShopManagerRole(
+      { user: { role: "editor" } } as any,
+      resEditor,
+    );
+    expect(okEditor).toBe(false);
+    expect(resEditor.statusCode).toBe(403);
   });
 });

@@ -32,6 +32,7 @@ export const ContactMessages: CollectionConfig = {
     plural: "İletişim Mesajları",
   },
   admin: {
+    hidden: true,
     useAsTitle: "subject",
     defaultColumns: ["subject", "name", "status", "createdAt"],
     group: "Müşteri İletişimi",

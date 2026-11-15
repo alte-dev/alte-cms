@@ -80,6 +80,7 @@ export interface ContactSubmissionEmailPayload {
   customerPhone?: string;
   subject: string;
   message: string;
+  kvkkAccepted?: boolean;
   recipientEmail?: string;
   autoReplyEnabled: boolean;
   autoReplySubject: string;
@@ -97,6 +98,16 @@ export interface ContactReplyEmailPayload {
 function getInternalSecretHeader(): Record<string, string> {
   const secret = process.env.INTERNAL_API_SECRET || "";
   return secret ? { "x-alte-internal": secret } : {};
+}
+
+export async function submitContactMessageToMedusa(
+  payload: ContactSubmissionEmailPayload,
+): Promise<{ ok: boolean; id?: string; emailSent?: boolean }> {
+  return medusaFetch("/store/internal/contact-messages", {
+    method: "POST",
+    headers: getInternalSecretHeader(),
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function sendContactSubmissionEmails(
