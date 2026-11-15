@@ -115,3 +115,13 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
   - `resetEmailLimiter`: E-posta başına 60 dakikada 3 istek (`resetIpLimiter`: IP başına 60 dk 10 istek).
   - `resendVerificationCustomerLimiter`: Müşteri başına 60 dakikada 3 istek.
   - `FixedWindowRateLimiter` ve `BruteForceGuard`: `maxEntries` (varsayılan `10_000`) sınırına ulaşıldığında süresi dolanları sildikten sonra en eski kayıtları FIFO sırasıyla temizler; bellek kullanımı sınırlıdır.
+
+## 10. Faz 12.3 Sertleştirme Kararları
+
+- **SEC-027 — SMTP Host Doğrulaması (Yalnızca Link-Local / Metadata Engeli):** `admin/email-settings` ve `admin/email-settings/test` uç noktaları `isValidHostname` doğrulamasını zorunlu kılar ve test e-postası HTML gövdesinde `settings.host` değerini `escapeHtml()` ile kaçırır. Üretimde (`NODE_ENV === "production"`) yalnızca link-local ve bulut metadata aralıkları (`169.254.0.0/16`, `fe80::/10`, `100.64.0.0/10`) reddedilir. `127.0.0.1` ve RFC1918 özel ağ adresleri (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) **bilerek engellenmez**; çünkü üretimde yerel Postfix/SMTP rölesi aynı sunucuda veya özel iç ağda çalışabilir.
+- **SEC-029 — Parola Doğrulamalı Uç Noktalarda İki Kademeli Hız Sınırı:** `/store/account/password` ve `/store/account/delete` uç noktalarında `customerId` başına hatalı "mevcut parola" denemeleri iki kademeli korunur:
+  - **1. Kademe (5 hatalı deneme):** `429 Too Many Requests` ve 15 dakika bekleme uygulanır; gerçek müşterinin yanlış tuşlama nedeniyle oturumu hemen düşürülmez.
+  - **2. Kademe (10 hatalı/engelli deneme):** Tüm aktif müşteri oturumları (`revokeAllCustomerSessions`) iptal edilir.
+- **SEC-028 — Strict Müşteri Oturumu Koruması:** `/store/customers/me`, `/store/orders` ve `/auth/session` rotalarında Bearer token yoksa `401` dönen `strictCustomerSessionGuard` uygulanır; admin JWT'leri (`actor_type !== "customer"`) ve misafir checkout/sipariş takibi akışları etkilenmez.
+- **SEC-030 — Çok Adımlı Yazma Bütünlüğü:** Hesap silme (`account/delete`) ve parola değiştirme oturum yenilemesi (`account/password`) tek `pgConnection.transaction` içinde çalışır. Parola sıfırlamada (`password-reset/confirm`) `authService` parola güncellemesi dış transaction'a girmediği için önce parola güncellenir, yalnızca başarılıysa tek `pgConnection.transaction` içinde token tüketilir ve oturumlar iptal edilir.
+- **SEC-035 — Üretim CORS ve Hata Yutma Koruması:** `env.ts` üretimde `ADMIN_CORS`, `AUTH_CORS` ve `STORE_CORS` için `*` (wildcard) değerini açılışta reddeder. `admin/payment-settings/manual-refunds` veritabanı hatasında `200` yerine `500` döner.

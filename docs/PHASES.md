@@ -21,6 +21,14 @@ Bu dosya `AGENTS.md` içinden referanslanır ve ihtiyaç olunca okunur. Her faz 
 | 11, 11.1         | Performans, Erişilebilirlik (WCAG 2.1 AA), SEO, Kalite Güvencesi             | PR #21. Dinamik handle/slug ve gerçek Lighthouse ölçümü, Axe-core canlı sayfa taraması, canlı klavye gezintisi, XML Sitemap Index, yerel fontlar, zaman sabitli revalidateTag, Postgres trigram indeksleri.                                 |
 | 11.5             | CI'da canlı doğrulama                                                        | PR #23. `live-verify` CI işi, `pnpm verify:all` koşucusu, sahte test/`continue-on-error`/ölçülmedi koruma kuralları, `verify-logs` artifact.                                                                                                |
 | 12, 12.1, 12.1.1 | Müşteri hesabı, oturum güvenliği, sipariş birleştirme                        | PR #24. `httpOnly` oturum çerezi + DB oturum iptali, e-posta doğrulama sonrası misafir sipariş bağlama, KVKK rıza/anonimleştirme, WooCommerce şifre kancası, fail-closed `TRUST_PROXY` + e-posta başı kaba kuvvet kilidi, `globalNotFound`. |
+| 12.2             | Uçtan uca müşteri yolculuğu doğrulaması                                      | PR #27. `verify:journey` canlı müşteri yolculuğu doğrulaması.                                                                                                                                                                               |
+| 12.3             | Güvenlik sertleştirme paketi                                                 | SEC-030 (transaction/sıralama), SEC-029 (iki kademeli parola hız sınırı), SEC-028 (`strictCustomerSessionGuard`), SEC-033 (`mapMedusaError` + `0.01` TL tolerans), SEC-035 (prod CORS `*` reddi + `manual-refunds` 500), SEC-032 (sabit sır fallback temizliği + `.gitleaks.toml`), SEC-022 ilk yarı (`verify-production-guard` sıkılaştırma + yerel-DB koruması), SEC-027 (SMTP metadata-only engel + `escapeHtml`), CI `medusa_user` `SUPERUSER` kaldırıldı. |
+
+### Faz 12.3 Kapsam Dışı / Ertelenen Maddeler
+
+- **SEC-017:** Ertelendi — Faz 13 çoklu süreç/Redis hız sınırı ve kimlik/2FA sertleştirme kapsamına bırakıldı.
+- **SEC-022 (ikinci yarı — `verify-order-ops`, `verify-search`, `verify-notifications` canlı HTTP bağlantısı):** Ertelendi — Mevcut fazda yalnızca `verify-production-guard.ts` sıkılaştırıldı; diğer üç doğrulama betiğinin canlı HTTP'ye taşınması ayrı bir faza bırakıldı.
+- **SEC-036, SEC-037:** Ertelendi — Sonraki sertleştirme fazına bırakıldı.
 
 ## B. Kalan fazlar (öneri sırası)
 
