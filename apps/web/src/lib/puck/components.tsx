@@ -555,3 +555,5 @@ export function LatestPostsComponent({
     </section>
   );
 }
+
+export { SliderComponent, type SliderProps } from "./components/slider";

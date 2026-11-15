@@ -1,6 +1,7 @@
 import React from "react";
 import {
   HeroComponent,
+  SliderComponent,
   RichTextComponent,
   ImageBlockComponent,
   ColumnsComponent,
@@ -30,6 +31,7 @@ export interface PuckDataStructure {
 
 const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   Hero: HeroComponent,
+  Slider: SliderComponent,
   RichText: RichTextComponent,
   ImageBlock: ImageBlockComponent,
   Columns: ColumnsComponent,

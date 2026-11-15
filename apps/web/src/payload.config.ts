@@ -27,6 +27,9 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      afterNavLinks: ["@/components/admin/MedusaSwitchNavLink#MedusaSwitchNavLink"],
+    },
   },
   collections: [Users, Media, Pages, Posts, PostCategories, Redirects, ContactMessages],
   globals: [SiteSettings, Navigation],

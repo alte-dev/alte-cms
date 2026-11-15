@@ -16,6 +16,7 @@ import { isSafeHref } from "../safe-href";
 export const ALLOWED_PUCK_COMPONENTS = [
   // Sections
   "Hero",
+  "Slider",
   "RichText",
   "ImageBlock",
   "Columns",
@@ -183,8 +184,32 @@ export const LatestPostsPropsSchema = z
   })
   .strict();
 
+export const SliderPropsSchema = z
+  .object({
+    id: z.string(),
+    autoPlaySeconds: z.number().min(0).max(30).optional(),
+    height: z.enum(["compact", "medium", "tall"]).optional(),
+    slide1Title: z.string().optional(),
+    slide1Subtitle: z.string().optional(),
+    slide1ImageUrl: z.string().optional(),
+    slide1ButtonText: z.string().optional(),
+    slide1ButtonHref: z.string().optional(),
+    slide2Title: z.string().optional(),
+    slide2Subtitle: z.string().optional(),
+    slide2ImageUrl: z.string().optional(),
+    slide2ButtonText: z.string().optional(),
+    slide2ButtonHref: z.string().optional(),
+    slide3Title: z.string().optional(),
+    slide3Subtitle: z.string().optional(),
+    slide3ImageUrl: z.string().optional(),
+    slide3ButtonText: z.string().optional(),
+    slide3ButtonHref: z.string().optional(),
+  })
+  .strict();
+
 export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> = {
   Hero: HeroPropsSchema,
+  Slider: SliderPropsSchema,
   RichText: RichTextPropsSchema,
   ImageBlock: ImageBlockPropsSchema,
   Columns: ColumnsPropsSchema,

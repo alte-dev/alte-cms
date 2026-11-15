@@ -1,6 +1,7 @@
 import type { Config } from "@puckeditor/core";
 import {
   HeroComponent,
+  SliderComponent,
   RichTextComponent,
   ImageBlockComponent,
   ColumnsComponent,
@@ -15,6 +16,7 @@ import {
   FreeShippingBarComponent,
   LatestPostsComponent,
   type HeroProps,
+  type SliderProps,
   type RichTextProps,
   type ImageBlockProps,
   type ColumnsProps,
@@ -32,6 +34,7 @@ import {
 
 export type ComponentConfigProps = {
   Hero: HeroProps;
+  Slider: SliderProps;
   RichText: RichTextProps;
   ImageBlock: ImageBlockProps;
   Columns: ColumnsProps;
@@ -80,6 +83,38 @@ export const puckConfig: Config<ComponentConfigProps> = {
         secondaryButtonHref: { type: "text", label: "İkinci Buton Bağlantısı (/...)" },
       },
       render: (props) => <HeroComponent {...props} />,
+    },
+
+    Slider: {
+      label: "Slider (Görsel Slayt)",
+      fields: {
+        autoPlaySeconds: { type: "number", label: "Otomatik Geçiş (sn, 0 = kapalı)" },
+        height: {
+          type: "select",
+          label: "Yükseklik",
+          options: [
+            { label: "Kompakt", value: "compact" },
+            { label: "Orta", value: "medium" },
+            { label: "Yüksek", value: "tall" },
+          ],
+        },
+        slide1Title: { type: "text", label: "1. Slayt Başlık" },
+        slide1Subtitle: { type: "textarea", label: "1. Slayt Alt Başlık" },
+        slide1ImageUrl: { type: "text", label: "1. Slayt Görsel URL" },
+        slide1ButtonText: { type: "text", label: "1. Slayt Buton Metni" },
+        slide1ButtonHref: { type: "text", label: "1. Slayt Buton Bağlantısı" },
+        slide2Title: { type: "text", label: "2. Slayt Başlık" },
+        slide2Subtitle: { type: "textarea", label: "2. Slayt Alt Başlık" },
+        slide2ImageUrl: { type: "text", label: "2. Slayt Görsel URL" },
+        slide2ButtonText: { type: "text", label: "2. Slayt Buton Metni" },
+        slide2ButtonHref: { type: "text", label: "2. Slayt Buton Bağlantısı" },
+        slide3Title: { type: "text", label: "3. Slayt Başlık" },
+        slide3Subtitle: { type: "textarea", label: "3. Slayt Alt Başlık" },
+        slide3ImageUrl: { type: "text", label: "3. Slayt Görsel URL" },
+        slide3ButtonText: { type: "text", label: "3. Slayt Buton Metni" },
+        slide3ButtonHref: { type: "text", label: "3. Slayt Buton Bağlantısı" },
+      },
+      render: (props) => <SliderComponent {...props} />,
     },
 
     RichText: {
