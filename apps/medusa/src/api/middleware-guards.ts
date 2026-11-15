@@ -140,12 +140,12 @@ export function blockRoute(_req: any, res: any) {
   return res.status(404).json({ message: "Not Found" });
 }
 
-export async function customerSessionGuard(req: any, res: any, next: () => void) {
-  const token = extractBearerToken(req);
-  if (!token) {
-    return next();
-  }
-
+async function verifySessionTokenOrReject(
+  token: string,
+  req: any,
+  res: any,
+  next: () => void,
+) {
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -163,6 +163,26 @@ export async function customerSessionGuard(req: any, res: any, next: () => void)
   }
 
   return next();
+}
+
+export async function customerSessionGuard(req: any, res: any, next: () => void) {
+  const token = extractBearerToken(req);
+  if (!token) {
+    return next();
+  }
+  return verifySessionTokenOrReject(token, req, res, next);
+}
+
+/**
+ * Strict customer session guard: rejects requests with no Bearer token (401),
+ * while still allowing non-customer (admin user) JWTs and validating customer sessions.
+ */
+export async function strictCustomerSessionGuard(req: any, res: any, next: () => void) {
+  const token = extractBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ message: "Oturum açmanız gerekiyor." });
+  }
+  return verifySessionTokenOrReject(token, req, res, next);
 }
 
 export async function blockCustomerTokenRefresh(req: any, res: any, next: () => void) {

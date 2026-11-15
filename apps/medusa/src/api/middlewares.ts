@@ -7,6 +7,7 @@ import {
   normalizeDefaultProductOption,
   orderOwnershipGuard,
   requireInternalSecret,
+  strictCustomerSessionGuard,
 } from "./middleware-guards";
 
 export default defineMiddlewares({
@@ -40,18 +41,18 @@ export default defineMiddlewares({
       matcher: "/store/customers",
       middlewares: [requireInternalSecret],
     },
-    // Enforce server-side session revocation on Medusa built-in customer & order routes
+    // Enforce strict customer session (401 if no Bearer token) + revocation on built-in customer & order routes
     {
       matcher: "/store/customers/me",
-      middlewares: [customerSessionGuard],
+      middlewares: [strictCustomerSessionGuard],
     },
     {
       matcher: "/store/orders",
-      middlewares: [customerSessionGuard],
+      middlewares: [strictCustomerSessionGuard],
     },
     {
       matcher: "/auth/session",
-      middlewares: [customerSessionGuard],
+      middlewares: [strictCustomerSessionGuard],
     },
     // Disable unauthenticated direct order lookup by UUID unless internal secret or owning customer
     {

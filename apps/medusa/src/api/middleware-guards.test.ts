@@ -7,6 +7,7 @@ import {
   normalizeDefaultProductOption,
   orderOwnershipGuard,
   requireInternalSecret,
+  strictCustomerSessionGuard,
 } from "./middleware-guards";
 
 function createJwt(payload: Record<string, unknown>, secret: string): string {
@@ -148,6 +149,29 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
       nextCust,
     );
     expect(nextCust).toHaveBeenCalledOnce();
+  });
+
+  it("strictCustomerSessionGuard returns 401 when Bearer token is missing, but allows admin JWT", async () => {
+    const nextMissing = vi.fn();
+    const resMissing = createMockRes();
+    await strictCustomerSessionGuard({ headers: {} } as any, resMissing, nextMissing);
+    expect(resMissing.statusCode).toBe(401);
+    expect(nextMissing).not.toHaveBeenCalled();
+
+    const adminToken = createJwt(
+      { actor_id: "user_1", actor_type: "user", exp: Math.floor(Date.now() / 1000) + 3600 },
+      JWT_SECRET,
+    );
+    const nextAdmin = vi.fn();
+    await strictCustomerSessionGuard(
+      {
+        headers: { authorization: `Bearer ${adminToken}` },
+        scope: { resolve: () => vi.fn() },
+      } as any,
+      createMockRes(),
+      nextAdmin,
+    );
+    expect(nextAdmin).toHaveBeenCalledOnce();
   });
 
   it("orderOwnershipGuard denies unauthenticated or non-owner requests with 404, allows owner or internal secret", async () => {
