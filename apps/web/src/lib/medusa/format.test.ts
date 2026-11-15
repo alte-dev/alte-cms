@@ -12,7 +12,7 @@ describe("SEC-033: mapMedusaError sanitizes unmapped raw Medusa messages", () =>
       "SQLSTATE[42P01]: relation customer_secret_table does not match user@example.test";
     const result = mapMedusaError({ message: rawMsg, code: "INTERNAL", status: 500 });
 
-    expect(result).toBe("İşlem gerçekleştirilemedi. Lütfen daha sonra tekrar deneyin.");
+    expect(result).toBe("İşlem gerçekleştirilemedi.");
     expect(result).not.toContain("SQLSTATE");
     expect(result).not.toContain("example.test");
     expect(errSpy).toHaveBeenCalledOnce();

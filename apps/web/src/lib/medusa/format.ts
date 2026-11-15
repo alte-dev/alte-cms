@@ -140,5 +140,5 @@ export function mapMedusaError(error: any): string {
     status: typeof error.status === "number" ? error.status : undefined,
   });
 
-  return "İşlem gerçekleştirilemedi. Lütfen daha sonra tekrar deneyin.";
+  return "İşlem gerçekleştirilemedi.";
 }
