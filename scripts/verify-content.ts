@@ -203,16 +203,19 @@ async function run() {
 
   // STEP 4: Storefront Unconflicted Draft Page Returns 404 (Pure HTTP)
   try {
-    const draftPageRes = await fetch(`${STORE_URL}/sayfa/ozel-taslak-sayfa-test`, {
+    const draftPageRes = await fetch(`${STORE_URL}/ozel-taslak-sayfa-test`, {
       redirect: "manual",
     });
-    const is404 = draftPageRes.status === 404;
+    const legacyDraftRes = await fetch(`${STORE_URL}/sayfa/ozel-taslak-sayfa-test`, {
+      redirect: "manual",
+    });
+    const is404 = draftPageRes.status === 404 && legacyDraftRes.status === 308;
 
     recordStep(
       4,
       "Storefront Draft Returns HTTP 404",
       is404,
-      `/sayfa/ozel-taslak-sayfa-test returned HTTP ${draftPageRes.status} (strictly expected 404)`,
+      `/ozel-taslak-sayfa-test returned HTTP ${draftPageRes.status}, /sayfa/ozel-taslak-sayfa-test returned HTTP ${legacyDraftRes.status} (expected 404 and 308)`,
     );
   } catch (err: any) {
     recordStep(

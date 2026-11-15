@@ -59,13 +59,23 @@ export function ContactFormBlockComponent({
       {phone && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Telefon</p>
-          <p className="mt-1 text-sm text-slate-800">{phone}</p>
+          <a
+            href={`tel:${phone.replace(/[^+\d]/g, "")}`}
+            className="mt-1 inline-block text-sm font-medium text-slate-900 hover:underline"
+          >
+            {phone}
+          </a>
         </div>
       )}
       {email && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">E-posta</p>
-          <p className="mt-1 text-sm text-slate-800">{email}</p>
+          <a
+            href={`mailto:${email}`}
+            className="mt-1 inline-block text-sm font-medium text-slate-900 hover:underline"
+          >
+            {email}
+          </a>
         </div>
       )}
       {workingHours && (
@@ -74,6 +84,17 @@ export function ContactFormBlockComponent({
             Çalışma Saatleri
           </p>
           <p className="mt-1 text-sm text-slate-800">{workingHours}</p>
+        </div>
+      )}
+      {address && (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <iframe
+            title="Mağaza Konumu"
+            src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`}
+            className="h-48 w-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
       )}
     </section>

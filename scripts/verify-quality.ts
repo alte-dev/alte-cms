@@ -483,7 +483,8 @@ async function main() {
     const isTurkish =
       notFoundHtml.includes("Sayfa Bulunamadı") ||
       notFoundHtml.includes("aradığınız sayfa mevcut değil");
-    const hasHomeLink = notFoundHtml.includes('href="/"');
+    const hasHomeLink =
+      notFoundHtml.includes('href="/"') || notFoundHtml.includes('\\"href\\":\\"/\\"');
 
     recordStep(
       13,

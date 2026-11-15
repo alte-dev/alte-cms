@@ -40,8 +40,10 @@ describe("Settings Encryption & Crypto Utilities", () => {
     const plainText = "confidential-token";
     const cipherText = encryptSetting(plainText, validKeyBuf);
     const parts = cipherText.split(":");
-    // Tamper the ciphertext data
-    const tampered = `${parts[0]}:${parts[1]}:${parts[2].slice(0, -2)}ff`;
+    // Tamper the ciphertext data deterministically
+    const original = parts[2];
+    const flippedFirstChar = original[0] === "A" ? "B" : "A";
+    const tampered = `${parts[0]}:${parts[1]}:${flippedFirstChar}${original.slice(1)}`;
 
     expect(() => decryptSetting(tampered, validKeyBuf)).toThrow();
   });
