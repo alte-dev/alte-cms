@@ -3,6 +3,7 @@ import {
   blockCustomerTokenRefresh,
   blockRoute,
   customerSessionGuard,
+  defaultAdminProductOrder,
   orderOwnershipGuard,
   requireInternalSecret,
 } from "./middleware-guards";
@@ -61,6 +62,12 @@ export default defineMiddlewares({
     {
       matcher: "/store/orders/:id/transfer",
       middlewares: [blockRoute],
+    },
+    // Default Medusa Admin products list to newest first (-created_at) when no explicit order is given
+    {
+      method: ["GET"],
+      matcher: "/admin/products",
+      middlewares: [defaultAdminProductOrder],
     },
   ],
 });

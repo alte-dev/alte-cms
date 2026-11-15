@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   customerSessionGuard,
+  defaultAdminProductOrder,
   hasValidInternalSecret,
   orderOwnershipGuard,
   requireInternalSecret,
@@ -219,5 +220,19 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
       nextInternal,
     );
     expect(nextInternal).toHaveBeenCalledOnce();
+  });
+
+  it("defaultAdminProductOrder sets order=-created_at when missing and preserves explicit order", () => {
+    const reqWithoutOrder: any = { query: {} };
+    const next1 = vi.fn();
+    defaultAdminProductOrder(reqWithoutOrder, createMockRes(), next1);
+    expect(reqWithoutOrder.query.order).toBe("-created_at");
+    expect(next1).toHaveBeenCalledOnce();
+
+    const reqWithOrder: any = { query: { order: "title" } };
+    const next2 = vi.fn();
+    defaultAdminProductOrder(reqWithOrder, createMockRes(), next2);
+    expect(reqWithOrder.query.order).toBe("title");
+    expect(next2).toHaveBeenCalledOnce();
   });
 });

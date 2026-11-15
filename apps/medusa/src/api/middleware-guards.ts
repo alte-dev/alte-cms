@@ -211,3 +211,13 @@ export async function orderOwnershipGuard(req: any, res: any, next: () => void) 
 
   return next();
 }
+
+export function defaultAdminProductOrder(req: any, _res: any, next: () => void) {
+  if (!req.query) {
+    req.query = {};
+  }
+  if (!req.query.order) {
+    req.query.order = "-created_at";
+  }
+  return next();
+}
