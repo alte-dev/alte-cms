@@ -28,6 +28,10 @@ export default defineMiddlewares({
       matcher: "/store/internal",
       middlewares: [requireInternalSecret],
     },
+    {
+      matcher: "/internal",
+      middlewares: [requireInternalSecret],
+    },
     // Prevent bypassing registration via direct POST /store/customers
     {
       method: ["POST"],

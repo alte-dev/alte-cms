@@ -5,7 +5,14 @@ import { canSwitchToMedusa, requestMedusaAdminSsoCookies } from "@/lib/auth/admi
 
 export async function GET(req: NextRequest) {
   const payload = await getPayload({ config: configPromise });
-  const { user } = await payload.auth({ headers: req.headers });
+  const authHeaders = new Headers(req.headers);
+  if (!authHeaders.get("authorization")) {
+    const tokenCookie = req.cookies.get(`${payload.config.cookiePrefix || "payload"}-token`)?.value;
+    if (tokenCookie) {
+      authHeaders.set("authorization", `JWT ${tokenCookie}`);
+    }
+  }
+  const { user } = await payload.auth({ headers: authHeaders });
 
   if (!user) {
     return NextResponse.redirect(new URL("/admin/login", req.url));

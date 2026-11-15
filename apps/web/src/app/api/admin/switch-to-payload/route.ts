@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload, jwtSign, generatePayloadCookie } from "payload";
 import configPromise from "@payload-config";
@@ -37,17 +38,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Users koleksiyonu yapılandırılmamış." }, { status: 500 });
   }
 
+  const tokenExpiration =
+    typeof collectionConfig.auth === "object" && collectionConfig.auth.tokenExpiration
+      ? collectionConfig.auth.tokenExpiration
+      : 7200;
+
+  const sid = crypto.randomUUID();
+  const now = Date.now();
+  const expiresAt = new Date(now + tokenExpiration * 1000).toISOString();
+  const existingSessions = Array.isArray((staffUser as { sessions?: unknown[] }).sessions)
+    ? (
+        staffUser as { sessions: Array<{ id?: string; createdAt?: string; expiresAt?: string }> }
+      ).sessions.filter((s) => s?.expiresAt && new Date(s.expiresAt).getTime() > now)
+    : [];
+
+  await payload.update({
+    collection: "users",
+    id: staffUser.id,
+    data: {
+      sessions: [
+        ...existingSessions.slice(-9),
+        { id: sid, createdAt: new Date(now).toISOString(), expiresAt },
+      ],
+    },
+    overrideAccess: true,
+  });
+
   const { token } = await jwtSign({
     fieldsToSign: {
       id: staffUser.id,
       email: staffUser.email,
       collection: "users",
+      sid,
     },
     secret: payload.secret,
-    tokenExpiration:
-      typeof collectionConfig.auth === "object" && collectionConfig.auth.tokenExpiration
-        ? collectionConfig.auth.tokenExpiration
-        : 7200,
+    tokenExpiration,
   });
 
   const cookieHeader = generatePayloadCookie({

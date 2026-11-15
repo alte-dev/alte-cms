@@ -34,7 +34,7 @@ export async function requestMedusaAdminSsoCookies(input: {
 
   const baseUrl = getMedusaBackendBaseUrl();
 
-  const ssoRes = await fetch(`${baseUrl}/store/internal/admin-sso`, {
+  const ssoRes = await fetch(`${baseUrl}/internal/admin-sso`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
