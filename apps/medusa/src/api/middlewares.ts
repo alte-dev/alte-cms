@@ -1,5 +1,6 @@
 import { defineMiddlewares } from "@medusajs/framework/http";
 import {
+  adminLoginRateLimitGuard,
   blockCustomerTokenRefresh,
   blockRoute,
   customerSessionGuard,
@@ -12,6 +13,12 @@ import {
 
 export default defineMiddlewares({
   routes: [
+    // Rate-limit failed Medusa admin login attempts (IP+email and email-only)
+    {
+      method: ["POST"],
+      matcher: "/auth/user/emailpass",
+      middlewares: [adminLoginRateLimitGuard],
+    },
     // Close direct customer auth endpoints (enforce password policy, rate limit, consent, legacy verifiers via /store/account/*)
     {
       matcher: "/auth/customer",
@@ -29,6 +36,10 @@ export default defineMiddlewares({
     // Protect internal service endpoints (e.g. contact form emails) with internal secret
     {
       matcher: "/store/internal",
+      middlewares: [requireInternalSecret],
+    },
+    {
+      matcher: "/store/order-tracking",
       middlewares: [requireInternalSecret],
     },
     {

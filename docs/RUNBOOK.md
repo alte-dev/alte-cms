@@ -152,6 +152,7 @@ VERIFY_ALLOW_DB_MUTATION=true pnpm verify:all
 10. `verify:accounts` (`scripts/verify-accounts.ts`) — Müşteri hesabı kayıt, parola politikası, e-posta doğrulama, misafir sipariş birleştirme, giriş hız sınırı/numaralandırma koruması, çapraz müşteri IDOR engeli, şifre sıfırlama, CSRF/Origin koruması, çıkış oturum iptali, misafir sepet bağlama, hesap silme/anonimleştirme, legacy verifier kancası ve log PII taramasını canlı HTTP ile doğrular.
 11. `verify:journey` (`scripts/verify-journey.ts`) — Müşterinin kayıt, doğrulama, misafir sipariş birleştirme, giriş, adres ekleme, kapıda ödeme siparişi, idempotent e-posta, kargo takibi, COD tahsilatı, şifre sıfırlama ve hesap silme yolculuğunu gerçek tarayıcı + yerel `smtp-server` ile uçtan uca doğrular.
 12. `verify-production-guard` (`scripts/verify-production-guard.ts`) — Rastgele boş bir port üzerinde `NODE_ENV=production` ile Medusa açılış korumalarını (Senaryo a, b, c, d) sınar ve sonunda geliştirici ödeme sağlayıcılarını geri yükler.
+13. `verify:security` (`scripts/verify-security.ts`) — Faz 12.4 güvenlik denetimi bulgularını (admin login hız sınırı, `/medusa-api` allowlist, `order-tracking` iç gizli anahtar + sipariş başı kilit, fail-closed admin rol matrisi, CSP/HSTS/Permissions-Policy, Payload giriş hız sınırı, `checkout-status` ve arama hız sınırları) canlı HTTP ve Playwright ile doğrular.
 
 - Her betiğin ham çıktısı `verify-logs/<betik>.log` dosyasına, özet tablosu ise `verify-logs/SUMMARY.md` dosyasına yazılır (`verify-logs/` dizini `.gitignore` içindedir).
 - Bir betik başarısız olsa bile kalan betikler çalışmaya devam eder; en sonda herhangi biri sıfır olmayan kod döndürdüyse `pnpm verify:all` çıkış kodu `1` ile sonlanır.
@@ -200,3 +201,15 @@ Otomatik testler (`verify:notifications`, `verify:accounts`, `verify:journey`) y
    - **Türkçe Karakterler:** `ğ, ü, ş, ı, İ, ö, ç` harfleri konu ve HTML gövdesinde bozulmadan (`UTF-8`) okunmalı.
    - **Bağlantılar:** `localhost` veya yanlış alan adı yerine canlı `WEB_PUBLIC_URL` kullanılmalı.
    - **Spam Klasörü ve Teslimat:** İletinin spam'e düşüp düşmediğini (SPF/DKIM/DMARC uyumu) kontrol edin; sorun varsa `email_log` tablosundan maskeli kayıt durumunu (`sent` / `failed`) inceleyin.
+
+---
+
+## 8. Üretim Ters Vekil, `/medusa-api` Allowlist, PayTR Hook ve `INTERNAL_API_SECRET` Döndürme
+
+- **HSTS Proxy Notu:** Next.js uygulaması üretimde `Strict-Transport-Security: max-age=31536000; includeSubDomains` başlığını üretir; ancak statik varlıklar veya proxy önbelleğinden dönen yanıtlar için OpenLiteSpeed / CyberPanel HTTPS vHost ayarlarında da aynı `Strict-Transport-Security` başlığının (`preload` olmadan) tanımlı olması önerilir.
+- **`/medusa-api` Allowlist ve PayTR Hook Yolu:** Next.js `/medusa-api/*` üzerinden yalnızca admin paneli yollarını (`/admin/*`, `/auth/user/*`, `/auth/session`, `/auth/token/refresh`) geçirir. PayTR sunucularından gelen ödeme bildirimi (`POST /hooks/payment/pp_paytr_paytr`) herkese açık `/medusa-api` üzerinden **geçmez**; OpenLiteSpeed / ters vekilde `api.<alan_adi>` (veya doğrudan Medusa sanal konağı) üzerinde yalnızca `/hooks/payment/pp_paytr_paytr` yolu Medusa `:9000`'e yönlendirilir.
+- **`INTERNAL_API_SECRET` Döndürme (Rotation):**
+  1. En az 32 baytlık rastgele yeni bir sır üretin (`openssl rand -hex 32`).
+  2. Hem `apps/medusa/.env` hem de `apps/web/.env` içindeki `INTERNAL_API_SECRET` değerini aynı yeni değerle güncelleyin.
+  3. Önce Medusa (`medusa start`), ardından Web (`next start`) servisini yeniden başlatın (kısa süreli kesintisiz geçiş gerekiyorsa bakım penceresinde yapın).
+  4. Sızıntı şüphesinde eski sırrı derhal geçersiz kılıp iki servisi yeniden başlatın ve `/store/order-tracking`, `/store/account/*`, `/internal/*` uç noktalarının eski sırla `404` döndüğünü doğrulayın. Bu sır asla loglara veya hata yanıtlarına yazılmaz.

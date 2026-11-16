@@ -30,7 +30,34 @@ async function resolveAdminRole(
     }
   }
 
-  return { ok: true, role: role || "admin" };
+  if (!role || typeof role !== "string") {
+    res.status(403).json({
+      error: "Yetkisiz erişim: Kullanıcı rolü tanımlı değil.",
+    });
+    return { ok: false };
+  }
+
+  return { ok: true, role };
+}
+
+/**
+ * Idempotently assigns `super-admin` to existing Medusa admin users that were created
+ * (e.g. via `medusa user`) without a `metadata.role`. Safe on empty DB and repeated runs.
+ */
+export async function ensureExistingAdminRoles(pgConnection: any): Promise<number> {
+  if (!pgConnection) return 0;
+  const usersWithoutRole = await pgConnection("user")
+    .whereNull("deleted_at")
+    .whereRaw("(metadata IS NULL OR metadata->>'role' IS NULL OR metadata->>'role' = '')")
+    .select("id", "metadata");
+
+  let updated = 0;
+  for (const row of usersWithoutRole) {
+    const nextMeta = { ...(row.metadata || {}), role: "super-admin" };
+    await pgConnection("user").where({ id: row.id }).update({ metadata: nextMeta });
+    updated += 1;
+  }
+  return updated;
 }
 
 /**

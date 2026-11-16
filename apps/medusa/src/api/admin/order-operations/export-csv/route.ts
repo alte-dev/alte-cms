@@ -1,17 +1,10 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { checkAdminOrShopManagerRole } from "../../../../utils/admin-role-guard";
 import { sanitizeCsvCell } from "../../../../utils/shipping-carriers";
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
-  // Role check: Only admin, super-admin, shop-manager
-  const user = (req as any).user;
-  const userRole = user?.role || "admin"; // Medusa authenticated admin user
-
-  if (user && userRole !== "admin" && userRole !== "super-admin" && userRole !== "shop-manager") {
-    return res
-      .status(403)
-      .json({ error: "Yetkisiz erişim: Bu işlem için muhasebe/yönetici yetkisi gereklidir." });
-  }
+  if (!(await checkAdminOrShopManagerRole(req, res))) return;
 
   const { from, to } = req.query as { from?: string; to?: string };
 

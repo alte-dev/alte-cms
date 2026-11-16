@@ -35,6 +35,7 @@
     "verify:contact": "tsx scripts/verify-contact.ts",
     "measure:quality": "tsx scripts/measure-quality.ts",
     "verify:quality": "tsx scripts/verify-quality.ts",
+    "verify:security": "tsx scripts/verify-security.ts",
     "verify:production-guard": "tsx scripts/verify-production-guard.ts",
     "verify:all": "tsx scripts/verify-all.ts",
     "check:baseline": "tsx scripts/check-quality-baseline.ts",

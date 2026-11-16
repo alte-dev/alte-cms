@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
 
 export interface ManualRefundDto {
   id: string;
@@ -18,6 +19,7 @@ export interface ManualRefundDto {
  * STRICT PRIVACY: Zero PII (no customer name, email, phone, or address).
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void> {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   const refunds: ManualRefundDto[] = [];
 
   try {

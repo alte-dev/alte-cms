@@ -38,6 +38,7 @@ describe("SEC-035: manual-refunds route fail-closed on DB errors", () => {
     });
 
     const req: any = {
+      user: { role: "admin" },
       scope: {
         hasRegistration: (key: string) => key === ContainerRegistrationKeys.PG_CONNECTION,
         resolve: () => failingPg,

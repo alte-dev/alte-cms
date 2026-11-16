@@ -1,7 +1,9 @@
 import React from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { searchProducts, getCategories } from "@/lib/medusa/products";
+import { extractClientIp } from "@/lib/security/origin-guard";
 import { ProductCard } from "@/components/product-card";
 import { getSiteSettings } from "@/lib/payload/content";
 import { Search, SlidersHorizontal, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -87,7 +89,9 @@ export default async function SearchResultsPage({ searchParams }: Props) {
     );
   }
 
-  // Execute Search via Medusa v2 Store API
+  // Execute Search via Medusa v2 Store API (forward trusted client IP)
+  const reqHeaders = await headers();
+  const clientIp = extractClientIp({ headers: reqHeaders } as unknown as Request);
   const searchResult = await searchProducts({
     q: rawQ,
     category: categoryHandle || undefined,
@@ -97,6 +101,7 @@ export default async function SearchResultsPage({ searchParams }: Props) {
     sort,
     limit,
     offset,
+    clientIp,
   });
 
   const products = searchResult.products || [];

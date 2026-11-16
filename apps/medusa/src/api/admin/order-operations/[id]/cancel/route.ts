@@ -2,12 +2,14 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { OrderEmailPayload, sendEmailNotification } from "../../../../../services/email-service";
+import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
 
 const cancelSchema = z.object({
   reason: z.string().optional(),
 });
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminOrShopManagerRole(req, res))) return;
   const { id } = req.params;
   const parseResult = cancelSchema.safeParse(req.body);
   const cancelReason = parseResult.success

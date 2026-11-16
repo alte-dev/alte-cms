@@ -1,11 +1,15 @@
 import crypto from "crypto";
+import { isIP } from "node:net";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import {
+  hashEmailLookup,
   hashToken,
+  normalizeEmail,
   SESSION_IDLE_TTL_MS,
   SESSION_TOUCH_INTERVAL_MS,
 } from "../modules/customer-account/helpers";
 import { constantTimeCompare } from "../utils/crypto";
+import { BruteForceGuard } from "../utils/rate-limiter";
 
 export interface JwtClaims {
   actor_id?: string;
@@ -312,5 +316,117 @@ export function normalizeDefaultProductOption(req: any, _res: any, next: () => v
   if (req.validatedBody && req.validatedBody !== req.body) {
     rewriteDefaultOptionPayload(req.validatedBody);
   }
+  return next();
+}
+
+function parseTrustedProxyHops(): number {
+  const raw = process.env.TRUSTED_PROXY_HOPS;
+  if (!raw) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 10) {
+    return 1;
+  }
+  return parsed;
+}
+
+/**
+ * Fail-closed client IP extraction for Medusa HTTP endpoints.
+ * Ignores X-Forwarded-For / X-Real-IP unless TRUST_PROXY is explicitly enabled.
+ */
+export function extractMedusaClientIp(req: {
+  headers?: Record<string, unknown>;
+  socket?: { remoteAddress?: string };
+}): string {
+  const trustProxy = process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1";
+  if (trustProxy) {
+    const rawXff = req.headers?.["x-forwarded-for"];
+    const xff = Array.isArray(rawXff) ? rawXff[0] : typeof rawXff === "string" ? rawXff : "";
+    if (xff) {
+      const parts = xff
+        .split(",")
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+      const hops = parseTrustedProxyHops();
+      if (parts.length >= hops) {
+        const candidate = parts[parts.length - hops];
+        if (candidate && isIP(candidate) !== 0) {
+          return candidate;
+        }
+      }
+    }
+    return "unknown";
+  }
+
+  const remote = req.socket?.remoteAddress;
+  if (typeof remote === "string" && isIP(remote) !== 0) {
+    return remote;
+  }
+  return "unknown";
+}
+
+// Admin login brute-force guards (failed attempts only; 15 min block)
+// IP+email: 5 failures -> 429; email-only (across all IPs): 15 failures -> 429
+export const adminLoginIpEmailGuard = new BruteForceGuard({
+  maxFailures: 5,
+  blockDurationMs: 15 * 60_000,
+});
+
+export const adminLoginEmailGuard = new BruteForceGuard({
+  maxFailures: 15,
+  blockDurationMs: 15 * 60_000,
+});
+
+/**
+ * Rate-limits failed admin login attempts on POST /auth/user/emailpass.
+ * Successful logins (2xx) reset only the caller's own IP+email counter and are never blocked
+ * unless the IP+email or email-only brute-force threshold is already exceeded.
+ */
+export function adminLoginRateLimitGuard(req: any, res: any, next: () => void) {
+  const rawEmail =
+    typeof req.body?.email === "string"
+      ? req.body.email
+      : typeof req.validatedBody?.email === "string"
+        ? req.validatedBody.email
+        : "";
+  const normalized = normalizeEmail(rawEmail);
+  if (!normalized) {
+    return next();
+  }
+
+  const ip = extractMedusaClientIp(req);
+  const emailHash = hashEmailLookup(normalized);
+  const ipEmailKey = `${ip}:${emailHash}`;
+
+  const ipEmailDecision = adminLoginIpEmailGuard.check(ipEmailKey);
+  if (!ipEmailDecision.allowed) {
+    if (typeof res.setHeader === "function") {
+      res.setHeader("Retry-After", String(ipEmailDecision.remainingMinutes * 60));
+    }
+    return res.status(429).json({
+      message: "Çok fazla hatalı giriş denemesi. Lütfen daha sonra tekrar deneyiniz.",
+    });
+  }
+
+  const emailDecision = adminLoginEmailGuard.check(emailHash);
+  if (!emailDecision.allowed) {
+    if (typeof res.setHeader === "function") {
+      res.setHeader("Retry-After", String(emailDecision.remainingMinutes * 60));
+    }
+    return res.status(429).json({
+      message: "Çok fazla hatalı giriş denemesi. Lütfen daha sonra tekrar deneyiniz.",
+    });
+  }
+
+  if (typeof res.on === "function") {
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        adminLoginIpEmailGuard.clear(ipEmailKey);
+      } else if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 429) {
+        adminLoginIpEmailGuard.recordFailure(ipEmailKey);
+        adminLoginEmailGuard.recordFailure(emailHash);
+      }
+    });
+  }
+
   return next();
 }

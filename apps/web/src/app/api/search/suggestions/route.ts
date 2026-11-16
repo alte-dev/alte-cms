@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchProducts } from "@/lib/medusa/products";
-import { formatTRY } from "@/lib/medusa/format";
+import { searchProducts } from "../../../../lib/medusa/products";
+import { formatTRY } from "../../../../lib/medusa/format";
+import { extractClientIp } from "../../../../lib/security/origin-guard";
+import { FixedWindowRateLimiter } from "../../../../lib/security/rate-limiter";
 
 export const dynamic = "force-dynamic";
 
+const suggestionsIpLimiter = new FixedWindowRateLimiter({
+  maxRequests: 60,
+  windowMs: 60_000,
+});
+
 export async function GET(req: NextRequest) {
+  const clientIp = extractClientIp(req);
+  const decision = suggestionsIpLimiter.consume(clientIp);
+  if (!decision.allowed) {
+    return NextResponse.json(
+      { error: "Çok fazla arama isteği gönderildi. Lütfen bir dakika sonra tekrar deneyin." },
+      { status: 429, headers: { "Retry-After": String(decision.retryAfterSeconds) } },
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() || "";
 
@@ -13,7 +29,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const res = await searchProducts({ q, limit: 6 });
+    const res = await searchProducts({ q, limit: 6, clientIp });
     const suggestions = (res.products || []).map((p) => {
       const variant = p.variants?.[0];
       const rawPrice =

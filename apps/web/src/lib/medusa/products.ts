@@ -264,6 +264,7 @@ export interface SearchProductsParams {
   sort?: "relevance" | "price_asc" | "price_desc" | "newest";
   limit?: number;
   offset?: number;
+  clientIp?: string;
 }
 
 export interface SearchProductsResponse {
@@ -292,9 +293,16 @@ export async function searchProducts(
   if (params.offset) queryParams.set("offset", String(params.offset));
 
   try {
+    const internalSecret = process.env.INTERNAL_API_SECRET || "";
+    const headers: Record<string, string> = {};
+    if (params.clientIp && internalSecret) {
+      headers["x-alte-internal"] = internalSecret;
+      headers["x-alte-client-ip"] = params.clientIp;
+    }
+
     const data = await medusaFetch<SearchProductsResponse>(
       `/store/search?${queryParams.toString()}`,
-      { cache: "no-store" },
+      { cache: "no-store", headers },
     );
     return data;
   } catch {

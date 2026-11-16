@@ -36,6 +36,10 @@ export async function GET(req: NextRequest) {
       typeof (user as { name?: unknown }).name === "string"
         ? (user as { name: string }).name
         : undefined,
+    role:
+      typeof (user as { role?: unknown }).role === "string"
+        ? (user as { role: string }).role
+        : undefined,
   });
 
   if (!sso.ok) {

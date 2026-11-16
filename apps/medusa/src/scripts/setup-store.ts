@@ -18,6 +18,7 @@ import {
   updateStoresWorkflow,
 } from "@medusajs/core-flows";
 import { assertProductionPaymentConfigured, STORE_DEFAULTS } from "../config/store-defaults";
+import { ensureExistingAdminRoles } from "../utils/admin-role-guard";
 
 export default async function setupStore({
   container,
@@ -728,6 +729,7 @@ export default async function setupStore({
   }
 
   // Ensure index on payment_session (data->>'merchant_oid') exists for O(1) callback lookups
+  // and idempotently backfill super-admin role for legacy CLI-created users without metadata.role
   try {
     const pgConn =
       container.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
@@ -738,8 +740,12 @@ export default async function setupStore({
       );
       logger.info("Ensured index idx_payment_session_merchant_oid exists.");
     }
+    const updatedRoles = await ensureExistingAdminRoles(pgConn);
+    if (updatedRoles > 0) {
+      logger.info(`Backfilled super-admin role on ${updatedRoles} admin user(s).`);
+    }
   } catch (err: any) {
-    logger.debug(`Index creation notice: ${err?.message || "ok"}`);
+    logger.debug(`Index/role setup notice: ${err?.message || "ok"}`);
   }
 
   // Print Setup Summary and Publishable Key Token to stdout
