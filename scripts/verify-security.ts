@@ -123,6 +123,13 @@ async function run() {
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
+    const pageErrors: string[] = [];
+    page.on("pageerror", (err) => pageErrors.push(err.message));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        pageErrors.push(msg.text());
+      }
+    });
     page.on("response", (res) => {
       try {
         const u = new URL(res.url());
@@ -137,14 +144,17 @@ async function run() {
       }
     });
 
-    await page.goto(`${WEB_URL}/app/login`, { waitUntil: "networkidle", timeout: 30000 });
-    await page.fill('input[name="email"]', ADMIN_EMAIL);
-    await page.fill('input[name="password"]', ADMIN_PASSWORD);
+    await page.goto(`${WEB_URL}/app/login`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    const emailInput = page.locator('input[name="email"], input[type="email"]').first();
+    await emailInput.waitFor({ state: "visible", timeout: 30000 });
+    await emailInput.fill(ADMIN_EMAIL);
+    const passInput = page.locator('input[name="password"], input[type="password"]').first();
+    await passInput.fill(ADMIN_PASSWORD);
     await Promise.all([
-      page.waitForURL(/\/app(\/orders)?/, { timeout: 20000 }).catch(() => {}),
+      page.waitForURL(/\/app(\/orders|\/products)?$/, { timeout: 20000 }).catch(() => {}),
       page.click('button[type="submit"]'),
     ]);
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
     await page.goto(`${WEB_URL}/app/products`, { waitUntil: "networkidle", timeout: 20000 });
     await page.waitForTimeout(1000);
@@ -155,7 +165,7 @@ async function run() {
       seenMedusaApiPaths.size > 0 &&
       failedMedusaApiCalls.length === 0 &&
       !page.url().includes("/login");
-    browserDetail = `Captured ${seenMedusaApiPaths.size} /medusa-api calls; errors=${failedMedusaApiCalls.length} [${failedMedusaApiCalls.join(", ")}]`;
+    browserDetail = `Captured ${seenMedusaApiPaths.size} /medusa-api calls; errors=${failedMedusaApiCalls.length} [${failedMedusaApiCalls.join(", ")}]; pageErrors=${pageErrors.length} [${pageErrors.slice(0, 3).join(" | ")}]`;
   } finally {
     await browser.close();
   }

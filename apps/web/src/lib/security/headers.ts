@@ -29,7 +29,6 @@ export function buildStorefrontCsp(isProd: boolean): string {
 }
 
 export function buildAdminCsp(isProd: boolean): string {
-  const devEval = isProd ? "" : " 'unsafe-eval'";
   const devHosts = isProd ? "" : " http://localhost:* http://127.0.0.1:*";
   const devWs = isProd ? "" : " ws: wss:";
 
@@ -38,7 +37,7 @@ export function buildAdminCsp(isProd: boolean): string {
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'self'",
-    `script-src 'self' 'unsafe-inline'${devEval}`,
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https:${devHosts}`,
     "font-src 'self' data:",
