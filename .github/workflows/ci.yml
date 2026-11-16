@@ -188,6 +188,7 @@ jobs:
       STOREFRONT_URL: "http://localhost:3100"
       TEST_WEB_URL: "http://localhost:3100"
       TEST_MEDUSA_URL: "http://127.0.0.1:9000"
+      MEDUSA_ADMIN_BACKEND_URL: "/medusa-api"
       MEDUSA_ADMIN_EMAIL: "admin@example.test"
       MEDUSA_ADMIN_PASSWORD: "supersecret-test-password"
       PAYTR_API_BASE: "http://127.0.0.1:9099"

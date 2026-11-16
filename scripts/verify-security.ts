@@ -144,28 +144,33 @@ async function run() {
       }
     });
 
-    await page.goto(`${WEB_URL}/app/login`, { waitUntil: "domcontentloaded", timeout: 30000 });
-    const emailInput = page.locator('input[name="email"], input[type="email"]').first();
-    await emailInput.waitFor({ state: "visible", timeout: 30000 });
-    await emailInput.fill(ADMIN_EMAIL);
-    const passInput = page.locator('input[name="password"], input[type="password"]').first();
-    await passInput.fill(ADMIN_PASSWORD);
-    await Promise.all([
-      page.waitForURL(/\/app(\/orders|\/products)?$/, { timeout: 20000 }).catch(() => {}),
-      page.click('button[type="submit"]'),
-    ]);
-    await page.waitForTimeout(2000);
+    try {
+      await page.goto(`${WEB_URL}/app/login`, { waitUntil: "domcontentloaded", timeout: 30000 });
+      const emailInput = page.locator('input[name="email"], input[type="email"]').first();
+      await emailInput.waitFor({ state: "visible", timeout: 30000 });
+      await emailInput.fill(ADMIN_EMAIL);
+      const passInput = page.locator('input[name="password"], input[type="password"]').first();
+      await passInput.fill(ADMIN_PASSWORD);
+      await Promise.all([
+        page.waitForURL(/\/app(\/orders|\/products)?$/, { timeout: 20000 }).catch(() => {}),
+        page.click('button[type="submit"]'),
+      ]);
+      await page.waitForTimeout(2000);
 
-    await page.goto(`${WEB_URL}/app/products`, { waitUntil: "networkidle", timeout: 20000 });
-    await page.waitForTimeout(1000);
-    await page.goto(`${WEB_URL}/app/orders`, { waitUntil: "networkidle", timeout: 20000 });
-    await page.waitForTimeout(1000);
+      await page.goto(`${WEB_URL}/app/products`, { waitUntil: "networkidle", timeout: 20000 });
+      await page.waitForTimeout(1000);
+      await page.goto(`${WEB_URL}/app/orders`, { waitUntil: "networkidle", timeout: 20000 });
+      await page.waitForTimeout(1000);
 
-    browserOk =
-      seenMedusaApiPaths.size > 0 &&
-      failedMedusaApiCalls.length === 0 &&
-      !page.url().includes("/login");
-    browserDetail = `Captured ${seenMedusaApiPaths.size} /medusa-api calls; errors=${failedMedusaApiCalls.length} [${failedMedusaApiCalls.join(", ")}]; pageErrors=${pageErrors.length} [${pageErrors.slice(0, 3).join(" | ")}]`;
+      browserOk =
+        seenMedusaApiPaths.size > 0 &&
+        failedMedusaApiCalls.length === 0 &&
+        !page.url().includes("/login");
+      browserDetail = `Captured ${seenMedusaApiPaths.size} /medusa-api calls [${Array.from(seenMedusaApiPaths).slice(0, 8).join("; ")}]; errors=${failedMedusaApiCalls.length} [${failedMedusaApiCalls.join(", ")}]; pageErrors=${pageErrors.length} [${pageErrors.slice(0, 3).join(" | ")}]`;
+    } catch (err: any) {
+      browserOk = false;
+      browserDetail = `Browser error: ${err?.message || err}; url=${page.url()}; seen=${seenMedusaApiPaths.size}; pageErrors=[${pageErrors.slice(0, 5).join(" | ")}]`;
+    }
   } finally {
     await browser.close();
   }
