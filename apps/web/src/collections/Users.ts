@@ -111,6 +111,21 @@ export const Users: CollectionConfig = {
     delete: canDeleteUsers,
     admin: ({ req: { user } }) => Boolean(user), // All users in Users collection are staff
   },
+  hooks: {
+    afterError: [
+      ({ error }) => {
+        const msg = String((error as any)?.message || "");
+        if ((error as any)?.name === "LockedAuth" || /locked/i.test(msg)) {
+          return {
+            response: {
+              errors: [{ message: "The email or password provided is incorrect." }],
+            },
+            status: 401,
+          };
+        }
+      },
+    ],
+  },
   fields: [
     {
       name: "email",

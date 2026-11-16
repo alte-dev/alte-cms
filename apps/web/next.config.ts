@@ -1,5 +1,6 @@
 import { withPayload } from "@payloadcms/next/withPayload";
 import type { NextConfig } from "next";
+import { getSecurityHeadersConfig } from "./src/lib/security/headers";
 
 const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL;
 const remotePatterns: Array<{
@@ -78,49 +79,25 @@ const nextConfig: NextConfig = {
         destination: `${medusaBackend}/app/:path*`,
       },
       {
-        source: "/medusa-api/:path*",
-        destination: `${medusaBackend}/:path*`,
+        source: "/medusa-api/admin/:path*",
+        destination: `${medusaBackend}/admin/:path*`,
+      },
+      {
+        source: "/medusa-api/auth/user/:path*",
+        destination: `${medusaBackend}/auth/user/:path*`,
+      },
+      {
+        source: "/medusa-api/auth/session",
+        destination: `${medusaBackend}/auth/session`,
+      },
+      {
+        source: "/medusa-api/auth/token/refresh",
+        destination: `${medusaBackend}/auth/token/refresh`,
       },
     ];
   },
   async headers() {
-    return [
-      {
-        source: "/hesap/:path*",
-        headers: [
-          {
-            key: "Referrer-Policy",
-            value: "no-referrer",
-          },
-          {
-            key: "X-Robots-Tag",
-            value: "noindex, nofollow",
-          },
-        ],
-      },
-      {
-        source: "/:path*",
-        headers: [
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
-          {
-            key: "Content-Security-Policy",
-            value:
-              "frame-src 'self' https://www.paytr.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paytr.com; connect-src 'self' https://www.paytr.com http://localhost:* http://127.0.0.1:* ws: wss:; form-action 'self' https://www.paytr.com;",
-          },
-        ],
-      },
-    ];
+    return getSecurityHeadersConfig(process.env.NODE_ENV === "production");
   },
 };
 

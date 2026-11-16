@@ -1,7 +1,9 @@
 import React from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { formatTRY } from "@/lib/medusa/format";
+import { extractClientIp } from "@/lib/security/origin-guard";
 
 export const metadata: Metadata = {
   title: "Sipariş Takibi",
@@ -34,6 +36,9 @@ export default async function SiparisTakipPage({ searchParams }: SiparisTakipPag
 
     const publishableKey =
       process.env.MEDUSA_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
+    const internalSecret = process.env.INTERNAL_API_SECRET || "";
+    const reqHeaders = await headers();
+    const clientIp = extractClientIp({ headers: reqHeaders } as unknown as Request);
 
     try {
       const res = await fetch(`${medusaUrl}/store/order-tracking`, {
@@ -41,6 +46,8 @@ export default async function SiparisTakipPage({ searchParams }: SiparisTakipPag
         headers: {
           "Content-Type": "application/json",
           ...(publishableKey ? { "x-publishable-api-key": publishableKey } : {}),
+          ...(internalSecret ? { "x-alte-internal": internalSecret } : {}),
+          "x-alte-client-ip": clientIp,
         },
         body: JSON.stringify({
           order_id_or_number: orderNumber,

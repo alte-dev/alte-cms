@@ -6,6 +6,7 @@ import { z } from "zod";
 const adminSsoSchema = z.object({
   email: z.string().email().max(200),
   name: z.string().max(120).optional(),
+  role: z.enum(["super-admin", "admin"]).default("admin"),
 });
 
 export function signMedusaAdminJwt(userId: string, jwtSecret: string, ttlSeconds = 300): string {
@@ -42,11 +43,19 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const email = parsed.data.email.trim().toLowerCase();
+  const ssoRole = parsed.data.role;
   const userModule = req.scope.resolve(Modules.USER) as {
-    listUsers: (filters: { email: string }) => Promise<Array<{ id: string; email: string }>>;
+    listUsers: (filters: {
+      email: string;
+    }) => Promise<Array<{ id: string; email: string; metadata?: Record<string, unknown> | null }>>;
     createUsers: (data: {
       email: string;
       first_name?: string;
+      metadata?: Record<string, unknown>;
+    }) => Promise<{ id: string; email: string; metadata?: Record<string, unknown> | null }>;
+    updateUsers: (data: {
+      id: string;
+      metadata?: Record<string, unknown>;
     }) => Promise<{ id: string; email: string }>;
   };
 
@@ -57,6 +66,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     user = await userModule.createUsers({
       email,
       first_name: parsed.data.name || email.split("@")[0],
+      metadata: { role: ssoRole },
+    });
+  } else if (user.metadata?.role !== ssoRole && typeof userModule.updateUsers === "function") {
+    await userModule.updateUsers({
+      id: user.id,
+      metadata: { ...(user.metadata || {}), role: ssoRole },
     });
   }
 

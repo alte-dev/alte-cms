@@ -326,6 +326,7 @@ async function main() {
     { name: "verify:contact", script: "scripts/verify-contact.ts" },
     { name: "verify:quality", script: "scripts/verify-quality.ts" },
     { name: "verify-production-guard", script: "scripts/verify-production-guard.ts" },
+    { name: "verify:security", script: "scripts/verify-security.ts" },
   ];
 
   const specs: VerifyCommandSpec[] = scriptsToRun.map((item) => ({

@@ -26,6 +26,7 @@ export function getMedusaBackendBaseUrl(): string {
 export async function requestMedusaAdminSsoCookies(input: {
   email: string;
   name?: string;
+  role?: string;
 }): Promise<{ ok: true; setCookies: string[] } | { ok: false; status: number; error: string }> {
   const internalSecret = process.env.INTERNAL_API_SECRET;
   if (!internalSecret || internalSecret.length < 32) {
@@ -33,6 +34,7 @@ export async function requestMedusaAdminSsoCookies(input: {
   }
 
   const baseUrl = getMedusaBackendBaseUrl();
+  const ssoRole = input.role === "super-admin" ? "super-admin" : "admin";
 
   const ssoRes = await fetch(`${baseUrl}/internal/admin-sso`, {
     method: "POST",
@@ -43,6 +45,7 @@ export async function requestMedusaAdminSsoCookies(input: {
     body: JSON.stringify({
       email: input.email,
       name: input.name,
+      role: ssoRole,
     }),
     cache: "no-store",
   });

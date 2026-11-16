@@ -1,12 +1,14 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
+import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
 
 const noteSchema = z.object({
   note: z.string().min(1, "Not boş olamaz.").max(500, "Not en fazla 500 karakter olabilir."),
 });
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminOrShopManagerRole(req, res))) return;
   const { id } = req.params;
   const parseResult = noteSchema.safeParse(req.body);
 

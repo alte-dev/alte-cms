@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { OrderEmailPayload, sendEmailNotification } from "../../../../../services/email-service";
+import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
 import {
   buildTrackingUrl,
   SUPPORTED_CARRIERS,
@@ -21,6 +22,7 @@ const shipmentSchema = z.object({
 });
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminOrShopManagerRole(req, res))) return;
   const { id } = req.params;
   const parseResult = shipmentSchema.safeParse(req.body);
 

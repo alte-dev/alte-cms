@@ -1,5 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
-import { checkAdminSettingsRole, checkAdminOrShopManagerRole } from "./admin-role-guard";
+import { describe, expect, it, vi } from "vitest";
+import {
+  checkAdminOrShopManagerRole,
+  checkAdminSettingsRole,
+  ensureExistingAdminRoles,
+} from "./admin-role-guard";
 
 function createMockRes() {
   const res: any = {
@@ -17,83 +21,123 @@ function createMockRes() {
   return res;
 }
 
-describe("checkAdminSettingsRole (Medusa settings access guard)", () => {
-  it("allows admin and super-admin roles", async () => {
-    const res1 = createMockRes();
-    const ok1 = await checkAdminSettingsRole({ user: { role: "admin" } } as any, res1);
-    expect(ok1).toBe(true);
+function createReqWithRole(role?: string) {
+  return {
+    auth_context: { actor_id: "usr_1" },
+    scope: {
+      resolve: () => ({
+        retrieveUser: vi.fn().mockResolvedValue({
+          id: "usr_1",
+          metadata: role ? { role } : {},
+        }),
+      }),
+    },
+  };
+}
 
-    const res2 = createMockRes();
-    const ok2 = await checkAdminSettingsRole({ user: { role: "super-admin" } } as any, res2);
-    expect(ok2).toBe(true);
-  });
-
-  it("blocks shop-manager and editor roles with 403", async () => {
+describe("admin-role-guard (fail-closed)", () => {
+  it("returns 403 when user has no role (fail-closed, never defaults to admin)", async () => {
     const res1 = createMockRes();
-    const ok1 = await checkAdminSettingsRole(
-      { user: { metadata: { role: "shop-manager" } } } as any,
-      res1,
-    );
+    const ok1 = await checkAdminSettingsRole(createReqWithRole(undefined) as any, res1);
     expect(ok1).toBe(false);
     expect(res1.statusCode).toBe(403);
 
     const res2 = createMockRes();
-    const ok2 = await checkAdminSettingsRole({ user: { role: "editor" } } as any, res2);
+    const ok2 = await checkAdminOrShopManagerRole(createReqWithRole(undefined) as any, res2);
     expect(ok2).toBe(false);
     expect(res2.statusCode).toBe(403);
   });
 
-  it("resolves user metadata role via auth_context.actor_id when req.user is absent", async () => {
-    const retrieveUser = vi.fn().mockResolvedValue({
-      id: "user_123",
-      metadata: { role: "shop-manager" },
-    });
-    const req = {
-      auth_context: { actor_id: "user_123" },
-      scope: {
-        resolve: () => ({ retrieveUser }),
-      },
-    } as any;
+  it("returns 403 for unknown role", async () => {
     const res = createMockRes();
-
-    const ok = await checkAdminSettingsRole(req, res);
+    const ok = await checkAdminOrShopManagerRole(createReqWithRole("mystery-role") as any, res);
     expect(ok).toBe(false);
     expect(res.statusCode).toBe(403);
-    expect(retrieveUser).toHaveBeenCalledWith("user_123");
   });
 
-  it("allows default Medusa admin user with no role metadata", async () => {
-    const retrieveUser = vi.fn().mockResolvedValue({
-      id: "user_admin",
-      metadata: {},
-    });
-    const req = {
-      auth_context: { actor_id: "user_admin" },
-      scope: {
-        resolve: () => ({ retrieveUser }),
-      },
-    } as any;
-    const res = createMockRes();
+  it("blocks editor on both order operations and settings", async () => {
+    const res1 = createMockRes();
+    expect(await checkAdminOrShopManagerRole(createReqWithRole("editor") as any, res1)).toBe(false);
+    expect(res1.statusCode).toBe(403);
 
-    const ok = await checkAdminSettingsRole(req, res);
-    expect(ok).toBe(true);
+    const res2 = createMockRes();
+    expect(await checkAdminSettingsRole(createReqWithRole("editor") as any, res2)).toBe(false);
+    expect(res2.statusCode).toBe(403);
   });
-});
 
-describe("checkAdminOrShopManagerRole (Medusa contact/order ops guard)", () => {
-  it("allows admin, super-admin, and shop-manager, blocks editor", async () => {
-    for (const role of ["admin", "super-admin", "shop-manager"]) {
-      const res = createMockRes();
-      const ok = await checkAdminOrShopManagerRole({ user: { role } } as any, res);
-      expect(ok).toBe(true);
-    }
-
-    const resEditor = createMockRes();
-    const okEditor = await checkAdminOrShopManagerRole(
-      { user: { role: "editor" } } as any,
-      resEditor,
+  it("allows shop-manager on order operations but blocks on settings", async () => {
+    const res1 = createMockRes();
+    expect(await checkAdminOrShopManagerRole(createReqWithRole("shop-manager") as any, res1)).toBe(
+      true,
     );
-    expect(okEditor).toBe(false);
-    expect(resEditor.statusCode).toBe(403);
+
+    const res2 = createMockRes();
+    expect(await checkAdminSettingsRole(createReqWithRole("shop-manager") as any, res2)).toBe(
+      false,
+    );
+    expect(res2.statusCode).toBe(403);
+  });
+
+  it("allows admin and super-admin on both", async () => {
+    for (const role of ["admin", "super-admin"]) {
+      const res1 = createMockRes();
+      expect(await checkAdminOrShopManagerRole(createReqWithRole(role) as any, res1)).toBe(true);
+      const res2 = createMockRes();
+      expect(await checkAdminSettingsRole(createReqWithRole(role) as any, res2)).toBe(true);
+    }
+  });
+
+  it("ensureExistingAdminRoles runs only once using persistent store.metadata.role_backfill_done", async () => {
+    const storeRows: Array<{ id: string; metadata: Record<string, unknown> | null }> = [
+      { id: "store_1", metadata: {} },
+    ];
+    const userRows: Array<{ id: string; metadata: Record<string, unknown> | null }> = [
+      { id: "u1", metadata: null },
+      { id: "u2", metadata: { role: "shop-manager" } },
+    ];
+
+    const mockPg = (table: string) => {
+      if (table === "store") {
+        return {
+          whereNull: () => ({
+            first: async () => storeRows[0] || null,
+          }),
+          where: ({ id }: { id: string }) => ({
+            update: async ({ metadata }: { metadata: Record<string, unknown> }) => {
+              const target = storeRows.find((s) => s.id === id);
+              if (target) target.metadata = metadata;
+            },
+          }),
+        };
+      }
+      return {
+        whereNull: () => ({
+          whereRaw: () => ({
+            select: async () => userRows.filter((r) => !r.metadata?.role),
+          }),
+        }),
+        where: ({ id }: { id: string }) => ({
+          update: async ({ metadata }: { metadata: Record<string, unknown> }) => {
+            const target = userRows.find((r) => r.id === id);
+            if (target) target.metadata = metadata;
+          },
+        }),
+      };
+    };
+
+    // First run: backfills u1 and marks role_backfill_done = true
+    const first = await ensureExistingAdminRoles(mockPg);
+    expect(first).toBe(1);
+    expect(userRows[0].metadata?.role).toBe("super-admin");
+    expect(userRows[1].metadata?.role).toBe("shop-manager");
+    expect(storeRows[0].metadata?.role_backfill_done).toBe(true);
+
+    // Add a new role-less user AFTER initial setup
+    userRows.push({ id: "u3", metadata: null });
+
+    // Second run: marker is set, so u3 MUST remain role-less!
+    const second = await ensureExistingAdminRoles(mockPg);
+    expect(second).toBe(0);
+    expect(userRows[2].metadata?.role).toBeUndefined();
   });
 });

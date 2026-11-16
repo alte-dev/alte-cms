@@ -211,11 +211,32 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       return res.status(200).send("OK");
     }
 
-    // Handle Success: Validate Total Amount >= Expected Amount
+    // Handle Success: Validate Total Amount >= Expected Amount (fail-closed)
     const receivedKurus = parseInt(totalAmountStr, 10);
     const expectedKurus = Number(matchedSession.data?.expected_amount_kurus || 0);
 
-    if (expectedKurus > 0 && receivedKurus < expectedKurus) {
+    if (!Number.isFinite(expectedKurus) || expectedKurus <= 0) {
+      console.error(
+        `[PayTR Callback] Beklenen tutar kaydı eksik veya geçersiz; manuel inceleme gerekli! (oid=${merchantOid})`,
+      );
+
+      await paymentService.updatePaymentSession({
+        id: matchedSession.id,
+        amount: matchedSession.amount,
+        currency_code: matchedSession.currency_code,
+        data: {
+          ...matchedSession.data,
+          status: "needs_manual_review",
+          needs_manual_review: true,
+          manual_review_reason: "Beklenen tutar kaydı (expected_amount_kurus) eksik.",
+          total_amount_received_kurus: Number.isFinite(receivedKurus) ? receivedKurus : 0,
+        },
+      });
+
+      return res.status(200).send("OK");
+    }
+
+    if (receivedKurus < expectedKurus) {
       console.error(
         `[PayTR Callback] Tutar yetersiz! Alınan: ${receivedKurus} kuruş, Beklenen: ${expectedKurus} kuruş (oid=${merchantOid})`,
       );

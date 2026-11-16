@@ -481,10 +481,17 @@ async function run() {
       `Status HTTP ${xssRes.status} (expected 400). Error: ${xssJson.error}`,
     );
 
+    const internalSecretHeader: Record<string, string> = process.env.INTERNAL_API_SECRET
+      ? {
+          "x-alte-internal": process.env.INTERNAL_API_SECRET,
+          "x-alte-client-ip": "198.51.100.50",
+        }
+      : {};
+
     // STEP 3: Storefront Tracking (/store/order-tracking): Valid Lookup & Zero PII
     const trackRes = await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({
         order_id_or_number: "#1001",
         email: "ipek@example.test",
@@ -514,7 +521,7 @@ async function run() {
     // STEP 4: Timing-Safe Turkish Email Comparison (I/ı/İ/i)
     const turkishCaseRes = await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({
         order_id_or_number: "#1001",
         email: "İPEK@EXAMPLE.TEST", // Turkish capital İ
@@ -533,12 +540,12 @@ async function run() {
     const [wrongNumRes, wrongEmailRes] = await Promise.all([
       fetch(`${BASE_URL}/store/order-tracking`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...internalSecretHeader },
         body: JSON.stringify({ order_id_or_number: "#9999", email: "ipek@example.test" }),
       }),
       fetch(`${BASE_URL}/store/order-tracking`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...internalSecretHeader },
         body: JSON.stringify({ order_id_or_number: "#1001", email: "wrong@example.test" }),
       }),
     ]);
@@ -562,29 +569,29 @@ async function run() {
     // Send 3 more failed attempts to reach 5 failed attempts for #9999
     await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({ order_id_or_number: "#9999", email: "fail@example.test" }),
     });
     await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({ order_id_or_number: "#9999", email: "fail@example.test" }),
     });
     await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({ order_id_or_number: "#9999", email: "fail@example.test" }),
     });
     await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({ order_id_or_number: "#9999", email: "fail@example.test" }),
     });
 
     // 5 failed attempts reached: Now verify 429 lockout even if credentials were correct
     const lockedRes = await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({ order_id_or_number: "#9999", email: "ipek@example.test" }),
     });
     const lockedJson = await lockedRes.json();
@@ -676,7 +683,7 @@ async function run() {
     const noteJson = await noteRes.json();
     const storefrontCheckRes = await fetch(`${BASE_URL}/store/order-tracking`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeader },
       body: JSON.stringify({ order_id_or_number: "#1002", email: "ahmet@example.test" }),
     });
     const storefrontCheckJson = await storefrontCheckRes.json();

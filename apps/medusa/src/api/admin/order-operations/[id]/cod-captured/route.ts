@@ -1,7 +1,9 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminOrShopManagerRole(req, res))) return;
   const { id } = req.params;
 
   try {

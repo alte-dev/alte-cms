@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { BruteForceGuard, FixedWindowRateLimiter } from "../../../utils/rate-limiter";
 import { timingSafeEmailMatch } from "../../../utils/shipping-carriers";
+import { getTrustedClientIp } from "../account/_shared";
 
 // In-memory rate limiter structures:
 // 1. IP rate limit: max 10 requests per minute
@@ -15,12 +16,30 @@ const trackingBruteForceGuard = new BruteForceGuard({
   maxFailures: 5,
   blockDurationMs: 15 * 60_000,
 });
+// 3. IP-independent brute-force block: 20 failed attempts per order across all IPs -> 15 min block
+const trackingOrderGuard = new BruteForceGuard({
+  maxFailures: 20,
+  blockDurationMs: 15 * 60_000,
+});
+
+function normalizeOrderKey(orderNumber: string): string {
+  return orderNumber.replace(/^#/, "").trim().toLowerCase();
+}
 
 function checkTrackingRateLimit(
   ip: string,
   orderNumber: string,
 ): { allowed: boolean; reason?: string } {
-  const blockKey = `${ip}:${orderNumber.trim().toLowerCase()}`;
+  const orderKey = normalizeOrderKey(orderNumber);
+  const orderDecision = trackingOrderGuard.check(orderKey);
+  if (!orderDecision.allowed) {
+    return {
+      allowed: false,
+      reason: `Çok fazla hatalı deneme yapıldı. Güvenlik nedeniyle ${orderDecision.remainingMinutes} dakika sonra tekrar deneyiniz.`,
+    };
+  }
+
+  const blockKey = `${ip}:${orderKey}`;
   const blockDecision = trackingBruteForceGuard.check(blockKey);
   if (!blockDecision.allowed) {
     return {
@@ -41,8 +60,10 @@ function checkTrackingRateLimit(
 }
 
 function recordFailedAttempt(ip: string, orderNumber: string) {
-  const blockKey = `${ip}:${orderNumber.trim().toLowerCase()}`;
+  const orderKey = normalizeOrderKey(orderNumber);
+  const blockKey = `${ip}:${orderKey}`;
   trackingBruteForceGuard.recordFailure(blockKey);
+  trackingOrderGuard.recordFailure(orderKey);
 }
 
 const trackingRequestSchema = z.object({
@@ -51,9 +72,7 @@ const trackingRequestSchema = z.object({
 });
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
-  const clientIp = String(req.ip || req.headers["x-forwarded-for"] || "127.0.0.1")
-    .split(",")[0]
-    .trim();
+  const clientIp = getTrustedClientIp(req);
 
   const UNIFORM_NOT_FOUND_MESSAGE = "Sipariş bulunamadı veya e-posta adresi eşleşmiyor.";
 
@@ -163,9 +182,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         shipped_at: meta.shipped_at || null,
       },
     });
-  } catch (err: any) {
+  } catch {
     return res.status(500).json({
-      error: `Sipariş sorgulanırken bir hata oluştu: ${err.message}`,
+      error: "Sipariş sorgulanırken bir hata oluştu.",
     });
   }
 };

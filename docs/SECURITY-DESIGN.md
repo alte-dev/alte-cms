@@ -125,3 +125,37 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
 - **SEC-028 — Strict Müşteri Oturumu Koruması:** `/store/customers/me`, `/store/orders` ve `/auth/session` rotalarında Bearer token yoksa `401` dönen `strictCustomerSessionGuard` uygulanır; admin JWT'leri (`actor_type !== "customer"`) ve misafir checkout/sipariş takibi akışları etkilenmez.
 - **SEC-030 — Çok Adımlı Yazma Bütünlüğü:** Hesap silme (`account/delete`) ve parola değiştirme oturum yenilemesi (`account/password`) tek `pgConnection.transaction` içinde çalışır. Parola sıfırlamada (`password-reset/confirm`) `authService` parola güncellemesi dış transaction'a girmediği için önce parola güncellenir, yalnızca başarılıysa tek `pgConnection.transaction` içinde token tüketilir ve oturumlar iptal edilir.
 - **SEC-035 — Üretim CORS ve Hata Yutma Koruması:** `env.ts` üretimde `ADMIN_CORS`, `AUTH_CORS` ve `STORE_CORS` için `*` (wildcard) değerini açılışta reddeder. `admin/payment-settings/manual-refunds` veritabanı hatasında `200` yerine `500` döner.
+
+## 11. Faz 12.4 Güvenlik Denetimi Düzeltmeleri
+
+- **Medusa Admin Girişi Hız Sınırı (`POST /auth/user/emailpass`):**
+  - `adminLoginIpEmailGuard`: `IP:hmac(email)` başına **5 hatalı deneme / 15 dk** kilit (`429`). Başarılı giriş yalnızca kendi `IP:hmac(email)` sayacını sıfırlar.
+  - `adminLoginEmailGuard`: IP'den bağımsız `hmac(email)` başına **15 hatalı deneme / 15 dk** kilit (`429`).
+  - İstemci IP'si `extractMedusaClientIp` ile fail-closed çıkarılır (`TRUST_PROXY` kapalıyken `X-Forwarded-For` / `X-Real-IP` yok sayılır).
+  - Yalnızca hatalı (4xx, 429 hariç) denemeler sayılır; başarılı girişler (`200`) sınırlandırılmaz.
+- **`/medusa-api/*` Allowlist ve Path Traversal Koruması (`apps/web/next.config.ts` & `apps/web/src/middleware.ts`):**
+  - Genel `/medusa-api/:path*` wildcard rewrite kaldırıldı. Yalnızca Medusa Admin (`/app`) arayüzünün gerektirdiği `/medusa-api/admin/:path*`, `/medusa-api/auth/user/:path*`, `/medusa-api/auth/session` ve `/medusa-api/auth/token/refresh` yolları açıldı.
+  - Next.js `rewrites()` kodlanmış `%2e%2e` yollarını Medusa'ya iletip Express'in bunları `..` olarak çözmesine yol açabildiği için, `apps/web/src/middleware.ts` (`/medusa-api/:path*`) ham URL yolunu rewrite öncesinde doğrular: `..`, `/.`, `%2e`, `%2f`, `%5c`, `\`, `//`, `%00`, `%25` ve `;` içeren herhangi bir yol `404` ile reddedilir. Ayrı bir proxy route handler yerine `middleware.ts` seçilmiştir; böylece çerez (`Set-Cookie`), gövde akışı ve başlık aktarımı bozulmadan tek noktadan ön-doğrulama yapılır.
+  - `/store/*`, `/hooks/*`, `/internal/*` ve `/auth/customer/*` (hem doğrudan hem traversal ile) herkese açık web kökeninden `404` döner.
+- **Sipariş Takibi (`POST /store/order-tracking`):**
+  - `requireInternalSecret` ile korunur; `siparis-takip` sayfası `x-alte-internal` ve `extractClientIp` ile elde edilen `x-alte-client-ip` başlığını iletir (`getTrustedClientIp` yoksa `"unknown"`).
+  - Mevcut IP+sipariş (5 hata / 15 dk) ve IP (10 istek / dk) sınırlarına ek olarak IP'den bağımsız **sipariş numarası başına 20 hatalı deneme / 15 dk** kilidi (`trackingOrderGuard`) uygulanır.
+- **Admin Rol Koruması (`admin-role-guard.ts`):**
+  - Rol çözülemediğinde veya tanınmadığında fail-closed `403` döner (`role || "admin"` kaldırıldı).
+  - `order-operations/*` (iptal, COD tahsilat, not, kargo, CSV) uç noktaları `checkAdminOrShopManagerRole`, `payment-settings/test-connection` ve `manual-refunds` uç noktaları `checkAdminSettingsRole` ile korunur.
+  - `setup:store` (`ensureExistingAdminRoles`) `store.metadata.role_backfill_done` kalıcı işaretini kullanır ve ilk kurulumda `metadata.role` olmayan mevcut kullanıcılara **yalnızca bir kez** `super-admin` atar. Sonradan rolsüz açılan kullanıcılar tekrar `setup:store` çalıştırılsa bile rolsüz kalır (`403`); rol ataması açıkça `pnpm admin:set-role -- <e-posta> <rol>` ile yapılır. `/internal/admin-sso` Payload rolünü (`admin` / `super-admin`) Medusa `metadata.role` alanına yazar.
+  - **Sınır Notu:** Medusa v2 çekirdeğinde yerleşik rol sistemi bulunmadığından `shop-manager` kısıtı yalnızca özel (`/admin/order-operations/*`, `/admin/contact-messages/*`, `/admin/email-settings/*`, `/admin/payment-settings/*`) rotalarda uygulanır; Medusa çekirdek admin API'si için güvenlik sınırı değildir.
+- **CSP, HSTS ve `Permissions-Policy`:**
+  - Vitrin yolları için `default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self' https://www.paytr.com; frame-src 'self' https://www.paytr.com` uygulanır; üretimde `'unsafe-eval'`, `localhost`, `127.0.0.1`, `ws:`, `wss:` çıkarılır.
+  - `'unsafe-inline'` şimdilik korunmuştur; çünkü Next.js 15'te nonce tabanlı CSP tüm sayfaları dinamik render'a zorlayarak vitrin statik/ISR önbelleğini ve 384 MB bellek bütçesini bozmaktadır (nonce geçişi Faz 13'e bırakılmıştır).
+  - `/admin/*` (Payload Admin) kendi yönetim paneli CSP'sini (`default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'`) `next.config.ts` üzerinden alır. `/app/*` (Medusa Admin) ise Next.js'te harici rewrite (`:9000`) ile servis edildiğinden Next.js 15 harici rewrite yanıtlarına `headers()`/`NextResponse.next()` başlıklarını eklemez; üretimde `/app` CSP'si ters vekil (OpenLiteSpeed/Nginx) katmanında eklenir.
+  - Üretimde `Strict-Transport-Security: max-age=31536000; includeSubDomains` (preload yok) ve tüm yollarda `Permissions-Policy: camera=(), microphone=(), geolocation=()` gönderilir.
+- **Payload Giriş & Parola Sıfırlama Koruması (`POST /api/users/login`, `forgot-password`, `reset-password`):**
+  - Next.js App Router Node.js rotası (`(payload)/api/[...slug]/route.ts`) üzerinden `POST /api/users/login`, `POST /api/users/forgot-password` ve `POST /api/users/reset-password` için IP başına **10 istek / 15 dk** (`429` + `Retry-After`) uygulanır (`GET /admin/login` sınırlanmaz).
+  - `Users.hooks.afterError` ve yanıt sarmalayıcı (`maskLockedAccountResponse`), Payload'ın `"This user is locked..."` mesajını genel `"The email or password provided is incorrect."` mesajına çevirerek e-posta numaralandırmayı kapatır.
+- **Arama Hız Sınırları:**
+  - `/api/search/suggestions`: web katmanında `extractClientIp` ile **60 istek / dk** (`429` + `Retry-After`).
+  - `/store/search`: güvenilir iç isteklerde `x-alte-client-ip`, doğrudan harici isteklerde `extractMedusaClientIp` ile **60 istek / dk** (`429`).
+- **Ödeme Geri Çağrısı & Durum Ucu:**
+  - `pp_paytr_paytr`: `status === "success"` iken `expected_amount_kurus` eksik veya `<= 0` ise sepet tamamlanmaz, oturum `needs_manual_review` olarak işaretlenir, PII'siz loglanır ve PayTR'ye `OK` dönülür.
+  - `store/checkout-status`: `cart_id` doğrulaması (400/404), sabit Türkçe 500 hata mesajı ve `order_cart` üzerinden filtrelenmiş tekil sorgu kullanılır.

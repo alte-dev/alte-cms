@@ -1,8 +1,10 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import PaymentSettingsService from "../../../../modules/payment-settings/service";
 import PaytrPaymentService from "../../../../modules/payment-paytr/service";
+import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!(await checkAdminSettingsRole(req, res))) return;
   try {
     const service = req.scope.resolve<PaymentSettingsService>("paymentSettingsModuleService");
     const settings = await service.getDecryptedSettings();
