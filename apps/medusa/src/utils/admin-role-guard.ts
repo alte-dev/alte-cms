@@ -41,11 +41,21 @@ async function resolveAdminRole(
 }
 
 /**
- * Idempotently assigns `super-admin` to existing Medusa admin users that were created
- * (e.g. via `medusa user`) without a `metadata.role`. Safe on empty DB and repeated runs.
+ * One-time backfill: assigns `super-admin` to existing Medusa admin users created
+ * before role enforcement (e.g. via `medusa user`) when `store.metadata.role_backfill_done`
+ * is not yet set. Subsequent runs of `setup:store` do nothing so newly created role-less
+ * users remain fail-closed until explicitly assigned a role via `pnpm admin:set-role`.
  */
 export async function ensureExistingAdminRoles(pgConnection: any): Promise<number> {
   if (!pgConnection) return 0;
+
+  const storeRow = await pgConnection("store").whereNull("deleted_at").first();
+  if (!storeRow) return 0;
+
+  if (storeRow.metadata?.role_backfill_done === true) {
+    return 0;
+  }
+
   const usersWithoutRole = await pgConnection("user")
     .whereNull("deleted_at")
     .whereRaw("(metadata IS NULL OR metadata->>'role' IS NULL OR metadata->>'role' = '')")
@@ -57,6 +67,13 @@ export async function ensureExistingAdminRoles(pgConnection: any): Promise<numbe
     await pgConnection("user").where({ id: row.id }).update({ metadata: nextMeta });
     updated += 1;
   }
+
+  await pgConnection("store")
+    .where({ id: storeRow.id })
+    .update({
+      metadata: { ...(storeRow.metadata || {}), role_backfill_done: true },
+    });
+
   return updated;
 }
 

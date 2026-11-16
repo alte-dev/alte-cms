@@ -14,7 +14,10 @@
  */
 
 import crypto from "crypto";
+import http from "http";
+import https from "https";
 import pg from "pg";
+import { setAdminUserRole } from "./admin-set-role";
 import { createStepRecorder, launchVerifyBrowser } from "./lib/verify-step";
 
 const MEDUSA_URL = (
@@ -36,6 +39,27 @@ const PUBLISHABLE_KEY =
   process.env.MEDUSA_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const DATABASE_URL = process.env.DATABASE_URL || "";
+
+function rawHttpStatus(baseUrl: string, method: string, rawPath: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(baseUrl);
+    const lib = parsed.protocol === "https:" ? https : http;
+    const req = lib.request(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === "https:" ? 443 : 80),
+        path: rawPath,
+        method,
+      },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode || 0);
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
 
 function signAdminJwt(userId: string): string {
   const now = Math.floor(Date.now() / 1000);
@@ -95,22 +119,33 @@ async function run() {
     `Statuses: [${adminStatuses.join(", ")}], Valid admin login: HTTP ${validAdminRes.status}`,
   );
 
-  // 2a. /medusa-api/* Allowlist (blocked routes must return 404)
-  const blockedPaths = [
-    "/medusa-api/store/products",
-    "/medusa-api/hooks/payment/pp_paytr_paytr",
-    "/medusa-api/internal/admin-sso",
-    "/medusa-api/auth/customer/emailpass",
+  // 2a. /medusa-api/* Allowlist & Path Traversal Guard (blocked routes must return 404)
+  const blockedProbes: Array<{ method: string; path: string }> = [
+    { method: "GET", path: "/medusa-api/store/products" },
+    { method: "GET", path: "/medusa-api/hooks/payment/pp_paytr_paytr" },
+    { method: "GET", path: "/medusa-api/internal/admin-sso" },
+    { method: "GET", path: "/medusa-api/auth/customer/emailpass" },
+    { method: "GET", path: "/medusa-api/admin/%2e%2e/store/products?limit=1" },
+    { method: "GET", path: "/medusa-api/auth/user/%2e%2e/%2e%2e/store/products" },
+    { method: "POST", path: "/medusa-api/admin/%2e%2e/store/carts" },
+    { method: "POST", path: "/medusa-api/admin/%2e%2e/hooks/payment/pp_paytr_paytr" },
+    { method: "GET", path: "/medusa-api/admin/%2E%2E/store/products" },
+    { method: "GET", path: "/medusa-api/admin/..%2fstore/products" },
+    { method: "GET", path: "/medusa-api/admin/%252e%252e/store/products" },
+    { method: "GET", path: "/medusa-api/admin/./../store/products" },
+    { method: "GET", path: "/medusa-api/admin//..//store/products" },
+    { method: "GET", path: "/medusa-api/admin/products;foo=bar" },
+    { method: "GET", path: "/medusa-api/admin/..\\store/products" },
   ];
   const blockedResults: Array<{ path: string; status: number }> = [];
-  for (const p of blockedPaths) {
-    const r = await fetch(`${WEB_URL}${p}`, { redirect: "manual" });
-    blockedResults.push({ path: p, status: r.status });
+  for (const probe of blockedProbes) {
+    const status = await rawHttpStatus(WEB_URL, probe.method, probe.path);
+    blockedResults.push({ path: `${probe.method} ${probe.path}`, status });
   }
   const step2aPass = blockedResults.every((item) => item.status === 404);
   recordStep(
     2,
-    "/medusa-api/* Allowlist Blocks Public Access to Store/Hooks/Internal/Customer Auth (404)",
+    "/medusa-api/* Allowlist & Path Traversal Guard Returns 404",
     step2aPass,
     blockedResults.map((b) => `${b.path}->${b.status}`).join(", "),
   );
@@ -263,16 +298,31 @@ async function run() {
 
       const suffix = Date.now();
       const rolelessId = `usr_sec_none_${suffix}`;
+      const rolelessEmail = `none-${suffix}@example.test`;
       const editorId = `usr_sec_ed_${suffix}`;
       const shopId = `usr_sec_sm_${suffix}`;
 
-      await insertTempUser(rolelessId, `none-${suffix}@example.test`, null);
+      await insertTempUser(rolelessId, rolelessEmail, null);
       await insertTempUser(editorId, `editor-${suffix}@example.test`, { role: "editor" });
       await insertTempUser(shopId, `shop-${suffix}@example.test`, { role: "shop-manager" });
+
+      const storeRes = await pool.query(
+        `SELECT metadata FROM "store" WHERE deleted_at IS NULL LIMIT 1`,
+      );
+      const backfillDone = storeRes.rows[0]?.metadata?.role_backfill_done === true;
 
       const rolelessRes = await fetch(`${MEDUSA_URL}/admin/payment-settings/manual-refunds`, {
         headers: { Authorization: `Bearer ${signAdminJwt(rolelessId)}` },
       });
+      // Promote roleless user via admin:set-role helper and verify access
+      await setAdminUserRole(pool, rolelessEmail, "shop-manager");
+      const promotedOpsRes = await fetch(`${MEDUSA_URL}/admin/order-operations/export-csv`, {
+        headers: { Authorization: `Bearer ${signAdminJwt(rolelessId)}` },
+      });
+      const promotedSetRes = await fetch(`${MEDUSA_URL}/admin/payment-settings/manual-refunds`, {
+        headers: { Authorization: `Bearer ${signAdminJwt(rolelessId)}` },
+      });
+
       const editorOpsRes = await fetch(`${MEDUSA_URL}/admin/order-operations/export-csv`, {
         headers: { Authorization: `Bearer ${signAdminJwt(editorId)}` },
       });
@@ -287,12 +337,15 @@ async function run() {
       });
 
       roleGuardPass =
+        backfillDone &&
         rolelessRes.status === 403 &&
+        promotedOpsRes.status === 200 &&
+        promotedSetRes.status === 403 &&
         editorOpsRes.status === 403 &&
         shopOpsRes.status === 200 &&
         shopSetRes.status === 403 &&
         adminSetRes.status === 200;
-      roleGuardDetail = `roleless=${rolelessRes.status}, editor-ops=${editorOpsRes.status}, shop-ops=${shopOpsRes.status}, shop-settings=${shopSetRes.status}, super-admin-settings=${adminSetRes.status}`;
+      roleGuardDetail = `backfillDone=${backfillDone}, roleless=${rolelessRes.status}, promoted-ops=${promotedOpsRes.status}, promoted-set=${promotedSetRes.status}, editor-ops=${editorOpsRes.status}, shop-ops=${shopOpsRes.status}, shop-settings=${shopSetRes.status}, super-admin-settings=${adminSetRes.status}`;
     } finally {
       if (tempIds.length > 0) {
         await pool
@@ -306,9 +359,13 @@ async function run() {
   }
   recordStep(5, "Admin Role Guard Fail-Closed Matrix (Live HTTP)", roleGuardPass, roleGuardDetail);
 
-  // 5. Security Headers & CSP
+  // 5. Security Headers & CSP (Storefront + /admin + /app)
   const homeRes = await fetch(`${WEB_URL}/`);
+  const appRes = await fetch(`${WEB_URL}/app/login`);
+  const adminRes = await fetch(`${WEB_URL}/admin/login`);
   const csp = homeRes.headers.get("content-security-policy") || "";
+  const appCsp = appRes.headers.get("content-security-policy") || "";
+  const adminCsp = adminRes.headers.get("content-security-policy") || "";
   const perm = homeRes.headers.get("permissions-policy") || "";
   const hsts = homeRes.headers.get("strict-transport-security") || "";
 
@@ -320,6 +377,11 @@ async function run() {
     csp.includes("frame-ancestors 'self'") &&
     csp.includes("form-action 'self' https://www.paytr.com") &&
     csp.includes("frame-src 'self' https://www.paytr.com");
+  const hasAppAndAdminCsp =
+    appCsp.includes("default-src 'self'") &&
+    appCsp.includes("object-src 'none'") &&
+    adminCsp.includes("default-src 'self'") &&
+    adminCsp.includes("object-src 'none'");
   const hasPerm =
     perm.includes("camera=()") && perm.includes("microphone=()") && perm.includes("geolocation=()");
   const prodClean =
@@ -332,9 +394,9 @@ async function run() {
 
   recordStep(
     6,
-    "CSP, Permissions-Policy & HSTS Headers Verified",
-    hasStrictCsp && hasPerm && prodClean,
-    `hasStrictCsp=${hasStrictCsp}, hasPerm=${hasPerm}, prodClean=${prodClean}, hsts="${hsts}"`,
+    "CSP (Storefront, /admin, /app), Permissions-Policy & HSTS Headers Verified",
+    hasStrictCsp && hasAppAndAdminCsp && hasPerm && prodClean,
+    `hasStrictCsp=${hasStrictCsp}, hasAppAndAdminCsp=${hasAppAndAdminCsp}, hasPerm=${hasPerm}, prodClean=${prodClean}, hsts="${hsts}"`,
   );
 
   // 6. Payload Login Rate Limit & Locked Account Masking
@@ -355,16 +417,29 @@ async function run() {
       payloadBodies.push(await r.text());
     }
   }
+  const forgotRes = await fetch(`${WEB_URL}/api/users/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: `nonexistent-fp-${Date.now()}@example.test` }),
+  });
+  const resetRes = await fetch(`${WEB_URL}/api/users/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: "invalid", password: "NewPassword123!" }),
+  });
+
   const step7Pass =
     adminLoginGet.status === 200 &&
     payloadLoginStatuses.some((s) => s === 401 || s === 400) &&
     payloadLoginStatuses[payloadLoginStatuses.length - 1] === 429 &&
+    forgotRes.status === 429 &&
+    resetRes.status === 429 &&
     !payloadBodies[0].toLowerCase().includes("locked");
   recordStep(
     7,
-    "Payload Login Rate Limit (POST /api/users/login -> 429, GET /admin/login -> 200)",
+    "Payload Auth Rate Limit (login/forgot-password/reset-password -> 429, GET /admin/login -> 200)",
     step7Pass,
-    `GET /admin/login=${adminLoginGet.status}, POST statuses=[${payloadLoginStatuses.join(", ")}]`,
+    `GET /admin/login=${adminLoginGet.status}, POST login=[${payloadLoginStatuses.join(", ")}], forgot=${forgotRes.status}, reset=${resetRes.status}`,
   );
 
   // 7. Low-Severity Fixes: checkout-status & search rate limit

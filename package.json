@@ -21,6 +21,7 @@
     "test:smoke": "tsx scripts/smoke-test.ts",
     "measure:memory": "tsx scripts/measure-memory.ts",
     "setup:store": "pnpm --filter @alte/medusa setup:store",
+    "admin:set-role": "tsx scripts/admin-set-role.ts",
     "seed:promotions": "pnpm --filter @alte/medusa seed:promotions",
     "verify:store": "tsx scripts/verify-store.ts",
     "verify:storefront": "tsx scripts/verify-storefront.ts",

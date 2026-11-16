@@ -9,12 +9,24 @@ export interface PayloadLoginGuardOptions {
   windowMs?: number;
 }
 
+const RATE_LIMITED_USER_ACTIONS = new Set(["login", "forgot-password", "reset-password"]);
+
 export function isPayloadLoginPost(req: NextRequest, slug?: string[]): boolean {
   if (req.method !== "POST") return false;
-  if (Array.isArray(slug) && slug.length === 2 && slug[0] === "users" && slug[1] === "login") {
+  if (
+    Array.isArray(slug) &&
+    slug.length === 2 &&
+    slug[0] === "users" &&
+    RATE_LIMITED_USER_ACTIONS.has(slug[1])
+  ) {
     return true;
   }
-  return req.nextUrl?.pathname === "/api/users/login";
+  const pathname = req.nextUrl?.pathname || "";
+  return (
+    pathname === "/api/users/login" ||
+    pathname === "/api/users/forgot-password" ||
+    pathname === "/api/users/reset-password"
+  );
 }
 
 export async function maskLockedAccountResponse(res: Response): Promise<Response> {

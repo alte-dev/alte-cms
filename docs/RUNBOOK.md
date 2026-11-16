@@ -213,3 +213,12 @@ Otomatik testler (`verify:notifications`, `verify:accounts`, `verify:journey`) y
   2. Hem `apps/medusa/.env` hem de `apps/web/.env` içindeki `INTERNAL_API_SECRET` değerini aynı yeni değerle güncelleyin.
   3. Önce Medusa (`medusa start`), ardından Web (`next start`) servisini yeniden başlatın (kısa süreli kesintisiz geçiş gerekiyorsa bakım penceresinde yapın).
   4. Sızıntı şüphesinde eski sırrı derhal geçersiz kılıp iki servisi yeniden başlatın ve `/store/order-tracking`, `/store/account/*`, `/internal/*` uç noktalarının eski sırla `404` döndüğünü doğrulayın. Bu sır asla loglara veya hata yanıtlarına yazılmaz.
+- **Admin Rol Atama (`pnpm admin:set-role`):**
+  - `setup:store` yalnızca ilk kurulumda (`role_backfill_done`) mevcut rolsüz kullanıcılara bir kez `super-admin` atar; sonradan açılan kullanıcılara otomatik rol verilmez (`403` fail-closed).
+  - Bilinçli rol atamak için:
+    ```bash
+    pnpm admin:set-role -- <e-posta> <super-admin|admin|shop-manager|editor|author>
+    ```
+- **Admin Giriş Kilidi (Acil Durum Notu):**
+  - Bir saldırgan yöneticinin e-posta adresini bilirse `adminLoginEmailGuard` (15 hatalı deneme) üzerinden o yönetici hesabının Medusa girişini 15 dakika boyunca kilitleyebilir (bilinçli ödünleşim).
+  - Acil durumda 15 dakika beklemeden kilidi kaldırmak için Medusa sürecini (`medusa start`) yeniden başlatın (sayaçlar süreç içi bellektedir) veya gerekirse sunucuda `medusa user -e <ikincil-admin> -p <parola>` + `pnpm admin:set-role -- <ikincil-admin> super-admin` ile ikincil yönetici hesabı oluşturun.

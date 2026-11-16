@@ -133,24 +133,25 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
   - `adminLoginEmailGuard`: IP'den bağımsız `hmac(email)` başına **15 hatalı deneme / 15 dk** kilit (`429`).
   - İstemci IP'si `extractMedusaClientIp` ile fail-closed çıkarılır (`TRUST_PROXY` kapalıyken `X-Forwarded-For` / `X-Real-IP` yok sayılır).
   - Yalnızca hatalı (4xx, 429 hariç) denemeler sayılır; başarılı girişler (`200`) sınırlandırılmaz.
-- **`/medusa-api/*` Allowlist Daraltması (`apps/web/next.config.ts`):**
+- **`/medusa-api/*` Allowlist ve Path Traversal Koruması (`apps/web/next.config.ts` & `apps/web/src/middleware.ts`):**
   - Genel `/medusa-api/:path*` wildcard rewrite kaldırıldı. Yalnızca Medusa Admin (`/app`) arayüzünün gerektirdiği `/medusa-api/admin/:path*`, `/medusa-api/auth/user/:path*`, `/medusa-api/auth/session` ve `/medusa-api/auth/token/refresh` yolları açıldı.
-  - `/store/*`, `/hooks/*`, `/internal/*` ve `/auth/customer/*` herkese açık web kökeninden `404` döner.
+  - Next.js `rewrites()` kodlanmış `%2e%2e` yollarını Medusa'ya iletip Express'in bunları `..` olarak çözmesine yol açabildiği için, `apps/web/src/middleware.ts` (`/medusa-api/:path*`) ham URL yolunu rewrite öncesinde doğrular: `..`, `/.`, `%2e`, `%2f`, `%5c`, `\`, `//`, `%00`, `%25` ve `;` içeren herhangi bir yol `404` ile reddedilir. Ayrı bir proxy route handler yerine `middleware.ts` seçilmiştir; böylece çerez (`Set-Cookie`), gövde akışı ve başlık aktarımı bozulmadan tek noktadan ön-doğrulama yapılır.
+  - `/store/*`, `/hooks/*`, `/internal/*` ve `/auth/customer/*` (hem doğrudan hem traversal ile) herkese açık web kökeninden `404` döner.
 - **Sipariş Takibi (`POST /store/order-tracking`):**
   - `requireInternalSecret` ile korunur; `siparis-takip` sayfası `x-alte-internal` ve `extractClientIp` ile elde edilen `x-alte-client-ip` başlığını iletir (`getTrustedClientIp` yoksa `"unknown"`).
   - Mevcut IP+sipariş (5 hata / 15 dk) ve IP (10 istek / dk) sınırlarına ek olarak IP'den bağımsız **sipariş numarası başına 20 hatalı deneme / 15 dk** kilidi (`trackingOrderGuard`) uygulanır.
 - **Admin Rol Koruması (`admin-role-guard.ts`):**
   - Rol çözülemediğinde veya tanınmadığında fail-closed `403` döner (`role || "admin"` kaldırıldı).
   - `order-operations/*` (iptal, COD tahsilat, not, kargo, CSV) uç noktaları `checkAdminOrShopManagerRole`, `payment-settings/test-connection` ve `manual-refunds` uç noktaları `checkAdminSettingsRole` ile korunur.
-  - `setup:store` (`ensureExistingAdminRoles`) `metadata.role` olmayan mevcut kullanıcılara bir kez idempotent `super-admin` atar; `/internal/admin-sso` Payload rolünü (`admin` / `super-admin`) Medusa `metadata.role` alanına yazar.
+  - `setup:store` (`ensureExistingAdminRoles`) `store.metadata.role_backfill_done` kalıcı işaretini kullanır ve ilk kurulumda `metadata.role` olmayan mevcut kullanıcılara **yalnızca bir kez** `super-admin` atar. Sonradan rolsüz açılan kullanıcılar tekrar `setup:store` çalıştırılsa bile rolsüz kalır (`403`); rol ataması açıkça `pnpm admin:set-role -- <e-posta> <rol>` ile yapılır. `/internal/admin-sso` Payload rolünü (`admin` / `super-admin`) Medusa `metadata.role` alanına yazar.
   - **Sınır Notu:** Medusa v2 çekirdeğinde yerleşik rol sistemi bulunmadığından `shop-manager` kısıtı yalnızca özel (`/admin/order-operations/*`, `/admin/contact-messages/*`, `/admin/email-settings/*`, `/admin/payment-settings/*`) rotalarda uygulanır; Medusa çekirdek admin API'si için güvenlik sınırı değildir.
 - **CSP, HSTS ve `Permissions-Policy`:**
   - Vitrin yolları için `default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self' https://www.paytr.com; frame-src 'self' https://www.paytr.com` uygulanır; üretimde `'unsafe-eval'`, `localhost`, `127.0.0.1`, `ws:`, `wss:` çıkarılır.
   - `'unsafe-inline'` şimdilik korunmuştur; çünkü Next.js 15'te nonce tabanlı CSP tüm sayfaları dinamik render'a zorlayarak vitrin statik/ISR önbelleğini ve 384 MB bellek bütçesini bozmaktadır (nonce geçişi Faz 13'e bırakılmıştır).
-  - `/admin/*` ve `/app/*` yolları kendi yönetim paneli CSP'sini (`default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'`) kullanır.
+  - `/admin/*` ve `/app/*` yolları kendi yönetim paneli CSP'sini (`default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'`) kullanır. (`/app` harici rewrite üzerinden geldiğinden `next.config.ts` `headers()` yerine `apps/web/src/middleware.ts` üzerinden eklenir.)
   - Üretimde `Strict-Transport-Security: max-age=31536000; includeSubDomains` (preload yok) ve tüm yollarda `Permissions-Policy: camera=(), microphone=(), geolocation=()` gönderilir.
-- **Payload Giriş Koruması (`POST /api/users/login`):**
-  - Next.js App Router Node.js rotası (`(payload)/api/[...slug]/route.ts`) üzerinden yalnızca `POST /api/users/login` için IP başına **10 istek / 15 dk** (`429` + `Retry-After`) uygulanır (`GET /admin/login` sınırlanmaz).
+- **Payload Giriş & Parola Sıfırlama Koruması (`POST /api/users/login`, `forgot-password`, `reset-password`):**
+  - Next.js App Router Node.js rotası (`(payload)/api/[...slug]/route.ts`) üzerinden `POST /api/users/login`, `POST /api/users/forgot-password` ve `POST /api/users/reset-password` için IP başına **10 istek / 15 dk** (`429` + `Retry-After`) uygulanır (`GET /admin/login` sınırlanmaz).
   - `Users.hooks.afterError` ve yanıt sarmalayıcı (`maskLockedAccountResponse`), Payload'ın `"This user is locked..."` mesajını genel `"The email or password provided is incorrect."` mesajına çevirerek e-posta numaralandırmayı kapatır.
 - **Arama Hız Sınırları:**
   - `/api/search/suggestions`: web katmanında `extractClientIp` ile **60 istek / dk** (`429` + `Retry-After`).

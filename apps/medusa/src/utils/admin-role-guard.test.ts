@@ -87,32 +87,57 @@ describe("admin-role-guard (fail-closed)", () => {
     }
   });
 
-  it("ensureExistingAdminRoles is idempotent and safe on empty DB", async () => {
-    const rows: Array<{ id: string; metadata: Record<string, unknown> | null }> = [
+  it("ensureExistingAdminRoles runs only once using persistent store.metadata.role_backfill_done", async () => {
+    const storeRows: Array<{ id: string; metadata: Record<string, unknown> | null }> = [
+      { id: "store_1", metadata: {} },
+    ];
+    const userRows: Array<{ id: string; metadata: Record<string, unknown> | null }> = [
       { id: "u1", metadata: null },
       { id: "u2", metadata: { role: "shop-manager" } },
     ];
-    const mockPg = () => ({
-      whereNull: () => ({
-        whereRaw: () => ({
-          select: async () => rows.filter((r) => !r.metadata?.role),
-        }),
-      }),
-      where: ({ id }: { id: string }) => ({
-        update: async ({ metadata }: { metadata: Record<string, unknown> }) => {
-          const target = rows.find((r) => r.id === id);
-          if (target) target.metadata = metadata;
-        },
-      }),
-    });
 
+    const mockPg = (table: string) => {
+      if (table === "store") {
+        return {
+          whereNull: () => ({
+            first: async () => storeRows[0] || null,
+          }),
+          where: ({ id }: { id: string }) => ({
+            update: async ({ metadata }: { metadata: Record<string, unknown> }) => {
+              const target = storeRows.find((s) => s.id === id);
+              if (target) target.metadata = metadata;
+            },
+          }),
+        };
+      }
+      return {
+        whereNull: () => ({
+          whereRaw: () => ({
+            select: async () => userRows.filter((r) => !r.metadata?.role),
+          }),
+        }),
+        where: ({ id }: { id: string }) => ({
+          update: async ({ metadata }: { metadata: Record<string, unknown> }) => {
+            const target = userRows.find((r) => r.id === id);
+            if (target) target.metadata = metadata;
+          },
+        }),
+      };
+    };
+
+    // First run: backfills u1 and marks role_backfill_done = true
     const first = await ensureExistingAdminRoles(mockPg);
     expect(first).toBe(1);
-    expect(rows[0].metadata?.role).toBe("super-admin");
-    expect(rows[1].metadata?.role).toBe("shop-manager");
+    expect(userRows[0].metadata?.role).toBe("super-admin");
+    expect(userRows[1].metadata?.role).toBe("shop-manager");
+    expect(storeRows[0].metadata?.role_backfill_done).toBe(true);
 
-    // Second run: 0 updates, idempotent
+    // Add a new role-less user AFTER initial setup
+    userRows.push({ id: "u3", metadata: null });
+
+    // Second run: marker is set, so u3 MUST remain role-less!
     const second = await ensureExistingAdminRoles(mockPg);
     expect(second).toBe(0);
+    expect(userRows[2].metadata?.role).toBeUndefined();
   });
 });

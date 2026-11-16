@@ -43,6 +43,38 @@ describe("Payload Login Rate Limit & Locked Account Masking", () => {
     expect(otherRes.status).toBe(401);
   });
 
+  it("rate-limits POST /api/users/forgot-password and /api/users/reset-password", async () => {
+    const innerPost = vi.fn(async () => NextResponse.json({ message: "ok" }, { status: 200 }));
+    const guardedPost = createPayloadLoginGuardedPost(innerPost, {
+      maxRequests: 3,
+      windowMs: 15 * 60_000,
+    });
+
+    for (const action of ["forgot-password", "reset-password"]) {
+      const r = new NextRequest(`http://localhost:3100/api/users/${action}`, { method: "POST" });
+      const res = await guardedPost(r, { params: Promise.resolve({ slug: ["users", action] }) });
+      expect(res.status).toBe(200);
+    }
+
+    const r3 = new NextRequest("http://localhost:3100/api/users/forgot-password", {
+      method: "POST",
+    });
+    expect(
+      (await guardedPost(r3, { params: Promise.resolve({ slug: ["users", "forgot-password"] }) }))
+        .status,
+    ).toBe(200);
+
+    // 4th attempt exceeds limit -> 429
+    const r4 = new NextRequest("http://localhost:3100/api/users/reset-password", {
+      method: "POST",
+    });
+    const res4 = await guardedPost(r4, {
+      params: Promise.resolve({ slug: ["users", "reset-password"] }),
+    });
+    expect(res4.status).toBe(429);
+    expect(res4.headers.get("Retry-After")).toBeTruthy();
+  });
+
   it("masks Payload locked user error into generic invalid credentials response", async () => {
     const lockedRes = NextResponse.json(
       {
