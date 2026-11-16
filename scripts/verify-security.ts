@@ -15,7 +15,7 @@
 
 import crypto from "crypto";
 import pg from "pg";
-import { createStepRecorder, launchHeadlessChromium } from "./lib/verify-step";
+import { createStepRecorder, launchVerifyBrowser } from "./lib/verify-step";
 
 const MEDUSA_URL = (
   process.env.MEDUSA_BACKEND_URL ||
@@ -119,7 +119,7 @@ async function run() {
   const seenMedusaApiPaths = new Set<string>();
   const failedMedusaApiCalls: string[] = [];
 
-  const browser = await launchHeadlessChromium();
+  const browser = await launchVerifyBrowser();
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
