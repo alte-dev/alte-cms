@@ -40,7 +40,12 @@ const PUBLISHABLE_KEY =
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const DATABASE_URL = process.env.DATABASE_URL || "";
 
-function rawHttpStatus(baseUrl: string, method: string, rawPath: string): Promise<number> {
+function rawHttpStatus(
+  baseUrl: string,
+  method: string,
+  rawPath: string,
+  redirectsLeft = 2,
+): Promise<number> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(baseUrl);
     const lib = parsed.protocol === "https:" ? https : http;
@@ -53,7 +58,22 @@ function rawHttpStatus(baseUrl: string, method: string, rawPath: string): Promis
       },
       (res) => {
         res.resume();
-        resolve(res.statusCode || 0);
+        const code = res.statusCode || 0;
+        const loc = res.headers.location;
+        if (
+          redirectsLeft > 0 &&
+          loc &&
+          (code === 301 || code === 302 || code === 307 || code === 308)
+        ) {
+          const nextPath = loc.startsWith("http")
+            ? new URL(loc).pathname + new URL(loc).search
+            : loc;
+          rawHttpStatus(baseUrl, method, nextPath, redirectsLeft - 1)
+            .then(resolve)
+            .catch(reject);
+          return;
+        }
+        resolve(code);
       },
     );
     req.on("error", reject);
