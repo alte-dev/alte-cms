@@ -57,6 +57,18 @@ describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
       const sorted = sortShippingOptions(mockShippingOptions);
       expect(sorted[0].id).toBe("so_free");
     });
+
+    it("hides paid shipping options when 'Ücretsiz Kargo' (amount === 0) is active", () => {
+      const sorted = sortShippingOptions(mockShippingOptions);
+      expect(sorted.some((o) => o.id === "so_standard")).toBe(false);
+      expect(sorted.map((o) => o.id)).toEqual(["so_free", "so_pickup"]);
+    });
+
+    it("keeps paid shipping options when 'Ücretsiz Kargo' is not available", () => {
+      const paidOnly = mockShippingOptions.filter((o) => o.id !== "so_free");
+      const sorted = sortShippingOptions(paidOnly);
+      expect(sorted.map((o) => o.id)).toEqual(["so_standard", "so_pickup"]);
+    });
   });
 
   describe("calculateCheckoutTotals", () => {

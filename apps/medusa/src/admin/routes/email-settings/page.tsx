@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { defineRouteConfig } from "@medusajs/admin-sdk";
+import { adminApiUrl } from "../../lib/api-url";
 import { Envelope, CheckCircleSolid, ExclamationCircleSolid, ArrowPath } from "@medusajs/icons";
 import { Button, Container, Heading, Input, Label, Switch, Text, Badge, Alert } from "@medusajs/ui";
 
@@ -35,7 +36,7 @@ export default function EmailSettingsPage() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/admin/email-settings");
+      const res = await fetch(adminApiUrl("/admin/email-settings"));
       if (!res.ok) throw new Error("E-posta ayarları yüklenemedi.");
       const data = await res.json();
       const s = data.settings || {};
@@ -60,7 +61,7 @@ export default function EmailSettingsPage() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch("/admin/email-settings/logs?limit=50");
+      const res = await fetch(adminApiUrl("/admin/email-settings/logs?limit=50"));
       if (res.ok) {
         const data = await res.json();
         setLogs(data.logs || []);
@@ -97,7 +98,7 @@ export default function EmailSettingsPage() {
     }
 
     try {
-      const res = await fetch("/admin/email-settings", {
+      const res = await fetch(adminApiUrl("/admin/email-settings"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -126,7 +127,7 @@ export default function EmailSettingsPage() {
     setTestResult(null);
 
     try {
-      const res = await fetch("/admin/email-settings/test", {
+      const res = await fetch(adminApiUrl("/admin/email-settings/test"), {
         method: "POST",
       });
 
@@ -150,7 +151,7 @@ export default function EmailSettingsPage() {
   const handleRetryLog = async (logId: string) => {
     setRetryingId(logId);
     try {
-      const res = await fetch(`/admin/email-settings/logs/${logId}/retry`, {
+      const res = await fetch(adminApiUrl(`/admin/email-settings/logs/${logId}/retry`), {
         method: "POST",
       });
       const data = await res.json();

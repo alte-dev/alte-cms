@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { defineRouteConfig } from "@medusajs/admin-sdk";
+import { adminApiUrl } from "../../lib/api-url";
 import { ChatBubbleLeftRight } from "@medusajs/icons";
 import { Alert, Badge, Button, Container, Heading, Select, Text, Textarea } from "@medusajs/ui";
 
@@ -48,7 +49,7 @@ export default function ContactMessagesPage() {
     try {
       setLoading(true);
       const query = filter !== "all" ? `?status=${encodeURIComponent(filter)}` : "";
-      const res = await fetch(`/admin/contact-messages${query}`);
+      const res = await fetch(adminApiUrl(`/admin/contact-messages${query}`));
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Mesajlar yüklenemedi.");
@@ -90,7 +91,7 @@ export default function ContactMessagesPage() {
         payload.reply_message = replyText.trim();
       }
 
-      const res = await fetch(`/admin/contact-messages/${selected.id}`, {
+      const res = await fetch(adminApiUrl(`/admin/contact-messages/${selected.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
