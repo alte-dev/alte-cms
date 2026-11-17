@@ -2,16 +2,28 @@ import crypto from "crypto";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { z } from "zod";
 import {
-  hashToken,
+  hashEmailLookup,
+  hashEmailOtp,
   linkGuestOrdersForVerifiedCustomer,
+  normalizeEmail,
 } from "../../../../modules/customer-account/helpers";
-import { getPgConnection, getTrustedClientIp, tokenConfirmIpLimiter } from "../_shared";
+import {
+  findRegisteredCustomerByEmail,
+  getPgConnection,
+  getTrustedClientIp,
+  otpVerifyEmailGuard,
+  tokenConfirmIpLimiter,
+} from "../_shared";
 
-const verifySchema = z.object({
-  token: z.string().trim().min(10).max(256),
+const verifyOtpSchema = z.object({
+  email: z.string().trim().email().max(254),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Doğrulama kodu 6 haneli olmalıdır."),
 });
 
-const UNIFORM_VERIFY_ERROR = { error: "Bağlantı geçersiz veya süresi dolmuş." };
+const UNIFORM_VERIFY_ERROR = { error: "Doğrulama kodu geçersiz veya süresi dolmuş." };
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const clientIp = getTrustedClientIp(req);
@@ -22,13 +34,22 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     });
   }
 
-  const parsed = verifySchema.safeParse(req.body);
+  const parsed = verifyOtpSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json(UNIFORM_VERIFY_ERROR);
   }
 
+  const email = normalizeEmail(parsed.data.email);
+  const emailRateKey = hashEmailLookup(email);
+  const bruteCheck = otpVerifyEmailGuard.check(emailRateKey);
+  if (!bruteCheck.allowed) {
+    return res.status(429).json({
+      error: `Çok fazla hatalı kod denemesi yapıldı. Lütfen ${bruteCheck.remainingMinutes} dakika sonra tekrar deneyiniz.`,
+    });
+  }
+
   const pgConnection = getPgConnection(req);
-  const tokenHash = hashToken(parsed.data.token);
+  const tokenHash = hashEmailOtp(email, parsed.data.code);
   const now = new Date();
 
   // Atomic single-use consumption
@@ -42,9 +63,25 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const consumed = consumedRows?.[0];
   if (!consumed?.customer_id) {
+    otpVerifyEmailGuard.recordFailure(emailRateKey);
+    const afterCheck = otpVerifyEmailGuard.check(emailRateKey);
+    if (!afterCheck.allowed) {
+      const targetCustomer = await findRegisteredCustomerByEmail(pgConnection, email);
+      if (targetCustomer?.id) {
+        await pgConnection("customer_email_verification")
+          .where({ customer_id: targetCustomer.id })
+          .whereNull("used_at")
+          .update({ used_at: now, updated_at: now })
+          .catch(() => null);
+      }
+      return res.status(429).json({
+        error: `Çok fazla hatalı kod denemesi yapıldı. Lütfen ${afterCheck.remainingMinutes} dakika sonra tekrar deneyiniz.`,
+      });
+    }
     return res.status(400).json(UNIFORM_VERIFY_ERROR);
   }
 
+  otpVerifyEmailGuard.clear(emailRateKey);
   const customerId = consumed.customer_id;
 
   // Mark account verified (upsert as an additional safeguard; never silently return 200 on 0 rows)
@@ -61,14 +98,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   if (!upsertedState?.customer_id || !upsertedState?.email_verified_at) {
     console.error(
       "[Account Verify Email] customer_account_state güncellenemedi (0 satır etkilendi).",
-      {
-        customerId,
-      },
+      { customerId },
     );
     return res.status(500).json({ error: "E-posta doğrulama durumu güncellenemedi." });
   }
 
-  // Invalidate any other unused verification tokens for this customer
+  // Invalidate any other unused verification codes for this customer
   await pgConnection("customer_email_verification")
     .where({ customer_id: customerId })
     .whereNull("used_at")

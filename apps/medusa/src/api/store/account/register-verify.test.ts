@@ -139,7 +139,7 @@ describe("account register & verify-email regression tests", () => {
 
     const req: any = {
       headers: { "x-alte-client-ip": "198.51.100.11" },
-      body: { token: "valid-opaque-token-123456" },
+      body: { email: "missing-state@example.test", code: "123456" },
       scope: {
         resolve: (key: string) => {
           if (key === "__pg_connection__" || key === "pgConnection") return mockPg;
@@ -176,7 +176,7 @@ describe("account register & verify-email regression tests", () => {
 
     const req: any = {
       headers: { "x-alte-client-ip": "198.51.100.12" },
-      body: { token: "valid-opaque-token-654321" },
+      body: { email: "zero-rows@example.test", code: "654321" },
       scope: {
         resolve: (key: string) => {
           if (key === "__pg_connection__" || key === "pgConnection") return mockPg;

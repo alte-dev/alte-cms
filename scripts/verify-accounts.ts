@@ -67,6 +67,26 @@ function extractTokenFromEmailBody(body: string, pathPrefix: string): string | n
   return decodeURIComponent(match[1]);
 }
 
+async function waitForEmailOtp(
+  capturedEmails: CapturedEmail[],
+  recipientEmail: string,
+  timeoutMs = 6000,
+): Promise<string | null> {
+  const deadline = Date.now() + timeoutMs;
+  const lower = recipientEmail.toLowerCase();
+  while (Date.now() < deadline) {
+    for (let i = capturedEmails.length - 1; i >= 0; i--) {
+      const e = capturedEmails[i];
+      if (e.to.toLowerCase().indexOf(lower) !== -1) {
+        const match = e.body.match(/Doğrulama Kodunuz:\s*(\d{6})/i);
+        if (match?.[1]) return match[1];
+      }
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return null;
+}
+
 async function waitForEmailToken(
   capturedEmails: CapturedEmail[],
   recipientEmail: string,
@@ -408,12 +428,12 @@ async function main() {
     }
 
     // Verify A's email so A can place/view orders and have an address
-    const verifyTokenA = await waitForEmailToken(capturedEmails, emailA, "/hesap/dogrula?token=");
-    if (verifyTokenA) {
+    const verifyOtpA = await waitForEmailOtp(capturedEmails, emailA);
+    if (verifyOtpA) {
       await fetch(`${WEB_URL}/api/account/verify-email`, {
         method: "POST",
         headers: originHeaders,
-        body: JSON.stringify({ token: verifyTokenA }),
+        body: JSON.stringify({ email: emailA, code: verifyOtpA }),
       });
     }
 
@@ -489,14 +509,14 @@ async function main() {
       const ordersBefore = await ordersBeforeRes.json();
       const countBefore = (ordersBefore.orders || []).length;
 
-      const tokenB = await waitForEmailToken(capturedEmails, emailB, "/hesap/dogrula?token=");
+      const otpB = await waitForEmailOtp(capturedEmails, emailB);
 
       let countAfter = 0;
-      if (tokenB) {
+      if (otpB) {
         await fetch(`${WEB_URL}/api/account/verify-email`, {
           method: "POST",
           headers: originHeaders,
-          body: JSON.stringify({ token: tokenB }),
+          body: JSON.stringify({ email: emailB, code: otpB }),
         });
         const ordersAfterRes = await fetch(`${WEB_URL}/api/account/orders`, {
           headers: { Cookie: cookieB },

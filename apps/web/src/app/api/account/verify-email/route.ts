@@ -4,8 +4,12 @@ import { medusaAccountFetch } from "../../../../lib/medusa/account";
 import { extractClientIp, requireAccountOrigin } from "../../../../lib/security/origin-guard";
 import { handleAccountApiError } from "../_utils";
 
-const verifySchema = z.object({
-  token: z.string().trim().min(10).max(256),
+const verifyOtpSchema = z.object({
+  email: z.string().trim().email().max(254),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Doğrulama kodu 6 haneli olmalıdır."),
 });
 
 export async function POST(req: Request) {
@@ -14,9 +18,12 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const parsed = verifySchema.safeParse(body);
+    const parsed = verifyOtpSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Bağlantı geçersiz veya süresi dolmuş." }, { status: 400 });
+      return NextResponse.json(
+        { error: "E-posta adresi veya 6 haneli doğrulama kodu geçersiz." },
+        { status: 400 },
+      );
     }
 
     const data = await medusaAccountFetch<{ ok: boolean; linked_orders: number; message: string }>(
@@ -24,7 +31,7 @@ export async function POST(req: Request) {
       {
         method: "POST",
         clientIp: extractClientIp(req),
-        body: JSON.stringify({ token: parsed.data.token }),
+        body: JSON.stringify({ email: parsed.data.email, code: parsed.data.code }),
       },
     );
 

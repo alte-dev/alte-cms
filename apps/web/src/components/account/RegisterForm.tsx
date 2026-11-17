@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { OtpVerificationCard } from "./OtpVerificationCard";
 
 const MARKETING_TEXT =
   "Kampanya, indirim ve yeni ürün duyurularını e-posta ile almak istiyorum (isteğe bağlı).";
@@ -15,6 +16,7 @@ export function RegisterForm() {
   const [kvkkNotice, setKvkkNotice] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -50,13 +52,23 @@ export function RegisterForm() {
       }
       setSuccessMsg(
         data.message ||
-          "Kaydınız alındı. Devam etmek için e-posta adresinize gönderilen bağlantıyı kullanın.",
+          "Kaydınız alındı. Devam etmek için e-posta adresinize gönderilen 6 haneli doğrulama kodunu giriniz.",
       );
+      setRegisteredEmail(email.trim());
     } catch {
       setError("Kayıt sırasında bir bağlantı hatası oluştu.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (registeredEmail) {
+    return (
+      <OtpVerificationCard
+        initialEmail={registeredEmail}
+        initialMessage={successMsg || undefined}
+      />
+    );
   }
 
   return (
