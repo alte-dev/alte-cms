@@ -108,6 +108,97 @@ export async function processIyzicoCallback(
     }
 
     if (!matchedSession) {
+      // Check for soft-deleted session (e.g. cart was mutated after session initiation)
+      let deletedSession: any = null;
+      try {
+        if (deps.pgConnection) {
+          const delRows = await deps.pgConnection("payment_session")
+            .whereRaw("data->>'token' = ?", [token])
+            .orderBy("created_at", "desc")
+            .limit(1);
+          if (delRows && delRows.length > 0) {
+            deletedSession = delRows[0];
+          }
+        }
+      } catch (err: any) {
+        console.debug("[iyzico Callback] Deleted session lookup notice:", err?.message);
+      }
+
+      const client = new IyzicoClient({
+        apiKey: settings!.iyzico_api_key,
+        secretKey: settings!.iyzico_secret_key,
+        mode: settings!.iyzico_mode,
+        fetchImpl: deps.fetchImpl,
+      });
+
+      try {
+        const orphanRetrieve = await client.retrieveCheckoutForm({
+          locale: settings!.iyzico_lang || "tr",
+          conversationId: String(deletedSession?.data?.conversation_id || ""),
+          token,
+        });
+
+        const orphanSigValid =
+          Boolean(orphanRetrieve.signature) &&
+          verifyIyzicoRetrieveSignature({
+            paymentStatus: String(orphanRetrieve.paymentStatus || ""),
+            paymentId: String(orphanRetrieve.paymentId || ""),
+            currency: String(orphanRetrieve.currency || ""),
+            basketId: String(orphanRetrieve.basketId || ""),
+            conversationId: String(orphanRetrieve.conversationId || ""),
+            paidPrice: orphanRetrieve.paidPrice ?? "",
+            price: orphanRetrieve.price ?? "",
+            token: String(orphanRetrieve.token || token),
+            signature: String(orphanRetrieve.signature || ""),
+            secretKey: settings!.iyzico_secret_key,
+          });
+
+        if (
+          orphanRetrieve.status === "success" &&
+          orphanRetrieve.paymentStatus === "SUCCESS" &&
+          orphanSigValid
+        ) {
+          const paidAmount = Number(orphanRetrieve.paidPrice || 0);
+          const paymentIdStr = orphanRetrieve.paymentId ? String(orphanRetrieve.paymentId) : null;
+          const orphanCartId =
+            deletedSession?.data?.cart_id || orphanRetrieve.basketId || null;
+
+          console.error(
+            `[CRITICAL ALERT] Ödeme iyzico tarafından tahsil edildi fakat aktif ödeme oturumu bulunamadı (sepet değiştirilmiş olabilir)! (orphan_payment, ref=${tokenHash}, payment_id=${paymentIdStr || "yok"}, amount=${paidAmount})`,
+          );
+
+          if (deps.pgConnection) {
+            await deps.pgConnection("orphan_payment")
+              .insert({
+                id: `orp_${tokenHash}`,
+                token_hash: tokenHash,
+                provider: "iyzico",
+                iyzico_payment_id: paymentIdStr,
+                cart_id: orphanCartId ? String(orphanCartId) : null,
+                amount: Number.isFinite(paidAmount) ? paidAmount : 0,
+                currency: String(orphanRetrieve.currency || "TRY"),
+                status: "needs_manual_refund",
+                reason: deletedSession
+                  ? "ORPHAN_PAYMENT_SESSION_DELETED"
+                  : "ORPHAN_PAYMENT_SESSION_NOT_FOUND",
+                created_at: new Date(),
+                updated_at: new Date(),
+              })
+              .onConflict("token_hash")
+              .ignore();
+          }
+
+          return {
+            httpStatus: 200,
+            status: "failed",
+            error:
+              "Ödeme oturumu zaman aşımına uğradı veya sepetiniz güncellendi. Tahsilat yapıldıysa iade ekibimiz en kısa sürede sizinle ilgilenecektir.",
+          };
+        }
+      } catch (err: any) {
+        console.debug("[iyzico Callback] Orphan retrieve notice:", err?.message);
+      }
+
       return { httpStatus: 404, status: "failed", error: "Ödeme oturumu bulunamadı." };
     }
 
@@ -181,7 +272,16 @@ export async function processIyzicoCallback(
       };
     }
 
-    const markFailed = async (reasonMsg: string, reasonCode = "VERIFICATION_FAILED") => {
+    const markFailed = async (
+      reasonMsg: string,
+      reasonCode = "VERIFICATION_FAILED",
+      opts?: { needsManualRefund?: boolean; iyzicoPaymentId?: string },
+    ) => {
+      if (opts?.needsManualRefund) {
+        console.error(
+          `[CRITICAL ALERT] iyzico ödeme durumu SUCCESS ancak doğrulama başarısız oldu! (needs_manual_refund, ref=${tokenHash}, code=${reasonCode}, payment_id=${opts.iyzicoPaymentId || "yok"})`,
+        );
+      }
       await deps.paymentService.updatePaymentSession({
         id: matchedSession.id,
         amount: matchedSession.amount,
@@ -192,6 +292,13 @@ export async function processIyzicoCallback(
           failed_reason_code: reasonCode,
           failed_reason_msg: reasonMsg,
           failed_at: new Date().toISOString(),
+          ...(opts?.needsManualRefund
+            ? {
+                needs_manual_refund: true,
+                manual_refund_reason: reasonCode,
+                ...(opts.iyzicoPaymentId ? { iyzico_payment_id: opts.iyzicoPaymentId } : {}),
+              }
+            : {}),
         },
       });
       return {
@@ -209,6 +316,8 @@ export async function processIyzicoCallback(
         retrieveRes.errorCode || "PAYMENT_FAILED",
       );
     }
+
+    const verifiedPaymentId = retrieveRes.paymentId ? String(retrieveRes.paymentId) : undefined;
 
     // 2. Signature verification (mandatory when signature is present, or if missing on success)
     const sigValid =
@@ -228,7 +337,10 @@ export async function processIyzicoCallback(
 
     if (!sigValid) {
       console.error(`[iyzico Callback] Geçersiz yanıt imzası reddedildi (ref=${tokenHash}).`);
-      return await markFailed("Ödeme yanıt imzası doğrulanamadı.", "INVALID_SIGNATURE");
+      return await markFailed("Ödeme yanıt imzası doğrulanamadı.", "INVALID_SIGNATURE", {
+        needsManualRefund: true,
+        iyzicoPaymentId: verifiedPaymentId,
+      });
     }
 
     // 3. conversationId & basketId match
@@ -237,7 +349,10 @@ export async function processIyzicoCallback(
       String(retrieveRes.basketId || "") !== String(sessionData.basket_id || "")
     ) {
       console.error(`[iyzico Callback] Oturum kimliği uyuşmazlığı (ref=${tokenHash}).`);
-      return await markFailed("Ödeme oturum kimliği uyuşmuyor.", "SESSION_MISMATCH");
+      return await markFailed("Ödeme oturum kimliği uyuşmuyor.", "SESSION_MISMATCH", {
+        needsManualRefund: true,
+        iyzicoPaymentId: verifiedPaymentId,
+      });
     }
 
     // 4. Currency & exact kuruş amount match
@@ -252,7 +367,10 @@ export async function processIyzicoCallback(
       console.error(
         `[iyzico Callback] Tutar/para birimi uyuşmazlığı (ref=${tokenHash}, expected=${expectedKurus}, paid=${paidKurus}).`,
       );
-      return await markFailed("Ödeme tutarı sepet tutarı ile uyuşmuyor.", "AMOUNT_MISMATCH");
+      return await markFailed("Ödeme tutarı sepet tutarı ile uyuşmuyor.", "AMOUNT_MISMATCH", {
+        needsManualRefund: true,
+        iyzicoPaymentId: verifiedPaymentId,
+      });
     }
 
     const txIds = Array.isArray(retrieveRes.itemTransactions)

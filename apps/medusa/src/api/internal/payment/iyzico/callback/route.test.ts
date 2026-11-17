@@ -31,12 +31,16 @@ function makeSettings() {
   });
 }
 
-function makeHarness(sessionOverrides: Record<string, any> = {}) {
+function makeHarness(
+  sessionOverrides: Record<string, any> = {},
+  opts: { sessionMissing?: boolean; deletedSession?: boolean } = {},
+) {
   const session: any = {
     id: "payses_1",
     amount: 150,
     currency_code: "try",
     status: "pending",
+    deleted_at: opts.deletedSession ? new Date().toISOString() : null,
     data: {
       token: "valid-iyz-token-123",
       conversation_id: "conv_1",
@@ -51,9 +55,12 @@ function makeHarness(sessionOverrides: Record<string, any> = {}) {
 
   let completedCart = false;
   let completeCount = 0;
+  const orphanRows: any[] = [];
 
   const paymentService = {
-    listPaymentCollections: vi.fn(async () => [{ payment_sessions: [session] }]),
+    listPaymentCollections: vi.fn(async () =>
+      opts.sessionMissing || opts.deletedSession ? [] : [{ payment_sessions: [session] }],
+    ),
     updatePaymentSession: vi.fn(async (upd: any) => {
       session.data = upd.data;
       return session;
@@ -74,7 +81,23 @@ function makeHarness(sessionOverrides: Record<string, any> = {}) {
       return {
         whereRaw: () => ({
           whereNull: () => ({
-            select: async () => [session],
+            select: async () => (opts.sessionMissing || opts.deletedSession ? [] : [session]),
+          }),
+          orderBy: () => ({
+            limit: async () => (opts.sessionMissing ? [] : [session]),
+          }),
+        }),
+      };
+    }
+    if (table === "orphan_payment") {
+      return {
+        insert: (row: any) => ({
+          onConflict: () => ({
+            ignore: async () => {
+              if (!orphanRows.some((r) => r.token_hash === row.token_hash)) {
+                orphanRows.push(row);
+              }
+            },
           }),
         }),
       };
@@ -107,6 +130,7 @@ function makeHarness(sessionOverrides: Record<string, any> = {}) {
 
   return {
     session,
+    orphanRows,
     paymentService,
     cartService,
     pgConnection,
@@ -150,6 +174,9 @@ describe("processIyzicoCallback", () => {
     expect(res.status).toBe("failed");
     expect(h.getCompleteCount()).toBe(0);
     expect(h.session.data.status).toBe("failed");
+    expect(h.session.data.needs_manual_refund).toBe(true);
+    expect(h.session.data.manual_refund_reason).toBe("INVALID_SIGNATURE");
+    expect(h.session.data.iyzico_payment_id).toBe("iyz_pay_1");
   });
 
   it("rejects paidPrice mismatch or currency !== TRY", async () => {
@@ -183,6 +210,8 @@ describe("processIyzicoCallback", () => {
 
     expect(res.status).toBe("failed");
     expect(h.getCompleteCount()).toBe(0);
+    expect(h.session.data.needs_manual_refund).toBe(true);
+    expect(h.session.data.manual_refund_reason).toBe("AMOUNT_MISMATCH");
   });
 
   it("rejects conversationId / basketId mismatch", async () => {
@@ -216,6 +245,8 @@ describe("processIyzicoCallback", () => {
 
     expect(res.status).toBe("failed");
     expect(h.getCompleteCount()).toBe(0);
+    expect(h.session.data.needs_manual_refund).toBe(true);
+    expect(h.session.data.manual_refund_reason).toBe("SESSION_MISMATCH");
   });
 
   it("completes order once and is idempotent on concurrent/duplicate callbacks", async () => {
@@ -261,5 +292,82 @@ describe("processIyzicoCallback", () => {
     expect(h.session.data.consumed_at).toBeTruthy();
     expect(h.session.data.iyzico_payment_id).toBe("iyz_pay_1");
     expect(h.session.data.iyzico_payment_transaction_ids).toEqual(["ptx_1"]);
+  });
+
+  it("does NOT mark needs_manual_refund when iyzico paymentStatus is FAILURE", async () => {
+    const h = makeHarness();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "success",
+          paymentStatus: "FAILURE",
+          errorCode: "10051",
+          errorMessage: "Yetersiz bakiye",
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const res = await processIyzicoCallback(
+      { token: "valid-iyz-token-123" },
+      { ...h, fetchImpl: fetchMock as any },
+    );
+
+    expect(res.status).toBe("failed");
+    expect(h.session.data.needs_manual_refund).toBeFalsy();
+  });
+
+  it("records orphan_payment once when session was deleted (cart mutated) and iyzico succeeded, but ignores fake tokens", async () => {
+    const h = makeHarness({}, { deletedSession: true });
+    const sig = calculateIyzicoHmacSha256(
+      ["SUCCESS", "iyz_pay_orphan", "TRY", "cart_1", "conv_1", "189.9", "189.9", "valid-iyz-token-123"],
+      "sandbox-secret-test",
+    );
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          status: "success",
+          paymentStatus: "SUCCESS",
+          paymentId: "iyz_pay_orphan",
+          currency: "TRY",
+          basketId: "cart_1",
+          conversationId: "conv_1",
+          paidPrice: "189.90",
+          price: "189.90",
+          token: "valid-iyz-token-123",
+          signature: sig,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const r1 = await processIyzicoCallback(
+      { token: "valid-iyz-token-123" },
+      { ...h, fetchImpl: fetchMock as any },
+    );
+    const r2 = await processIyzicoCallback(
+      { token: "valid-iyz-token-123" },
+      { ...h, fetchImpl: fetchMock as any },
+    );
+
+    expect(r1.status).toBe("failed");
+    expect(r2.status).toBe("failed");
+    expect(h.getCompleteCount()).toBe(0);
+    expect(h.orphanRows).toHaveLength(1);
+    expect(h.orphanRows[0].iyzico_payment_id).toBe("iyz_pay_orphan");
+    expect(h.orphanRows[0].amount).toBe(189.9);
+
+    // Fake/unpaid token must NOT create orphan_payment
+    const hFake = makeHarness({}, { sessionMissing: true });
+    const fetchFail = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "failure", errorMessage: "Not found" }), {
+        status: 200,
+      }),
+    );
+    await processIyzicoCallback(
+      { token: "fake-token-999" },
+      { ...hFake, fetchImpl: fetchFail as any },
+    );
+    expect(hFake.orphanRows).toHaveLength(0);
   });
 });
