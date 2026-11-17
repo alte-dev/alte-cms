@@ -51,6 +51,29 @@ export default function PaymentSettingsPage() {
   const [codFeeLabel, setCodFeeLabel] = useState("Kapıda Ödeme Hizmet Bedeli");
   const [codMaxOrderAmount, setCodMaxOrderAmount] = useState<string>("");
 
+  // iyzico State
+  const [iyzicoEnabled, setIyzicoEnabled] = useState(false);
+  const [iyzicoMode, setIyzicoMode] = useState<"sandbox" | "live">("sandbox");
+  const [iyzicoApiKey, setIyzicoApiKey] = useState("");
+  const [iyzicoSecretKey, setIyzicoSecretKey] = useState("");
+  const [hasIyzicoApiKey, setHasIyzicoApiKey] = useState(false);
+  const [hasIyzicoSecretKey, setHasIyzicoSecretKey] = useState(false);
+  const [maskedIyzicoApiKey, setMaskedIyzicoApiKey] = useState("");
+  const [maskedIyzicoSecretKey, setMaskedIyzicoSecretKey] = useState("");
+  const [iyzicoDisplayMode, setIyzicoDisplayMode] = useState<"redirect" | "embedded">("redirect");
+  const [iyzicoMaxInstallment, setIyzicoMaxInstallment] = useState(1);
+  const [iyzicoLang, setIyzicoLang] = useState<"tr" | "en">("tr");
+  const [iyzicoCallbackUrl, setIyzicoCallbackUrl] = useState("");
+  const [testingIyzico, setTestingIyzico] = useState(false);
+  const [iyzicoTestResult, setIyzicoTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  // Default Method & Warning
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<string>("auto");
+  const [settingsWarning, setSettingsWarning] = useState<string | null>(null);
+
   // URLs
   const [callbackUrl, setCallbackUrl] = useState("");
   const [successUrl, setSuccessUrl] = useState("");
@@ -88,6 +111,19 @@ export default function PaymentSettingsPage() {
           ? String(s.cod_max_order_amount)
           : "",
       );
+
+      setIyzicoEnabled(Boolean(s.iyzico_enabled));
+      setIyzicoMode(s.iyzico_mode || "sandbox");
+      setHasIyzicoApiKey(Boolean(s.has_iyzico_api_key));
+      setHasIyzicoSecretKey(Boolean(s.has_iyzico_secret_key));
+      setMaskedIyzicoApiKey(s.iyzico_api_key_masked || "");
+      setMaskedIyzicoSecretKey(s.iyzico_secret_key_masked || "");
+      setIyzicoDisplayMode(s.iyzico_display_mode === "embedded" ? "embedded" : "redirect");
+      setIyzicoMaxInstallment(Number(s.iyzico_max_installment || 1));
+      setIyzicoLang(s.iyzico_lang || "tr");
+      setIyzicoCallbackUrl(s.iyzico_callback_url || "");
+      setDefaultPaymentMethod(s.default_payment_method || "auto");
+      setSettingsWarning(s.warning || null);
 
       setCallbackUrl(s.callback_url || "");
       setSuccessUrl(s.success_url || "");
@@ -133,6 +169,13 @@ export default function PaymentSettingsPage() {
         cod_fee: Number(codFee),
         cod_fee_label: codFeeLabel,
         cod_max_order_amount: codMaxOrderAmount ? Number(codMaxOrderAmount) : null,
+        iyzico_enabled: iyzicoEnabled,
+        iyzico_mode: iyzicoMode,
+        iyzico_display_mode: iyzicoDisplayMode,
+        iyzico_max_installment: Number(iyzicoMaxInstallment),
+        iyzico_lang: iyzicoLang,
+        default_payment_method:
+          defaultPaymentMethod === "auto" ? null : (defaultPaymentMethod as any),
       };
 
       if (paytrMerchantKey.trim()) {
@@ -141,7 +184,13 @@ export default function PaymentSettingsPage() {
       if (paytrMerchantSalt.trim()) {
         payload.paytr_merchant_salt = paytrMerchantSalt.trim();
       }
-      if (paytrMode === "live") {
+      if (iyzicoApiKey.trim()) {
+        payload.iyzico_api_key = iyzicoApiKey.trim();
+      }
+      if (iyzicoSecretKey.trim()) {
+        payload.iyzico_secret_key = iyzicoSecretKey.trim();
+      }
+      if (paytrMode === "live" || iyzicoMode === "live") {
         payload.confirm_live = confirmLive;
       }
 
@@ -159,6 +208,8 @@ export default function PaymentSettingsPage() {
       setSaveStatus({ success: true, message: "Ödeme ayarları başarıyla kaydedildi." });
       setPaytrMerchantKey("");
       setPaytrMerchantSalt("");
+      setIyzicoApiKey("");
+      setIyzicoSecretKey("");
       setConfirmLive("");
       await fetchSettings();
     } catch (err: any) {
@@ -199,6 +250,39 @@ export default function PaymentSettingsPage() {
     }
   };
 
+  const handleTestIyzicoConnection = async () => {
+    setTestingIyzico(true);
+    setIyzicoTestResult(null);
+
+    try {
+      const res = await fetch(adminApiUrl("/admin/payment-settings/test-connection"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "iyzico" }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setIyzicoTestResult({
+          success: true,
+          message: data.message || "iyzico API bağlantısı başarılı!",
+        });
+      } else {
+        setIyzicoTestResult({
+          success: false,
+          message: data.error || "iyzico API bağlantısı başarısız oldu.",
+        });
+      }
+    } catch (err: any) {
+      setIyzicoTestResult({
+        success: false,
+        message: `Bağlantı hatası: ${err.message}`,
+      });
+    } finally {
+      setTestingIyzico(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container className="p-8">
@@ -223,11 +307,15 @@ export default function PaymentSettingsPage() {
         </div>
       </div>
 
-      {paytrMode === "live" && (
+      {(paytrMode === "live" || iyzicoMode === "live") && (
         <Alert variant="error" className="bg-ui-tag-red-bg border-ui-border-danger">
-          ⚠️ <strong>DİKKAT:</strong> Mağazanız şu anda <strong>CANLI (LIVE)</strong> ödeme
-          modundadır. Gerçek kredi kartı çekimi ve banka provizyonu yapılacaktır.
+          ⚠️ <strong>DİKKAT:</strong> Mağazanızda en az bir sağlayıcı <strong>CANLI (LIVE)</strong>{" "}
+          ödeme modundadır. Gerçek kredi kartı çekimi ve banka provizyonu yapılacaktır.
         </Alert>
+      )}
+
+      {settingsWarning && (
+        <Alert variant="warning">{settingsWarning}</Alert>
       )}
 
       {saveStatus && (
@@ -493,6 +581,206 @@ export default function PaymentSettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* DEFAULT PAYMENT METHOD */}
+        <div className="border border-ui-border-base rounded-lg p-6 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Heading level="h2">Varsayılan Seçili Ödeme Yöntemi</Heading>
+              <Text className="text-ui-fg-subtle text-xs">
+                Ödeme adımında müşteriye ilk seçili olarak sunulacak yöntem (kapalıysa ilk açık yöntem seçilir).
+              </Text>
+            </div>
+            <div className="w-64">
+              <Select value={defaultPaymentMethod} onValueChange={setDefaultPaymentMethod}>
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Item value="auto">Otomatik (İlk Açık Yöntem)</Select.Item>
+                  <Select.Item value="iyzico">Kredi / Banka Kartı (iyzico)</Select.Item>
+                  <Select.Item value="paytr">Kredi / Banka Kartı (PayTR)</Select.Item>
+                  <Select.Item value="cod">Kapıda Ödeme (COD)</Select.Item>
+                </Select.Content>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* IYZICO SECTION */}
+        <div className="border border-ui-border-base rounded-lg p-6 space-y-6">
+          <div className="flex items-center justify-between border-b border-ui-border-base pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Heading level="h2">iyzico Checkout Form Yapılandırması</Heading>
+                <Badge color={iyzicoMode === "live" ? "red" : "blue"}>
+                  {iyzicoMode === "live" ? "CANLI" : "SANDBOX"}
+                </Badge>
+              </div>
+              <Text className="text-ui-fg-subtle text-xs">
+                iyzico ile kredi / banka kartı ödemesi (Yönlendirmeli veya Sayfa İçi Checkout Form)
+              </Text>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="iyzico-enable">Aktif</Label>
+              <Switch
+                id="iyzico-enable"
+                checked={iyzicoEnabled}
+                onCheckedChange={setIyzicoEnabled}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Çalışma Modu</Label>
+              <Select
+                value={iyzicoMode}
+                onValueChange={(v) => setIyzicoMode(v as "sandbox" | "live")}
+              >
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Item value="sandbox">Test Modu (Sandbox)</Select.Item>
+                  <Select.Item value="live">Canlı Mod (Live)</Select.Item>
+                </Select.Content>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Ödeme Formu Görünümü</Label>
+              <Select
+                value={iyzicoDisplayMode}
+                onValueChange={(v) => setIyzicoDisplayMode(v as "redirect" | "embedded")}
+              >
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Item value="redirect">Yönlendir (Önerilen)</Select.Item>
+                  <Select.Item value="embedded">Sayfa içinde</Select.Item>
+                </Select.Content>
+              </Select>
+              <Text className="text-ui-fg-subtle text-xs mt-1">
+                Kart bilgileri iyzico alan adında girilmediği için müşteri güveni ve uyum açısından Yönlendir modu önerilir.
+              </Text>
+            </div>
+
+            <div>
+              <Label>
+                API Anahtarı (API Key){" "}
+                {hasIyzicoApiKey && (
+                  <Badge color="green" className="ml-1">
+                    Tanımlı ({maskedIyzicoApiKey})
+                  </Badge>
+                )}
+              </Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder={
+                  hasIyzicoApiKey
+                    ? "Değiştirmek için yeni API Key girin"
+                    : "iyzico API Key"
+                }
+                value={iyzicoApiKey}
+                onChange={(e) => setIyzicoApiKey(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>
+                Gizli Anahtar (Secret Key){" "}
+                {hasIyzicoSecretKey && (
+                  <Badge color="green" className="ml-1">
+                    Tanımlı ({maskedIyzicoSecretKey})
+                  </Badge>
+                )}
+              </Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder={
+                  hasIyzicoSecretKey
+                    ? "Değiştirmek için yeni Secret Key girin"
+                    : "iyzico Secret Key"
+                }
+                value={iyzicoSecretKey}
+                onChange={(e) => setIyzicoSecretKey(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Maksimum Taksit Sayısı (1-12)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={12}
+                value={iyzicoMaxInstallment}
+                onChange={(e) =>
+                  setIyzicoMaxInstallment(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1)))
+                }
+              />
+            </div>
+
+            <div>
+              <Label>Ödeme Sayfası Dili</Label>
+              <Select value={iyzicoLang} onValueChange={(v) => setIyzicoLang(v as "tr" | "en")}>
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Item value="tr">Türkçe (tr)</Select.Item>
+                  <Select.Item value="en">İngilizce (en)</Select.Item>
+                </Select.Content>
+              </Select>
+            </div>
+          </div>
+
+          {iyzicoMode === "live" && (
+            <div className="p-4 rounded border border-ui-border-danger bg-ui-tag-red-bg space-y-2">
+              <Label className="text-xs font-semibold">
+                CANLI (LIVE) mod onayı — devam etmek için kutuya &quot;CANLI&quot; yazınız:
+              </Label>
+              <Input
+                placeholder="CANLI"
+                value={confirmLive}
+                onChange={(e) => setConfirmLive(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div>
+            <Label className="text-xs">iyzico Callback URL (Salt-Okunur)</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                readOnly
+                value={iyzicoCallbackUrl}
+                className="bg-ui-bg-base font-mono text-xs"
+              />
+              <Copy content={iyzicoCallbackUrl} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-2 border-t border-ui-border-base">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={testingIyzico}
+              onClick={handleTestIyzicoConnection}
+            >
+              {testingIyzico ? "Test Ediliyor..." : "iyzico Bağlantısını Test Et (BIN Sorgusu)"}
+            </Button>
+            {iyzicoTestResult && (
+              <Text
+                className={`text-xs ${iyzicoTestResult.success ? "text-ui-fg-interactive" : "text-ui-fg-error"}`}
+              >
+                {iyzicoTestResult.message}
+              </Text>
+            )}
           </div>
         </div>
 
