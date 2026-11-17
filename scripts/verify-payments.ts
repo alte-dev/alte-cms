@@ -28,6 +28,7 @@ import dotenv from "dotenv";
 import path from "path";
 import pg from "pg";
 import { createStepRecorder } from "./lib/verify-step";
+import { startMockIyzicoServer } from "./lib/mock-iyzico-server";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -38,6 +39,11 @@ const STOREFRONT_URL = process.env.STOREFRONT_URL || "http://localhost:3100";
 const MOCK_PORT = process.env.PAYTR_API_BASE
   ? Number(new URL(process.env.PAYTR_API_BASE).port) || 9099
   : 9099;
+const MOCK_IYZICO_PORT = process.env.IYZICO_API_BASE
+  ? Number(new URL(process.env.IYZICO_API_BASE).port) || 9098
+  : 9098;
+const TEST_IYZICO_API_KEY = "sandbox-mock-api-key-123456";
+const TEST_IYZICO_SECRET_KEY = "sandbox-mock-secret-key-123456";
 
 const DB_URL =
   process.env.DATABASE_URL ||
@@ -252,7 +258,14 @@ async function run() {
   const adminToken = await getAdminToken();
 
   const mockServer = await startMockPaytrServer(MOCK_PORT);
-  console.log(`Mock PayTR API Sunucusu port ${MOCK_PORT} üzerinde başlatıldı.\n`);
+  console.log(`Mock PayTR API Sunucusu port ${MOCK_PORT} üzerinde başlatıldı.`);
+  const mockIyzicoServer = startMockIyzicoServer({
+    port: MOCK_IYZICO_PORT,
+    apiKey: TEST_IYZICO_API_KEY,
+    secretKey: TEST_IYZICO_SECRET_KEY,
+  });
+  await mockIyzicoServer.listen();
+  console.log(`Mock iyzico API Sunucusu port ${MOCK_IYZICO_PORT} üzerinde başlatıldı.\n`);
 
   try {
     const { variantId } = await ensureDedicatedTestProduct(150);
@@ -1267,14 +1280,356 @@ async function run() {
       `Webhook bildirimi tamamlanmayan sepet için sipariş onaylanmadı (status: ${uncompletedStatus.status}).`,
     );
 
+    // ----------------------------------------------------
+    // ADIM 18: iyzico Admin Settings, Connection Test & Payment Options
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 18: iyzico Ayarları, Bağlantı Testi & Payment Options] ---");
+    const iyzSettingsRes = await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        iyzico_enabled: true,
+        iyzico_mode: "sandbox",
+        iyzico_api_key: TEST_IYZICO_API_KEY,
+        iyzico_secret_key: TEST_IYZICO_SECRET_KEY,
+        iyzico_display_mode: "redirect",
+        iyzico_max_installment: 6,
+        iyzico_lang: "tr",
+        default_payment_method: "iyzico",
+      }),
+    });
+    const iyzSettingsJson = (await iyzSettingsRes.json()) as any;
+    const iyzConnRes = await fetch(`${MEDUSA_URL}/admin/payment-settings/test-connection`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ provider: "iyzico" }),
+    });
+    const iyzConnJson = (await iyzConnRes.json()) as any;
+    const iyzOptsRes = await fetch(`${MEDUSA_URL}/store/payment-options`, {
+      headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+    });
+    const iyzOptsJson = (await iyzOptsRes.json()) as any;
+    const iyzOptsStr = JSON.stringify(iyzOptsJson);
+    recordStep(
+      18,
+      "iyzico Ayarları, Bağlantı Testi & /store/payment-options",
+      iyzSettingsRes.ok &&
+        iyzSettingsJson.settings?.has_iyzico_api_key === true &&
+        iyzConnRes.ok &&
+        iyzConnJson.success === true &&
+        iyzOptsJson.iyzico?.enabled === true &&
+        iyzOptsJson.iyzico?.display_mode === "redirect" &&
+        iyzOptsJson.default_method === "iyzico" &&
+        !iyzOptsStr.includes(TEST_IYZICO_API_KEY) &&
+        !iyzOptsStr.includes(TEST_IYZICO_SECRET_KEY),
+      `iyzico BIN bağlantı testi başarılı; /store/payment-options default_method=iyzico, sırsız.`,
+    );
+
+    // Helper for creating a fresh cart + initiating iyzico session via Medusa Store API
+    const createAndInitIyzicoCart = async () => {
+      const regRes = await fetch(`${MEDUSA_URL}/store/regions`, {
+        headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+      });
+      const regData = (await regRes.json()) as any;
+      const trRegion = regData.regions?.[0]?.id;
+
+      const cRes = await fetch(`${MEDUSA_URL}/store/carts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ region_id: trRegion, email: "iyzico-test@example.test" }),
+      });
+      const cJson = (await cRes.json()) as any;
+      const cart = cJson.cart;
+
+      await fetch(`${MEDUSA_URL}/store/carts/${cart.id}/line-items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
+      });
+
+      const shipOptsRes = await fetch(
+        `${MEDUSA_URL}/store/shipping-options?cart_id=${encodeURIComponent(cart.id)}`,
+        { headers: { "x-publishable-api-key": PUBLISHABLE_KEY } },
+      );
+      const shipOptsJson = (await shipOptsRes.json()) as any;
+      const shipOptId = shipOptsJson.shipping_options?.[0]?.id;
+      if (shipOptId) {
+        await fetch(`${MEDUSA_URL}/store/carts/${cart.id}/shipping-methods`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ option_id: shipOptId }),
+        });
+      }
+
+      const pcRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ cart_id: cart.id }),
+      });
+      const pcJson = (await pcRes.json()) as any;
+      const pcId = pcJson.payment_collection?.id;
+
+      const psRes = await fetch(
+        `${MEDUSA_URL}/store/payment-collections/${pcId}/payment-sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            provider_id: "pp_iyzico_iyzico",
+            data: { cart_id: cart.id },
+          }),
+        },
+      );
+      const psJson = (await psRes.json()) as any;
+      const iyzSession = psJson.payment_collection?.payment_sessions?.find(
+        (s: any) => s.provider_id === "pp_iyzico_iyzico",
+      );
+      return {
+        cartId: cart.id as string,
+        token: iyzSession?.data?.token as string,
+        paymentPageUrl: iyzSession?.data?.payment_page_url as string,
+      };
+    };
+
+    // ----------------------------------------------------
+    // ADIM 19: iyzico Redirect Flow & Web Callback -> 303 & Order Captured
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 19: iyzico Redirect & Web Callback -> Sipariş Onayı] ---");
+    const iyzOk = await createAndInitIyzicoCart();
+    const cbRes1 = await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: iyzOk.token }).toString(),
+      redirect: "manual",
+    });
+    const cbLoc1 = cbRes1.headers.get("location") || "";
+    const statusRes1 = await fetch(
+      `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(iyzOk.cartId)}`,
+      { headers: { "x-publishable-api-key": PUBLISHABLE_KEY } },
+    );
+    const statusJson1 = (await statusRes1.json()) as any;
+    recordStep(
+      19,
+      "iyzico Redirect & Web Callback -> 303 & Sipariş Onayı",
+      Boolean(iyzOk.token) &&
+        iyzOk.paymentPageUrl.includes(`/checkout/${iyzOk.token}`) &&
+        cbRes1.status === 303 &&
+        cbLoc1.includes(`/odeme/sonuc?cart_id=${iyzOk.cartId}`) &&
+        statusJson1.status === "completed" &&
+        Boolean(statusJson1.order_id),
+      `iyzico callback 303 -> ${cbLoc1}, sipariş tamamlandı (${statusJson1.order_id}).`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 20: iyzico Failed Payment -> No Order
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 20: iyzico Başarısız Ödeme -> Sipariş Oluşmaz] ---");
+    const iyzFail = await createAndInitIyzicoCart();
+    mockIyzicoServer.setBehaviorForToken(iyzFail.token, "failed");
+    const cbFailRes = await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: iyzFail.token }).toString(),
+      redirect: "manual",
+    });
+    const failStatusRes = await fetch(
+      `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(iyzFail.cartId)}`,
+      { headers: { "x-publishable-api-key": PUBLISHABLE_KEY } },
+    );
+    const failStatusJson = (await failStatusRes.json()) as any;
+    recordStep(
+      20,
+      "iyzico Başarısız Ödemede Sipariş Oluşmaz",
+      cbFailRes.status === 303 && failStatusJson.status !== "completed" && !failStatusJson.order_id,
+      `Başarısız ödeme reddedildi (status=${failStatusJson.status}).`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 21: iyzico Tampered Signature & Amount Mismatch -> Rejected
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 21: iyzico Sahte İmza ve Tutar Uyuşmazlığı Reddi] ---");
+    const iyzTamper = await createAndInitIyzicoCart();
+    mockIyzicoServer.setBehaviorForToken(iyzTamper.token, "tampered_signature");
+    await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: iyzTamper.token }).toString(),
+      redirect: "manual",
+    });
+    const tamperStatus = (await (
+      await fetch(
+        `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(iyzTamper.cartId)}`,
+        {
+          headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+        },
+      )
+    ).json()) as any;
+
+    const iyzAmt = await createAndInitIyzicoCart();
+    mockIyzicoServer.setBehaviorForToken(iyzAmt.token, "amount_mismatch");
+    await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: iyzAmt.token }).toString(),
+      redirect: "manual",
+    });
+    const amtStatus = (await (
+      await fetch(
+        `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(iyzAmt.cartId)}`,
+        {
+          headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+        },
+      )
+    ).json()) as any;
+
+    recordStep(
+      21,
+      "iyzico Sahte İmza ve Tutar Uyuşmazlığı Reddi",
+      tamperStatus.status !== "completed" &&
+        !tamperStatus.order_id &&
+        amtStatus.status !== "completed" &&
+        !amtStatus.order_id,
+      `Sahte imza ve tutar uyuşmazlığı reddedildi, sipariş oluşturulmadı.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 22: iyzico Concurrent / Duplicate Callbacks -> Single Order
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 22: iyzico Eşzamanlı & Mükerrer Callback İdempotency] ---");
+    const iyzConc = await createAndInitIyzicoCart();
+    const concRes = await Promise.all(
+      [1, 2, 3].map(() =>
+        fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ token: iyzConc.token }).toString(),
+          redirect: "manual",
+        }),
+      ),
+    );
+    const concClient = await dbPool.connect();
+    let concOrderCount = 0;
+    try {
+      const ocRes = await concClient.query(
+        "SELECT COUNT(*)::int AS cnt FROM order_cart WHERE cart_id = $1;",
+        [iyzConc.cartId],
+      );
+      concOrderCount = ocRes.rows[0]?.cnt ?? 0;
+    } finally {
+      concClient.release();
+    }
+    recordStep(
+      22,
+      "iyzico Eşzamanlı 3 Callback -> Tek Sipariş (Idempotency)",
+      concRes.every((r) => r.status === 303) && concOrderCount === 1,
+      `3 eşzamanlı callback sonrası order_cart satır sayısı = ${concOrderCount}.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 23: Disabled Method Rejection on /api/checkout
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 23: Kapalı Yöntemin Sunucuda Reddedilmesi] ---");
+    await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ iyzico_enabled: false }),
+    });
+    const disabledCheckCart = await createAndInitIyzicoCart();
+    const disabledCheckoutRes = await fetch(`${STOREFRONT_URL}/api/checkout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `alte_cart_id=${disabledCheckCart.cartId}`,
+      },
+      body: JSON.stringify({
+        email: "iyzico-disabled@example.test",
+        phone: "0500 000 00 00",
+        deliveryAddress: {
+          firstName: "Test",
+          lastName: "User",
+          city: "İstanbul",
+          district: "Kadıköy",
+          addressLine1: "Test Sokak No: 1",
+          postalCode: "34710",
+          countryCode: "tr",
+        },
+        sameAsDelivery: true,
+        invoiceType: "individual",
+        shippingOptionId: "so_disabled_test",
+        paymentMethod: "iyzico",
+        distanceSalesContract: true,
+        kvkkConsent: true,
+      }),
+    });
+    // Re-enable iyzico so all 3 methods remain active
+    await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ iyzico_enabled: true }),
+    });
+    recordStep(
+      23,
+      "Kapalı Ödeme Yöntemi Sunucuda Reddedilir (400)",
+      disabledCheckoutRes.status === 400,
+      `iyzico kapalıyken istemci zorlaması HTTP ${disabledCheckoutRes.status} ile reddedildi.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 24: iyzico Token Index Verification
+    // ----------------------------------------------------
+    const idxClient = await dbPool.connect();
+    let iyzIndexExists = false;
+    try {
+      const idxRes = await idxClient.query(
+        "SELECT indexname FROM pg_indexes WHERE tablename = 'payment_session' AND indexname = 'idx_payment_session_iyzico_token';",
+      );
+      iyzIndexExists = idxRes.rows.length > 0;
+    } finally {
+      idxClient.release();
+    }
+    recordStep(
+      24,
+      "iyzico Token İndeksi (idx_payment_session_iyzico_token)",
+      iyzIndexExists,
+      `PostgreSQL idx_payment_session_iyzico_token expression index mevcut ve aktif.`,
+    );
+
     console.log("\n=======================================================");
-    console.log("  TÜM FAZ 4.1 ÖDEME ENTEGRASYON VE DOĞRULAMA TESTLERİ GEÇTİ!");
+    console.log("  TÜM FAZ 4.1 + FAZ 5.3 (iyzico) ÖDEME DOĞRULAMA TESTLERİ GEÇTİ!");
     console.log(`  Toplam Adım: ${results.length} / ${results.length} BAŞARILI`);
     console.log("=======================================================\n");
 
     process.exit(0);
   } finally {
     mockServer.close();
+    mockIyzicoServer.close();
     await dbPool.end();
   }
 }
