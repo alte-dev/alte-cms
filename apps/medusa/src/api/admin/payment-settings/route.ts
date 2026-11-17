@@ -25,6 +25,19 @@ const updatePaymentSettingsSchema = z.object({
     .max(120, "Zaman aşımı en fazla 120 dakika olabilir.")
     .optional(),
   paytr_lang: z.enum(["tr", "en"]).optional(),
+  iyzico_enabled: z.boolean().optional(),
+  iyzico_mode: z.enum(["sandbox", "live"]).optional(),
+  iyzico_api_key: z.string().optional(),
+  iyzico_secret_key: z.string().optional(),
+  iyzico_display_mode: z.enum(["redirect", "embedded"]).optional(),
+  iyzico_max_installment: z
+    .number()
+    .int()
+    .min(1, "iyzico maksimum taksit sayısı en az 1 olmalıdır.")
+    .max(12, "iyzico maksimum taksit sayısı en fazla 12 olabilir.")
+    .optional(),
+  iyzico_lang: z.enum(["tr", "en"]).optional(),
+  default_payment_method: z.enum(["paytr", "iyzico", "cod"]).nullable().optional(),
   cod_enabled: z.boolean().optional(),
   cod_fee: z.number().min(0, "Kapıda ödeme bedeli negatif olamaz.").optional(),
   cod_fee_label: z.string().optional(),

@@ -1,13 +1,56 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import PaymentSettingsService from "../../../../modules/payment-settings/service";
 import PaytrPaymentService from "../../../../modules/payment-paytr/service";
+import { IyzicoClient } from "../../../../modules/payment-iyzico/client";
 import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   if (!(await checkAdminSettingsRole(req, res))) return;
   try {
+    const body = (req.body || {}) as { provider?: string };
+    const provider = body.provider === "iyzico" ? "iyzico" : "paytr";
+
     const service = req.scope.resolve<PaymentSettingsService>("paymentSettingsModuleService");
     const settings = await service.getDecryptedSettings();
+
+    if (provider === "iyzico") {
+      if (!settings.iyzico_api_key) {
+        return res.status(400).json({
+          success: false,
+          error: "Test için iyzico API Anahtarı (api_key) tanımlı olmalıdır.",
+        });
+      }
+      if (!settings.iyzico_secret_key) {
+        return res.status(400).json({
+          success: false,
+          error: "Test için iyzico Gizli Anahtar (secret_key) tanımlı olmalıdır.",
+        });
+      }
+
+      const client = new IyzicoClient({
+        apiKey: settings.iyzico_api_key,
+        secretKey: settings.iyzico_secret_key,
+        mode: settings.iyzico_mode,
+      });
+
+      const binRes = await client.binCheck({
+        locale: settings.iyzico_lang || "tr",
+        binNumber: "535805",
+        conversationId: `TEST_${Date.now()}`,
+      });
+
+      if (binRes.status === "success") {
+        return res.status(200).json({
+          success: true,
+          message: "iyzico API bağlantısı başarılı! Kimlik doğrulama (BIN sorgusu) onaylandı.",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        error: `iyzico API Yanıtı: ${binRes.errorMessage || binRes.errorCode || "Bilinmeyen hata"}`,
+      });
+    }
 
     if (!settings.paytr_merchant_id) {
       return res.status(400).json({

@@ -34,18 +34,53 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
   const isDevAllowed =
     process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_PAYMENT === "true";
 
+  // Fail-closed: iyzico is only exposed when both enabled and credentials exist
+  const iyzicoEnabled = Boolean(
+    settings && settings.iyzico_enabled && settings.iyzico_api_key && settings.iyzico_secret_key,
+  );
+  const paytrEnabled = Boolean(
+    settings &&
+      settings.paytr_enabled &&
+      settings.paytr_merchant_id &&
+      settings.paytr_merchant_key &&
+      settings.paytr_merchant_salt,
+  );
+  const codEnabled = Boolean(settings && settings.cod_enabled);
+
+  const enabledMap = {
+    iyzico: iyzicoEnabled,
+    paytr: paytrEnabled,
+    cod: codEnabled,
+  };
+
+  let defaultMethod: "iyzico" | "paytr" | "cod" | null = null;
+  if (settings?.default_payment_method && enabledMap[settings.default_payment_method]) {
+    defaultMethod = settings.default_payment_method;
+  } else if (iyzicoEnabled) {
+    defaultMethod = "iyzico";
+  } else if (paytrEnabled) {
+    defaultMethod = "paytr";
+  } else if (codEnabled) {
+    defaultMethod = "cod";
+  }
+
   res.status(200).json({
+    iyzico: {
+      enabled: iyzicoEnabled,
+      display_mode: settings?.iyzico_display_mode === "embedded" ? "embedded" : "redirect",
+    },
     paytr: {
-      enabled: settings ? settings.paytr_enabled : false,
+      enabled: paytrEnabled,
       display_mode: settings?.paytr_display_mode || "iframe",
     },
     cod: {
-      enabled: settings ? settings.cod_enabled : false, // Fail-closed default: false
+      enabled: codEnabled, // Fail-closed default: false
       fee: settings?.cod_fee ?? 100, // Standard TL currency unit
       fee_label: settings?.cod_fee_label || "Kapıda Ödeme Hizmet Bedeli",
       max_order_amount: settings?.cod_max_order_amount ?? null,
       variant_id: codVariantId,
     },
+    default_method: defaultMethod,
     dev: {
       enabled: isDevAllowed,
     },
