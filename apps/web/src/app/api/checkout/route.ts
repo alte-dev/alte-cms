@@ -5,6 +5,7 @@ import {
   completeCart,
   getCart,
   getPaymentOptions,
+  initiateIyzicoPayment,
   initiatePaytrPayment,
   isDevPaymentAllowed,
   removeCartItem,
@@ -23,10 +24,34 @@ import { mapMedusaError } from "../../../lib/medusa/format";
 import { StoreAddress } from "../../../lib/medusa/types";
 import { CheckoutFormSchema } from "../../../lib/medusa/validation";
 import { defaultCheckoutGuard } from "../../../lib/medusa/cart-checkout-guard";
+import { extractClientIp } from "../../../lib/security/origin-guard";
+import { FixedWindowRateLimiter } from "../../../lib/security/rate-limiter";
+import { isAllowedIyzicoRedirectUrl } from "../payment/iyzico/callback/route";
+
+function getCheckoutLimitMax(): number {
+  const raw = process.env.CHECKOUT_IP_LIMIT_MAX;
+  if (raw && /^\d+$/.test(raw.trim())) {
+    return Math.max(1, Number.parseInt(raw.trim(), 10));
+  }
+  return 20;
+}
+
+const checkoutIpLimiter = new FixedWindowRateLimiter({
+  windowMs: 60_000,
+  maxRequests: getCheckoutLimitMax(),
+});
 
 export async function POST(req: Request) {
   let lockedCartId: string | null = null;
   try {
+    const clientIp = extractClientIp(req);
+    const rl = checkoutIpLimiter.consume(`checkout:${clientIp}`);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Çok fazla ödeme denemesi. Lütfen biraz bekleyin." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+      );
+    }
     const existingOrderId = await getOrderConfirmation();
 
     const cartId = await getCartId();
@@ -156,14 +181,24 @@ export async function POST(req: Request) {
 
     let effectivePaymentMethod = paymentMethod;
     if (!effectivePaymentMethod) {
-      if (isDevPaymentAllowed()) {
-        effectivePaymentMethod = "dev";
+      if (paymentOptions.default_method && paymentOptions[paymentOptions.default_method]?.enabled) {
+        effectivePaymentMethod = paymentOptions.default_method;
+      } else if (paymentOptions.iyzico?.enabled) {
+        effectivePaymentMethod = "iyzico";
       } else if (paymentOptions.paytr.enabled) {
         effectivePaymentMethod = "paytr";
       } else if (paymentOptions.cod.enabled) {
         effectivePaymentMethod = "cod";
+      } else if (isDevPaymentAllowed()) {
+        effectivePaymentMethod = "dev";
       } else {
-        effectivePaymentMethod = "paytr";
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Şu anda aktif bir ödeme yöntemi bulunmamaktadır.",
+          },
+          { status: 400 },
+        );
       }
     }
 
@@ -264,6 +299,42 @@ export async function POST(req: Request) {
     };
 
     // 3. Handle payment method execution
+    if (effectivePaymentMethod === "iyzico") {
+      if (!paymentOptions.iyzico?.enabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "iyzico ile kredi kartı ödeme yöntemi şu anda aktif değildir.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const iyzicoData = await initiateIyzicoPayment(cart.id);
+      if (
+        iyzicoData.paymentPageUrl &&
+        !isAllowedIyzicoRedirectUrl(iyzicoData.paymentPageUrl)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "iyzico yönlendirme adresi doğrulanamadı.",
+          },
+          { status: 502 },
+        );
+      }
+
+      await syncCustomerAddress();
+      return NextResponse.json({
+        success: true,
+        paymentMethod: "iyzico",
+        token: iyzicoData.token,
+        paymentPageUrl: iyzicoData.paymentPageUrl,
+        displayMode: iyzicoData.displayMode,
+        cartId: cart.id,
+      });
+    }
+
     if (effectivePaymentMethod === "paytr") {
       if (!paymentOptions.paytr.enabled) {
         return NextResponse.json(

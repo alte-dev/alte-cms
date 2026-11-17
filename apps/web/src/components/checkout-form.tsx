@@ -51,16 +51,29 @@ export function CheckoutForm({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Payment Method Selection
-  const initialPaymentMethod = paymentOptions?.paytr?.enabled
-    ? "paytr"
-    : paymentOptions?.cod?.enabled
-      ? "cod"
-      : paymentOptions?.dev?.enabled
-        ? "dev"
-        : "paytr";
+  const resolveInitialMethod = (): "iyzico" | "paytr" | "cod" | "dev" => {
+    const def = paymentOptions?.default_method;
+    if (def === "iyzico" && paymentOptions?.iyzico?.enabled) return "iyzico";
+    if (def === "paytr" && paymentOptions?.paytr?.enabled) return "paytr";
+    if (def === "cod" && paymentOptions?.cod?.enabled) return "cod";
+    if (paymentOptions?.iyzico?.enabled) return "iyzico";
+    if (paymentOptions?.paytr?.enabled) return "paytr";
+    if (paymentOptions?.cod?.enabled) return "cod";
+    if (paymentOptions?.dev?.enabled) return "dev";
+    return "iyzico";
+  };
 
-  const [paymentMethod, setPaymentMethod] = useState<"paytr" | "cod" | "dev">(initialPaymentMethod);
+  const [paymentMethod, setPaymentMethod] = useState<"iyzico" | "paytr" | "cod" | "dev">(
+    resolveInitialMethod,
+  );
   const [paytrIframeUrl, setPaytrIframeUrl] = useState<string | null>(null);
+  const [iyzicoIframeUrl, setIyzicoIframeUrl] = useState<string | null>(null);
+  const hasAnyEnabledMethod = Boolean(
+    paymentOptions?.iyzico?.enabled ||
+      paymentOptions?.paytr?.enabled ||
+      paymentOptions?.cod?.enabled ||
+      paymentOptions?.dev?.enabled,
+  );
 
   // Form Fields
   const [email, setEmail] = useState(initialCustomer?.email || cart.email || "");
@@ -270,6 +283,16 @@ export function CheckoutForm({
         return;
       }
 
+      if (data.paymentMethod === "iyzico" && data.paymentPageUrl) {
+        if (data.displayMode === "embedded") {
+          setIyzicoIframeUrl(data.paymentPageUrl);
+          setIsSubmitting(false);
+          return;
+        }
+        window.location.href = data.paymentPageUrl;
+        return;
+      }
+
       if (data.paymentMethod === "paytr" && data.iframeUrl) {
         if (data.displayMode === "redirect") {
           window.location.href = data.iframeUrl;
@@ -306,6 +329,41 @@ export function CheckoutForm({
       setIsSubmitting(false);
     }
   };
+
+  if (iyzicoIframeUrl) {
+    return (
+      <div className="bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6 max-w-4xl mx-auto shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-4 gap-2">
+          <div>
+            <h2 className="text-xl font-bold text-stone-900">iyzico Güvenli Ödeme Ekranı</h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Kart bilgilerinizi girip 3D Secure onayını tamamlayınız.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIyzicoIframeUrl(null)}
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 underline text-left sm:text-right"
+          >
+            ← Ödeme Yöntemini Değiştir
+          </button>
+        </div>
+
+        <div className="w-full flex justify-center bg-stone-50 p-2 rounded border border-stone-100">
+          <iframe
+            src={iyzicoIframeUrl}
+            title="iyzico Güvenli Ödeme Ekranı"
+            id="iyzicoiframe"
+            style={{ width: "100%", minHeight: "650px", border: "none" }}
+          />
+        </div>
+
+        <div className="text-center text-xs text-stone-400 border-t border-stone-100 pt-3">
+          Ödeme oturumunuz 256-Bit SSL şifreleme ve BDDK lisanslı iyzico altyapısı ile korunmaktadır.
+        </div>
+      </div>
+    );
+  }
 
   if (paytrIframeUrl) {
     return (
@@ -835,6 +893,49 @@ export function CheckoutForm({
           </div>
 
           <div className="space-y-3">
+            {!hasAnyEnabledMethod && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                Şu anda aktif bir ödeme yöntemi bulunmamaktadır. Lütfen daha sonra tekrar deneyiniz.
+              </div>
+            )}
+
+            {/* iyzico Option */}
+            <label
+              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                paymentMethod === "iyzico"
+                  ? "border-stone-900 bg-stone-50"
+                  : "border-stone-200 hover:border-stone-300 bg-white"
+              } ${!paymentOptions?.iyzico?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="iyzico"
+                  disabled={!paymentOptions?.iyzico?.enabled}
+                  checked={paymentMethod === "iyzico"}
+                  onChange={() => setPaymentMethod("iyzico")}
+                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-stone-700" />
+                    <span className="text-sm font-semibold text-stone-900">
+                      Kredi / Banka Kartı (iyzico)
+                    </span>
+                    {!paymentOptions?.iyzico?.enabled && (
+                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
+                        Şu anda kullanılamıyor
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-500 mt-1">
+                    iyzico güvencesiyle tek çekim veya taksitli 3D Secure kart ödemesi.
+                  </p>
+                </div>
+              </div>
+            </label>
+
             {/* PayTR Option */}
             <label
               className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
@@ -1019,9 +1120,11 @@ export function CheckoutForm({
               <>
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
                 <span>
-                  {paymentMethod === "paytr"
-                    ? "PayTR Güvenli Ödemeye Geç"
-                    : "Siparişi Onayla ve Tamamla"}{" "}
+                  {paymentMethod === "iyzico"
+                    ? "iyzico Güvenli Ödemeye Geç"
+                    : paymentMethod === "paytr"
+                      ? "PayTR Güvenli Ödemeye Geç"
+                      : "Siparişi Onayla ve Tamamla"}{" "}
                   ({formatTRY(total)})
                 </span>
               </>
@@ -1161,9 +1264,11 @@ export function CheckoutForm({
               <>
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>
-                  {paymentMethod === "paytr"
-                    ? "PayTR Güvenli Ödemeye Geç"
-                    : "Siparişi Onayla ve Tamamla"}
+                  {paymentMethod === "iyzico"
+                    ? "iyzico Güvenli Ödemeye Geç"
+                    : paymentMethod === "paytr"
+                      ? "PayTR Güvenli Ödemeye Geç"
+                      : "Siparişi Onayla ve Tamamla"}
                 </span>
               </>
             )}

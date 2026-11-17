@@ -255,4 +255,30 @@ describe("Checkout API Idempotency & Error Sanitization", () => {
     expect(safeMessage).not.toContain("/var/task");
     expect(safeMessage).toBe("Sipariş işlenirken bir hata oluştu. Lütfen tekrar deneyiniz.");
   });
+
+  it("accepts iyzico, paytr, cod, dev paymentMethod values and rejects unknown methods", () => {
+    const base = {
+      email: "test@example.test",
+      phone: "0500 000 00 00",
+      deliveryAddress: {
+        firstName: "Ahmet",
+        lastName: "Yılmaz",
+        city: "İstanbul",
+        district: "Kadıköy",
+        addressLine1: "Moda Caddesi No: 15 Daire: 4",
+        postalCode: "34710",
+        countryCode: "tr" as const,
+      },
+      sameAsDelivery: true,
+      invoiceType: "individual" as const,
+      shippingOptionId: "so_standard_test",
+      distanceSalesContract: true as const,
+      kvkkConsent: true as const,
+    };
+    expect(CheckoutFormSchema.safeParse({ ...base, paymentMethod: "iyzico" }).success).toBe(true);
+    expect(CheckoutFormSchema.safeParse({ ...base, paymentMethod: "paytr" }).success).toBe(true);
+    expect(
+      CheckoutFormSchema.safeParse({ ...base, paymentMethod: "unknown_method" as any }).success,
+    ).toBe(false);
+  });
 });

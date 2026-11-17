@@ -268,6 +268,10 @@ export interface CompleteCartResult {
 }
 
 export interface PaymentOptionsResult {
+  iyzico: {
+    enabled: boolean;
+    display_mode: "redirect" | "embedded";
+  };
   paytr: {
     enabled: boolean;
     display_mode: "iframe" | "redirect";
@@ -279,6 +283,7 @@ export interface PaymentOptionsResult {
     max_order_amount: number | null;
     variant_id?: string | null;
   };
+  default_method?: "iyzico" | "paytr" | "cod" | null;
   dev: {
     enabled: boolean;
   };
@@ -292,9 +297,22 @@ export async function getPaymentOptions(): Promise<PaymentOptionsResult> {
     const data = await medusaFetch<PaymentOptionsResult>("/store/payment-options", {
       cache: "no-store",
     });
-    return data;
+    return {
+      iyzico: data.iyzico || { enabled: false, display_mode: "redirect" },
+      paytr: data.paytr || { enabled: false, display_mode: "iframe" },
+      cod: data.cod || {
+        enabled: false,
+        fee: 100,
+        fee_label: "Kapıda Ödeme Hizmet Bedeli",
+        max_order_amount: null,
+        variant_id: null,
+      },
+      default_method: data.default_method ?? null,
+      dev: data.dev || { enabled: isDevPaymentAllowed() },
+    };
   } catch {
     return {
+      iyzico: { enabled: false, display_mode: "redirect" },
       paytr: { enabled: false, display_mode: "iframe" },
       cod: {
         enabled: false,
@@ -303,6 +321,7 @@ export async function getPaymentOptions(): Promise<PaymentOptionsResult> {
         max_order_amount: null,
         variant_id: null,
       },
+      default_method: null,
       dev: { enabled: isDevPaymentAllowed() },
     };
   }
@@ -333,7 +352,7 @@ export async function getOrCreatePaymentCollection(cartId: string): Promise<stri
  */
 export async function createPaymentSession(
   cartId: string,
-  providerId: "pp_paytr_paytr" | "pp_cod_cod" | "pp_system_default",
+  providerId: "pp_paytr_paytr" | "pp_iyzico_iyzico" | "pp_cod_cod" | "pp_system_default",
 ) {
   const collectionId = await getOrCreatePaymentCollection(cartId);
   const res = await medusaFetch<{
@@ -384,6 +403,34 @@ export async function initiatePaytrPayment(cartId: string) {
     token,
     iframeUrl: iframe_url || `https://www.paytr.com/odeme/guvenli/${token}`,
     displayMode: display_mode,
+  };
+}
+
+/**
+ * Initiates iyzico Checkout Form payment session and returns token, paymentPageUrl, and displayMode.
+ */
+export async function initiateIyzicoPayment(cartId: string) {
+  const { session } = await createPaymentSession(cartId, "pp_iyzico_iyzico");
+  if (!session || !session.data) {
+    throw new Error("iyzico ödeme oturumu başlatılamadı.");
+  }
+
+  const token = session.data.token as string | undefined;
+  const paymentPageUrl = session.data.payment_page_url as string | undefined;
+  const displayMode =
+    session.data.display_mode === "embedded" ? ("embedded" as const) : ("redirect" as const);
+
+  if (!token) {
+    const errorReason =
+      (session.data.error as string) ||
+      "iyzico ödeme oturumu token bilgisi alınamadı. Lütfen ödeme ayarlarını kontrol ediniz.";
+    throw new Error(errorReason);
+  }
+
+  return {
+    token,
+    paymentPageUrl: paymentPageUrl || "",
+    displayMode,
   };
 }
 

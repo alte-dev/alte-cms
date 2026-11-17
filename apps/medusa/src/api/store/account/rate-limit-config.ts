@@ -8,6 +8,8 @@ export const RATE_LIMIT_OVERRIDE_ENV_VARS = [
   "RESET_EMAIL_LIMIT_MAX",
   "TOKEN_CONFIRM_IP_LIMIT_MAX",
   "RESEND_VERIFICATION_LIMIT_MAX",
+  "CHECKOUT_IP_LIMIT_MAX",
+  "IYZICO_CALLBACK_LIMIT_MAX",
 ] as const;
 
 export interface AccountRateLimitConfig {
