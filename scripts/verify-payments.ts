@@ -29,6 +29,8 @@ import path from "path";
 import pg from "pg";
 import { createStepRecorder } from "./lib/verify-step";
 import { startMockIyzicoServer } from "./lib/mock-iyzico-server";
+import IyzicoPaymentService from "../apps/medusa/src/modules/payment-iyzico/service";
+import { PaymentSettingsRegistry } from "../apps/medusa/src/modules/payment-settings/service";
 
 dotenv.config({ path: path.resolve(process.cwd(), "apps/medusa/.env") });
 dotenv.config({ path: path.resolve(process.cwd(), "apps/web/.env") });
@@ -1621,6 +1623,200 @@ async function run() {
       "iyzico Token İndeksi (idx_payment_session_iyzico_token)",
       iyzIndexExists,
       `PostgreSQL idx_payment_session_iyzico_token expression index mevcut ve aktif.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 25: Orphan Payment (Sepet Mutasyonu Sonrası Tahsilat İzlenebilirliği)
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 25: Orphan Payment (Sepet Değişimi Sonrası Tahsilat Kaydı)] ---");
+    const orphanCase = await createAndInitIyzicoCart();
+    // Mutate cart so Medusa deletes/replaces old payment_session
+    await fetch(`${MEDUSA_URL}/store/carts/${orphanCase.cartId}/line-items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
+    });
+
+    // Send callback twice with the old token -> orphan_payment created once, zero orders
+    await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: orphanCase.token }).toString(),
+      redirect: "manual",
+    });
+    await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: orphanCase.token }).toString(),
+      redirect: "manual",
+    });
+
+    // Fake token must NOT create orphan_payment
+    await fetch(`${STOREFRONT_URL}/api/payment/iyzico/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: "fake-unpaid-token-xyz" }).toString(),
+      redirect: "manual",
+    });
+
+    const manualRefundsRes = await fetch(`${MEDUSA_URL}/admin/payment-settings/manual-refunds`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const manualRefundsJson = (await manualRefundsRes.json()) as any;
+    const orphanHash = crypto
+      .createHash("sha256")
+      .update(orphanCase.token)
+      .digest("hex")
+      .slice(0, 16);
+    const matchedOrphan = (manualRefundsJson.refunds || []).filter(
+      (r: any) => r.id === `orp_${orphanHash}`,
+    );
+    const fakeOrphanHash = crypto
+      .createHash("sha256")
+      .update("fake-unpaid-token-xyz")
+      .digest("hex")
+      .slice(0, 16);
+    const fakeOrphanCount = (manualRefundsJson.refunds || []).filter(
+      (r: any) => r.id === `orp_${fakeOrphanHash}`,
+    ).length;
+
+    recordStep(
+      25,
+      "Orphan Payment İzlenebilirliği (Sepet Mutasyonu -> Tek Kayıt, Sahte Token Yok)",
+      manualRefundsRes.ok && matchedOrphan.length === 1 && fakeOrphanCount === 0,
+      `orphan_payment (${matchedOrphan[0]?.id}) manual-refunds listesinde tekil olarak göründü; sahte token kayıt oluşturmadı.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 26: iyzico Embedded Display Mode Checkout Flow
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 26: iyzico Embedded Modu & Checkout Yanıtı] ---");
+    await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ iyzico_display_mode: "embedded" }),
+    });
+    const embOpts = (await (
+      await fetch(`${MEDUSA_URL}/store/payment-options`, {
+        headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+      })
+    ).json()) as any;
+
+    const embCart = await createAndInitIyzicoCart();
+    const embShipOpts = (await (
+      await fetch(
+        `${MEDUSA_URL}/store/shipping-options?cart_id=${encodeURIComponent(embCart.cartId)}`,
+        {
+          headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
+        },
+      )
+    ).json()) as any;
+    const embShipId = embShipOpts.shipping_options?.[0]?.id || "so_test";
+
+    const embCheckoutRes = await fetch(`${STOREFRONT_URL}/api/checkout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `alte_cart_id=${embCart.cartId}`,
+      },
+      body: JSON.stringify({
+        email: "iyzico-embedded@example.test",
+        phone: "0500 000 00 00",
+        deliveryAddress: {
+          firstName: "Test",
+          lastName: "User",
+          city: "İstanbul",
+          district: "Kadıköy",
+          addressLine1: "Test Sokak No: 1",
+          postalCode: "34710",
+          countryCode: "tr",
+        },
+        sameAsDelivery: true,
+        invoiceType: "individual",
+        shippingOptionId: embShipId,
+        paymentMethod: "iyzico",
+        distanceSalesContract: true,
+        kvkkConsent: true,
+      }),
+    });
+    const embCheckoutJson = (await embCheckoutRes.json()) as any;
+
+    // Restore redirect default
+    await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ iyzico_display_mode: "redirect" }),
+    });
+
+    recordStep(
+      26,
+      "iyzico Embedded Modu Checkout Yanıtı",
+      embOpts.iyzico?.display_mode === "embedded" &&
+        embCheckoutRes.ok &&
+        embCheckoutJson.paymentMethod === "iyzico" &&
+        embCheckoutJson.displayMode === "embedded" &&
+        Boolean(embCheckoutJson.paymentPageUrl),
+      `embedded modda /api/checkout displayMode=embedded ve paymentPageUrl döndü.`,
+    );
+
+    // ----------------------------------------------------
+    // ADIM 27: iyzico cancelPayment & partial refundPayment HTTP Akışı
+    // ----------------------------------------------------
+    console.log("\n--- [Bölüm 27: iyzico Cancel & Kısmi Refund HTTP Akışı] ---");
+    PaymentSettingsRegistry.set({
+      id: "ps_default",
+      paytr_enabled: true,
+      paytr_mode: "sandbox",
+      paytr_merchant_id: TEST_MERCHANT_ID,
+      paytr_merchant_key: TEST_MERCHANT_KEY,
+      paytr_merchant_salt: TEST_MERCHANT_SALT,
+      paytr_display_mode: "iframe",
+      paytr_no_installment: false,
+      paytr_max_installment: 0,
+      paytr_timeout_limit: 30,
+      paytr_lang: "tr",
+      iyzico_enabled: true,
+      iyzico_mode: "sandbox",
+      iyzico_api_key: TEST_IYZICO_API_KEY,
+      iyzico_secret_key: TEST_IYZICO_SECRET_KEY,
+      iyzico_display_mode: "redirect",
+      iyzico_max_installment: 6,
+      iyzico_lang: "tr",
+      default_payment_method: "iyzico",
+      cod_enabled: true,
+      cod_fee: 100,
+      cod_fee_label: "Kapıda Ödeme Hizmet Bedeli",
+      cod_max_order_amount: null,
+    });
+    const iyzProvider = new IyzicoPaymentService({}, {});
+    const cancelOut = await iyzProvider.cancelPayment({
+      data: { iyzico_payment_id: "iyzpay_live_test_1", conversation_id: "conv_cancel_1" },
+    } as any);
+    const refundOut = await iyzProvider.refundPayment({
+      amount: 50,
+      data: {
+        iyzico_payment_id: "iyzpay_live_test_1",
+        iyzico_payment_transaction_ids: ["iyzptx_live_test_1"],
+        conversation_id: "conv_refund_1",
+      },
+    } as any);
+    PaymentSettingsRegistry.invalidate();
+
+    recordStep(
+      27,
+      "iyzico cancelPayment ve Kısmi refundPayment HTTP Akışı",
+      (cancelOut.data as any)?.status === "canceled" &&
+        (refundOut.data as any)?.last_refund_amount === 50,
+      `mockIyzicoServer üzerinden cancelPayment=canceled ve 50 TL kısmi refundPayment doğrulandı.`,
     );
 
     console.log("\n=======================================================");

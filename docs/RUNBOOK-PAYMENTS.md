@@ -114,6 +114,14 @@ PayTR tarafında genel bir kesinti veya acil bir güvenlik durumu meydana gelirs
 - Kargolanmamış sipariş iptallerinde (`POST /admin/order-operations/:id/cancel`) kartlı ödemeler (`paytr` veya `iyzico`) otomatik geri ödeme yapmaz; `needs_manual_refund = true` olarak işaretlenir ve admin panelindeki **Elle İade Bekleyenler** listesinde görünür.
 - iyzico panelinden iptal (aynı gün) veya kısmi/tam iade tamamlandıktan sonra kayıt kapatılır.
 
+### 6.4 iyzico Panelinde Tahsil Edilmiş Ama Siparişi Olmayan Ödeme (Mutabakat)
+
+Müşteri ödeme sayfasındayken sepet başka sekmede değiştirilirse Medusa eski ödeme oturumunu silebilir, ancak iyzico tahsilatı gerçekleşebilir. Bu durumda:
+
+1. Callback `retrieve` ile iyzico'dan `SUCCESS` sonucunu alır ve `orphan_payment` tablosuna PII içermeyen (`token_hash`, `iyzico_payment_id`, tutar, zaman) tekil bir kayıt yazar, `[CRITICAL ALERT]` loglar.
+2. Ayrıca `SUCCESS` yanıtında imza/tutar/oturum uyuşmazlığı oluşursa oturum `needs_manual_refund: true` olarak işaretlenir.
+3. Operatör Medusa Admin -> `/app/payment-settings` -> **Elle İade Bekleyenler** listesinde bu kayıtları (`orp_...` veya `payses_...`) görür, iyzico panelinden `paymentId` ile eşleştirip manuel iade yapar ve müşteriyi bilgilendirir.
+
 ## 5. İptal Edilen Siparişlerde PayTR İadesi (FAZ 6C)
 
 Yönetici tarafından kargolanmamış bir sipariş iptal edildiğinde:
