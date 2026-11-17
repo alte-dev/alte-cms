@@ -1567,7 +1567,7 @@ async function run() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `alte_cart_id=${disabledCheckCart.cartId}`,
+        Cookie: `cart_id=${disabledCheckCart.cartId}`,
       },
       body: JSON.stringify({
         email: "iyzico-disabled@example.test",
@@ -1589,6 +1589,7 @@ async function run() {
         kvkkConsent: true,
       }),
     });
+    const disabledCheckoutJson = (await disabledCheckoutRes.json()) as any;
     // Re-enable iyzico so all 3 methods remain active
     await fetch(`${MEDUSA_URL}/admin/payment-settings`, {
       method: "PUT",
@@ -1601,8 +1602,9 @@ async function run() {
     recordStep(
       23,
       "Kapalı Ödeme Yöntemi Sunucuda Reddedilir (400)",
-      disabledCheckoutRes.status === 400,
-      `iyzico kapalıyken istemci zorlaması HTTP ${disabledCheckoutRes.status} ile reddedildi.`,
+      disabledCheckoutRes.status === 400 &&
+        String(disabledCheckoutJson.error || "").includes("aktif değildir"),
+      `iyzico kapalıyken istemci zorlaması HTTP ${disabledCheckoutRes.status} (${disabledCheckoutJson.error}) ile reddedildi.`,
     );
 
     // ----------------------------------------------------
@@ -1723,7 +1725,7 @@ async function run() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `alte_cart_id=${embCart.cartId}`,
+        Cookie: `cart_id=${embCart.cartId}`,
       },
       body: JSON.stringify({
         email: "iyzico-embedded@example.test",
