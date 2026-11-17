@@ -41,7 +41,8 @@ function createTestService(initialRow?: Record<string, any>) {
 
 describe("PaymentSettingsService (iyzico & default_payment_method)", () => {
   beforeEach(() => {
-    process.env.SETTINGS_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    process.env.SETTINGS_ENCRYPTION_KEY =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     PaymentSettingsRegistry.invalidate();
   });
 

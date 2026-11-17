@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("../lib/medusa/cookies", () => ({
   setOrderConfirmation: vi.fn(async () => {}),
 }));
-import { POST as iyzicoCallbackPost, isAllowedIyzicoRedirectUrl } from "../app/api/payment/iyzico/callback/route";
+import { POST as iyzicoCallbackPost } from "../app/api/payment/iyzico/callback/route";
+import { isAllowedIyzicoRedirectUrl } from "../lib/security/iyzico";
 
 describe("iyzico web callback & redirect URL validation", () => {
   beforeEach(() => {
@@ -39,12 +40,14 @@ describe("iyzico web callback & redirect URL validation", () => {
   });
 
   it("forwards valid token to Medusa internal callback with x-alte-internal and returns 303 to /odeme/sonuc", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ status: "completed", cart_id: "cart_xyz", order_id: "order_1" }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      ),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: "completed", cart_id: "cart_xyz", order_id: "order_1" }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
 
     const req = new Request("http://localhost:3100/api/payment/iyzico/callback", {
       method: "POST",
@@ -69,9 +72,15 @@ describe("iyzico web callback & redirect URL validation", () => {
   });
 
   it("validates iyzico redirect URLs against allowed hosts", () => {
-    expect(isAllowedIyzicoRedirectUrl("https://sandbox-cpp.iyzipay.com/checkout/1", "production")).toBe(true);
-    expect(isAllowedIyzicoRedirectUrl("https://cpp.iyzipay.com/checkout/1", "production")).toBe(true);
+    expect(
+      isAllowedIyzicoRedirectUrl("https://sandbox-cpp.iyzipay.com/checkout/1", "production"),
+    ).toBe(true);
+    expect(isAllowedIyzicoRedirectUrl("https://cpp.iyzipay.com/checkout/1", "production")).toBe(
+      true,
+    );
     expect(isAllowedIyzicoRedirectUrl("https://evil.example.test/phish", "production")).toBe(false);
-    expect(isAllowedIyzicoRedirectUrl("http://sandbox-cpp.iyzipay.com/checkout/1", "production")).toBe(false);
+    expect(
+      isAllowedIyzicoRedirectUrl("http://sandbox-cpp.iyzipay.com/checkout/1", "production"),
+    ).toBe(false);
   });
 });

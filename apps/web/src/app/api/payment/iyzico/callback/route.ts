@@ -25,38 +25,6 @@ const iyzicoCallbackLimiter = new FixedWindowRateLimiter({
   maxRequests: getCallbackLimitMax(),
 });
 
-const ALLOWED_IYZICO_REDIRECT_HOSTS = new Set([
-  "sandbox-cpp.iyzipay.com",
-  "cpp.iyzipay.com",
-  "sandbox-api.iyzipay.com",
-  "api.iyzipay.com",
-]);
-
-export function isAllowedIyzicoRedirectUrl(
-  rawUrl: string,
-  nodeEnv: string = process.env.NODE_ENV || "development",
-): boolean {
-  if (!rawUrl || typeof rawUrl !== "string") return false;
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return false;
-  }
-
-  if (nodeEnv !== "production" && process.env.IYZICO_API_BASE) {
-    try {
-      const devBase = new URL(process.env.IYZICO_API_BASE);
-      if (parsed.origin === devBase.origin) return true;
-    } catch {
-      // ignore
-    }
-  }
-
-  if (parsed.protocol !== "https:") return false;
-  return ALLOWED_IYZICO_REDIRECT_HOSTS.has(parsed.hostname);
-}
-
 function getWebBaseUrl(req: Request): string {
   const envUrl = process.env.NEXT_PUBLIC_SERVER_URL;
   if (envUrl && /^https?:\/\//i.test(envUrl)) {
@@ -72,10 +40,7 @@ function getWebBaseUrl(req: Request): string {
 export async function POST(req: Request): Promise<Response> {
   const contentType = req.headers.get("content-type") || "";
   if (!contentType.toLowerCase().includes("application/x-www-form-urlencoded")) {
-    return NextResponse.json(
-      { error: "Desteklenmeyen içerik türü." },
-      { status: 415 },
-    );
+    return NextResponse.json({ error: "Desteklenmeyen içerik türü." }, { status: 415 });
   }
 
   const clientIp = extractClientIp(req);
@@ -96,7 +61,10 @@ export async function POST(req: Request): Promise<Response> {
   const token = (params.get("token") || "").trim();
   const parsed = callbackTokenSchema.safeParse({ token });
   if (!parsed.success) {
-    return NextResponse.json({ error: "Geçersiz veya eksik ödeme token bilgisi." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Geçersiz veya eksik ödeme token bilgisi." },
+      { status: 400 },
+    );
   }
 
   const medusaUrl = (

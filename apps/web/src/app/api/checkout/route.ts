@@ -26,7 +26,7 @@ import { CheckoutFormSchema } from "../../../lib/medusa/validation";
 import { defaultCheckoutGuard } from "../../../lib/medusa/cart-checkout-guard";
 import { extractClientIp } from "../../../lib/security/origin-guard";
 import { FixedWindowRateLimiter } from "../../../lib/security/rate-limiter";
-import { isAllowedIyzicoRedirectUrl } from "../payment/iyzico/callback/route";
+import { isAllowedIyzicoRedirectUrl } from "../../../lib/security/iyzico";
 
 function getCheckoutLimitMax(): number {
   const raw = process.env.CHECKOUT_IP_LIMIT_MAX;
@@ -311,10 +311,7 @@ export async function POST(req: Request) {
       }
 
       const iyzicoData = await initiateIyzicoPayment(cart.id);
-      if (
-        iyzicoData.paymentPageUrl &&
-        !isAllowedIyzicoRedirectUrl(iyzicoData.paymentPageUrl)
-      ) {
+      if (iyzicoData.paymentPageUrl && !isAllowedIyzicoRedirectUrl(iyzicoData.paymentPageUrl)) {
         return NextResponse.json(
           {
             success: false,

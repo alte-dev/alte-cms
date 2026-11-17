@@ -359,7 +359,8 @@ export function CheckoutForm({
         </div>
 
         <div className="text-center text-xs text-stone-400 border-t border-stone-100 pt-3">
-          Ödeme oturumunuz 256-Bit SSL şifreleme ve BDDK lisanslı iyzico altyapısı ile korunmaktadır.
+          Ödeme oturumunuz 256-Bit SSL şifreleme ve BDDK lisanslı iyzico altyapısı ile
+          korunmaktadır.
         </div>
       </div>
     );

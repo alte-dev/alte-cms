@@ -224,28 +224,35 @@ describe("processIyzicoCallback", () => {
       ["SUCCESS", "iyz_pay_1", "TRY", "cart_1", "conv_1", "150", "150", "valid-iyz-token-123"],
       "sandbox-secret-test",
     );
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(
-        JSON.stringify({
-          status: "success",
-          paymentStatus: "SUCCESS",
-          paymentId: "iyz_pay_1",
-          currency: "TRY",
-          basketId: "cart_1",
-          conversationId: "conv_1",
-          paidPrice: "150.00",
-          price: "150.00",
-          token: "valid-iyz-token-123",
-          signature: sig,
-          itemTransactions: [{ itemId: "li_1", paymentTransactionId: "ptx_1" }],
-        }),
-        { status: 200 },
-      ),
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            status: "success",
+            paymentStatus: "SUCCESS",
+            paymentId: "iyz_pay_1",
+            currency: "TRY",
+            basketId: "cart_1",
+            conversationId: "conv_1",
+            paidPrice: "150.00",
+            price: "150.00",
+            token: "valid-iyz-token-123",
+            signature: sig,
+            itemTransactions: [{ itemId: "li_1", paymentTransactionId: "ptx_1" }],
+          }),
+          { status: 200 },
+        ),
     );
 
     const [r1, r2] = await Promise.all([
-      processIyzicoCallback({ token: "valid-iyz-token-123" }, { ...h, fetchImpl: fetchMock as any }),
-      processIyzicoCallback({ token: "valid-iyz-token-123" }, { ...h, fetchImpl: fetchMock as any }),
+      processIyzicoCallback(
+        { token: "valid-iyz-token-123" },
+        { ...h, fetchImpl: fetchMock as any },
+      ),
+      processIyzicoCallback(
+        { token: "valid-iyz-token-123" },
+        { ...h, fetchImpl: fetchMock as any },
+      ),
     ]);
 
     expect(r1.status).toBe("completed");

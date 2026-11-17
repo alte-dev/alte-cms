@@ -240,8 +240,7 @@ export class PaymentSettingsService extends MedusaService({
       "http://api.localhost:9000";
     const webPublicUrl = process.env.WEB_PUBLIC_URL || "http://localhost:3100";
 
-    const anyEnabled =
-      decrypted.paytr_enabled || decrypted.iyzico_enabled || decrypted.cod_enabled;
+    const anyEnabled = decrypted.paytr_enabled || decrypted.iyzico_enabled || decrypted.cod_enabled;
 
     return {
       paytr_enabled: decrypted.paytr_enabled,
@@ -428,7 +427,11 @@ export class PaymentSettingsService extends MedusaService({
           "iyzico aktif edilmeden önce API Anahtarı (API Key) ve Gizli Anahtar (Secret Key) tanımlanmalıdır.",
         );
       }
-      if (targetIyzicoMode === "live" && input.iyzico_enabled && (!hasIyzicoApiKey || !hasIyzicoSecretKey)) {
+      if (
+        targetIyzicoMode === "live" &&
+        input.iyzico_enabled &&
+        (!hasIyzicoApiKey || !hasIyzicoSecretKey)
+      ) {
         throw new Error("iyzico anahtarları eksik.");
       }
       updateData.iyzico_enabled = input.iyzico_enabled;

@@ -111,9 +111,7 @@ describe("iyzico client & IYZWSv2 HMAC", () => {
     expect(resolveIyzicoBaseUrl("sandbox", { nodeEnv: "production" })).toBe(
       "https://sandbox-api.iyzipay.com",
     );
-    expect(resolveIyzicoBaseUrl("live", { nodeEnv: "production" })).toBe(
-      "https://api.iyzipay.com",
-    );
+    expect(resolveIyzicoBaseUrl("live", { nodeEnv: "production" })).toBe("https://api.iyzipay.com");
     expect(() =>
       resolveIyzicoBaseUrl("sandbox", {
         nodeEnv: "production",

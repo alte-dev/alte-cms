@@ -74,7 +74,8 @@ export async function processIyzicoCallback(
 
     try {
       if (deps.pgConnection) {
-        const rows = await deps.pgConnection("payment_session")
+        const rows = await deps
+          .pgConnection("payment_session")
           .whereRaw("data->>'token' = ?", [token])
           .whereNull("deleted_at")
           .select("*");
@@ -122,7 +123,8 @@ export async function processIyzicoCallback(
       let existingOrderId = sessionData.order_id as string | undefined;
       if (!existingOrderId && cartId && deps.pgConnection) {
         try {
-          const orderCartRows = await deps.pgConnection("order_cart")
+          const orderCartRows = await deps
+            .pgConnection("order_cart")
             .where({ cart_id: cartId })
             .select("order_id");
           existingOrderId = orderCartRows?.[0]?.order_id;
@@ -310,11 +312,13 @@ export async function processIyzicoCallback(
 
       if (order?.id && deps.pgConnection) {
         try {
-          const orderRows = await deps.pgConnection("order")
+          const orderRows = await deps
+            .pgConnection("order")
             .where({ id: order.id })
             .select("metadata");
           const currentMeta = orderRows?.[0]?.metadata || {};
-          await deps.pgConnection("order")
+          await deps
+            .pgConnection("order")
             .where({ id: order.id })
             .update({
               metadata: JSON.stringify({
@@ -388,7 +392,9 @@ export async function processIyzicoCallback(
         };
       }
 
-      console.error(`[iyzico Callback] Geçici hata (Sepet: ${cartId}, ref=${tokenHash}): ${errMsg}`);
+      console.error(
+        `[iyzico Callback] Geçici hata (Sepet: ${cartId}, ref=${tokenHash}): ${errMsg}`,
+      );
       return {
         httpStatus: 500,
         status: "failed",

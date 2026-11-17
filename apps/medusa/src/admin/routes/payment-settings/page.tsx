@@ -314,9 +314,7 @@ export default function PaymentSettingsPage() {
         </Alert>
       )}
 
-      {settingsWarning && (
-        <Alert variant="warning">{settingsWarning}</Alert>
-      )}
+      {settingsWarning && <Alert variant="warning">{settingsWarning}</Alert>}
 
       {saveStatus && (
         <Alert variant={saveStatus.success ? "success" : "error"}>{saveStatus.message}</Alert>
@@ -590,7 +588,8 @@ export default function PaymentSettingsPage() {
             <div>
               <Heading level="h2">Varsayılan Seçili Ödeme Yöntemi</Heading>
               <Text className="text-ui-fg-subtle text-xs">
-                Ödeme adımında müşteriye ilk seçili olarak sunulacak yöntem (kapalıysa ilk açık yöntem seçilir).
+                Ödeme adımında müşteriye ilk seçili olarak sunulacak yöntem (kapalıysa ilk açık
+                yöntem seçilir).
               </Text>
             </div>
             <div className="w-64">
@@ -665,7 +664,8 @@ export default function PaymentSettingsPage() {
                 </Select.Content>
               </Select>
               <Text className="text-ui-fg-subtle text-xs mt-1">
-                Kart bilgileri iyzico alan adında girilmediği için müşteri güveni ve uyum açısından Yönlendir modu önerilir.
+                Kart bilgileri iyzico alan adında girilmediği için müşteri güveni ve uyum açısından
+                Yönlendir modu önerilir.
               </Text>
             </div>
 
@@ -682,9 +682,7 @@ export default function PaymentSettingsPage() {
                 type="password"
                 autoComplete="new-password"
                 placeholder={
-                  hasIyzicoApiKey
-                    ? "Değiştirmek için yeni API Key girin"
-                    : "iyzico API Key"
+                  hasIyzicoApiKey ? "Değiştirmek için yeni API Key girin" : "iyzico API Key"
                 }
                 value={iyzicoApiKey}
                 onChange={(e) => setIyzicoApiKey(e.target.value)}
@@ -721,7 +719,9 @@ export default function PaymentSettingsPage() {
                 max={12}
                 value={iyzicoMaxInstallment}
                 onChange={(e) =>
-                  setIyzicoMaxInstallment(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1)))
+                  setIyzicoMaxInstallment(
+                    Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1)),
+                  )
                 }
               />
             </div>

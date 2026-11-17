@@ -260,12 +260,16 @@ export class IyzicoClient {
   private async readBoundedText(response: Response): Promise<string> {
     const contentLength = response.headers.get("content-length");
     if (contentLength && Number(contentLength) > this.maxResponseBytes) {
-      throw new NonRetryableIyzicoError("iyzico yanıtı izin verilen maksimum boyut sınırını aşıyor.");
+      throw new NonRetryableIyzicoError(
+        "iyzico yanıtı izin verilen maksimum boyut sınırını aşıyor.",
+      );
     }
 
     const buf = await response.arrayBuffer();
     if (buf.byteLength > this.maxResponseBytes) {
-      throw new NonRetryableIyzicoError("iyzico yanıtı izin verilen maksimum boyut sınırını aşıyor.");
+      throw new NonRetryableIyzicoError(
+        "iyzico yanıtı izin verilen maksimum boyut sınırını aşıyor.",
+      );
     }
 
     return new TextDecoder("utf-8").decode(buf);

@@ -69,7 +69,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     const isCardPayment =
       currentMeta.payment_provider === "paytr" ||
       currentMeta.payment_provider === "iyzico" ||
-      payments.some((p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"));
+      payments.some(
+        (p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"),
+      );
 
     const needsManualRefund = isCardPayment && Number(order.total) > 0;
 

@@ -166,9 +166,7 @@ export class IyzicoPaymentService extends AbstractPaymentProvider {
     const email = String(rawEmail).trim() || "musteri@example.test";
 
     const userIp =
-      (context as any)?.ip ||
-      (context as any)?.headers?.["x-alte-client-ip"] ||
-      "127.0.0.1";
+      (context as any)?.ip || (context as any)?.headers?.["x-alte-client-ip"] || "127.0.0.1";
 
     const detectedCartId =
       (context as any)?.cart_id ||
@@ -235,9 +233,7 @@ export class IyzicoPaymentService extends AbstractPaymentProvider {
           0,
           250,
         ),
-        zipCode: shippingAddress.postal_code
-          ? String(shippingAddress.postal_code)
-          : undefined,
+        zipCode: shippingAddress.postal_code ? String(shippingAddress.postal_code) : undefined,
       },
       billingAddress: {
         contactName: fullName,
@@ -283,8 +279,7 @@ export class IyzicoPaymentService extends AbstractPaymentProvider {
     const sessionData: IyzicoSessionData = {
       token: initRes.token,
       payment_page_url: paymentPageUrl,
-      checkout_form_content:
-        displayMode === "embedded" ? initRes.checkoutFormContent : undefined,
+      checkout_form_content: displayMode === "embedded" ? initRes.checkoutFormContent : undefined,
       display_mode: displayMode,
       conversation_id: conversationId,
       basket_id: basketId,

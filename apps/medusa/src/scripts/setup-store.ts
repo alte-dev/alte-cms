@@ -741,7 +741,9 @@ export default async function setupStore({
       await pgConn.raw(
         "CREATE INDEX IF NOT EXISTS idx_payment_session_iyzico_token ON payment_session (((data->>'token'))) WHERE deleted_at IS NULL;",
       );
-      logger.info("Ensured indexes idx_payment_session_merchant_oid & idx_payment_session_iyzico_token exist.");
+      logger.info(
+        "Ensured indexes idx_payment_session_merchant_oid & idx_payment_session_iyzico_token exist.",
+      );
     }
     const updatedRoles = await ensureExistingAdminRoles(pgConn);
     if (updatedRoles > 0) {
