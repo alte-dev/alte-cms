@@ -46,13 +46,22 @@ export function getDefaultShippingOptionId(
 }
 
 /**
- * Sorts shipping options so that "Ücretsiz Kargo" appears at the top,
- * followed by standard home delivery, followed by store pickup.
+ * Filters and sorts shipping options so that when an active "Ücretsiz Kargo"
+ * option (amount === 0) is available, paid shipping options (amount > 0) are hidden,
+ * and "Ücretsiz Kargo" appears at the top followed by store pickup.
  */
 export function sortShippingOptions(options: StoreShippingOption[]): StoreShippingOption[] {
-  if (!options || options.length <= 1) return options;
+  if (!options || options.length === 0) return options;
 
-  return [...options].sort((a, b) => {
+  const hasFreeHomeDelivery = options.some((o) => {
+    const nameLower = (o.name || "").toLowerCase();
+    return o.amount === 0 && (nameLower.includes("ücretsiz") || nameLower.includes("free"));
+  });
+
+  const visibleOptions = hasFreeHomeDelivery ? options.filter((o) => o.amount === 0) : options;
+  if (visibleOptions.length <= 1) return visibleOptions;
+
+  return [...visibleOptions].sort((a, b) => {
     const aName = (a.name || "").toLowerCase();
     const bName = (b.name || "").toLowerCase();
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { defineRouteConfig } from "@medusajs/admin-sdk";
+import { adminApiUrl } from "../../lib/api-url";
 import { CreditCard, CheckCircleSolid, ExclamationCircleSolid } from "@medusajs/icons";
 import {
   Button,
@@ -61,7 +62,7 @@ export default function PaymentSettingsPage() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/admin/payment-settings");
+      const res = await fetch(adminApiUrl("/admin/payment-settings"));
       if (!res.ok) throw new Error("Ödeme ayarları yüklenemedi.");
       const data = await res.json();
       const s = data.settings || {};
@@ -94,7 +95,7 @@ export default function PaymentSettingsPage() {
 
       // Fetch manual refunds
       try {
-        const refundRes = await fetch("/admin/payment-settings/manual-refunds");
+        const refundRes = await fetch(adminApiUrl("/admin/payment-settings/manual-refunds"));
         if (refundRes.ok) {
           const refundData = await refundRes.json();
           setManualRefunds(refundData.refunds || []);
@@ -144,7 +145,7 @@ export default function PaymentSettingsPage() {
         payload.confirm_live = confirmLive;
       }
 
-      const res = await fetch("/admin/payment-settings", {
+      const res = await fetch(adminApiUrl("/admin/payment-settings"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -172,7 +173,7 @@ export default function PaymentSettingsPage() {
     setTestResult(null);
 
     try {
-      const res = await fetch("/admin/payment-settings/test-connection", {
+      const res = await fetch(adminApiUrl("/admin/payment-settings/test-connection"), {
         method: "POST",
       });
       const data = await res.json();
