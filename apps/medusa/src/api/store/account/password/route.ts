@@ -83,7 +83,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   // Revoke all sessions, clear needs_password_upgrade, and issue a fresh session atomically in a single transaction
   const { token, expiresAt } = await pgConnection.transaction(async (trx: any) => {
-    if (customer.metadata && (customer.metadata as Record<string, unknown>).needs_password_upgrade) {
+    if (
+      customer.metadata &&
+      (customer.metadata as Record<string, unknown>).needs_password_upgrade
+    ) {
       await trx("customer")
         .where({ id: customerId })
         .update({

@@ -134,7 +134,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     await trx("customer_legacy_credential").where({ customer_id: customerId }).del();
-    if (customer.metadata && (customer.metadata as Record<string, unknown>).needs_password_upgrade) {
+    if (
+      customer.metadata &&
+      (customer.metadata as Record<string, unknown>).needs_password_upgrade
+    ) {
       await trx("customer")
         .where({ id: customerId })
         .update({

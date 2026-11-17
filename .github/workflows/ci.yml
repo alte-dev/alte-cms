@@ -281,7 +281,7 @@ jobs:
       - name: Start Medusa & Web Servers and Seed Catalog
         run: |
           mkdir -p verify-logs
-          RUNNER_TRACKING_ID="" nohup env NODE_ENV=development REGISTER_IP_LIMIT_MAX=50 LOGIN_IP_LIMIT_MAX=100 pnpm --filter @alte/medusa start > verify-logs/medusa-server.log 2>&1 </dev/null &
+          RUNNER_TRACKING_ID="" nohup env NODE_ENV=development REGISTER_IP_LIMIT_MAX=50 LOGIN_IP_LIMIT_MAX=100 RESET_IP_LIMIT_MAX=30 pnpm --filter @alte/medusa start > verify-logs/medusa-server.log 2>&1 </dev/null &
           MEDUSA_PID=$!
           echo "Waiting for Medusa on http://127.0.0.1:9000/health (PID: $MEDUSA_PID)..."
           MEDUSA_READY=0
