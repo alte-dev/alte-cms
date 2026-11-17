@@ -1563,6 +1563,14 @@ async function run() {
       body: JSON.stringify({ iyzico_enabled: false }),
     });
     const disabledCheckCart = await createAndInitIyzicoCart();
+    const disabledShipOpts = (await (
+      await fetch(
+        `${MEDUSA_URL}/store/shipping-options?cart_id=${encodeURIComponent(disabledCheckCart.cartId)}`,
+        { headers: { "x-publishable-api-key": PUBLISHABLE_KEY } },
+      )
+    ).json()) as any;
+    const disabledShipId = disabledShipOpts.shipping_options?.[0]?.id || "so_disabled_test";
+
     const disabledCheckoutRes = await fetch(`${STOREFRONT_URL}/api/checkout`, {
       method: "POST",
       headers: {
@@ -1583,7 +1591,7 @@ async function run() {
         },
         sameAsDelivery: true,
         invoiceType: "individual",
-        shippingOptionId: "so_disabled_test",
+        shippingOptionId: disabledShipId,
         paymentMethod: "iyzico",
         distanceSalesContract: true,
         kvkkConsent: true,
