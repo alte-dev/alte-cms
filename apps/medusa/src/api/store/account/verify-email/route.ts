@@ -11,6 +11,7 @@ import {
   findRegisteredCustomerByEmail,
   getPgConnection,
   getTrustedClientIp,
+  issueCustomerSession,
   otpVerifyEmailGuard,
   tokenConfirmIpLimiter,
 } from "../_shared";
@@ -116,6 +117,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     .first();
 
   let linkedOrders = 0;
+  let sessionToken: string | undefined;
+  let sessionExpiresAt: string | undefined;
   if (customer?.email) {
     const linkResult = await linkGuestOrdersForVerifiedCustomer(
       pgConnection,
@@ -123,11 +126,28 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       customer.email,
     );
     linkedOrders = linkResult.linkedCount;
+
+    const provider = await pgConnection("provider_identity")
+      .where({ entity_id: normalizeEmail(customer.email), provider: "emailpass" })
+      .select("auth_identity_id")
+      .first()
+      .catch(() => null);
+
+    if (provider?.auth_identity_id) {
+      const issued = await issueCustomerSession(req, customerId, provider.auth_identity_id).catch(
+        () => null,
+      );
+      if (issued) {
+        sessionToken = issued.token;
+        sessionExpiresAt = issued.expiresAt.toISOString();
+      }
+    }
   }
 
   return res.status(200).json({
     ok: true,
     linked_orders: linkedOrders,
+    ...(sessionToken ? { token: sessionToken, expires_at: sessionExpiresAt } : {}),
     message: "E-posta adresiniz başarıyla doğrulandı.",
   });
 };

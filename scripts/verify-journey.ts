@@ -510,9 +510,18 @@ async function main() {
         await otpInputs.nth(i).fill(verifyOtpA[i] || "");
       }
       await pageA.getByRole("button", { name: "Doğrula" }).click();
-      await pageA.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
-      const verifyStatusText = await pageA.locator("[role='status']").innerText();
-      const verifiedInUi = verifyStatusText.indexOf("doğrulandı") !== -1;
+      await pageA.waitForURL("**/hesap", { timeout: 15000 }).catch(() => null);
+      const bodyTextAfterVerify = await pageA.locator("main").innerText();
+      const verifiedInUi =
+        pageA.url().indexOf("/hesap") !== -1 || bodyTextAfterVerify.indexOf("doğrulandı") !== -1;
+
+      if (pageA.url().indexOf("/hesap") !== -1 && pageA.url().indexOf("/hesap/dogrula") === -1) {
+        const logoutBtn = pageA.locator("button:has-text('Çıkış Yap')");
+        if (await logoutBtn.isVisible().catch(() => false)) {
+          await logoutBtn.click();
+          await pageA.waitForURL("**/hesap/giris", { timeout: 15000 });
+        }
+      }
 
       const reuseRes = await fetch(`${WEB_URL}/api/account/verify-email`, {
         method: "POST",

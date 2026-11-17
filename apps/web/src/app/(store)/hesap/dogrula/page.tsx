@@ -1,4 +1,5 @@
 import { VerifyEmailClient } from "../../../../components/account/VerifyEmailClient";
+import { getServerCustomer } from "../../../../lib/medusa/account";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,9 @@ export default async function VerifyEmailPage({
   searchParams: Promise<{ email?: string }>;
 }) {
   const params = await searchParams;
-  const email = typeof params.email === "string" ? params.email : "";
+  const queryEmail = typeof params.email === "string" ? params.email : "";
+  const customer = queryEmail ? null : await getServerCustomer().catch(() => null);
+  const email = queryEmail || customer?.email || "";
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">

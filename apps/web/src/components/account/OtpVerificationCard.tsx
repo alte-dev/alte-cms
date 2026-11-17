@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function OtpVerificationCard({
   initialEmail = "",
@@ -10,6 +11,7 @@ export function OtpVerificationCard({
   initialEmail?: string;
   initialMessage?: string;
 }) {
+  const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -90,6 +92,10 @@ export function OtpVerificationCard({
       }
       setStatus("success");
       setMessage(data.message || "E-posta adresiniz başarıyla doğrulandı.");
+      if (data.authenticated) {
+        router.push("/hesap");
+        router.refresh();
+      }
     } catch {
       setStatus("error");
       setMessage("Doğrulama sırasında bir bağlantı hatası oluştu.");

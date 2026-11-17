@@ -42,6 +42,10 @@ export function AccountShell({
     setResendMsg(null);
     const res = await fetch("/api/account/verify-email/resend", { method: "POST" });
     const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      router.push("/hesap/dogrula");
+      return;
+    }
     setResendMsg(data.message || data.error || "İstek işlendi.");
   }
 
@@ -71,21 +75,13 @@ export function AccountShell({
             E-posta adresiniz henüz doğrulanmadı. Eski misafir siparişlerinizin hesabınıza
             bağlanması için e-postanızı doğrulayın.
           </span>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              className="px-3 py-1.5 rounded bg-amber-900 text-white text-xs font-medium hover:bg-amber-800"
-            >
-              Doğrulama Kodu Gönder
-            </button>
-            <Link
-              href="/hesap/dogrula"
-              className="px-3 py-1.5 rounded border border-amber-800 text-amber-900 text-xs font-medium hover:bg-amber-100"
-            >
-              Kodu Gir
-            </Link>
-          </div>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            className="shrink-0 px-3 py-1.5 rounded bg-amber-900 text-white text-xs font-medium hover:bg-amber-800"
+          >
+            Doğrulama Kodu Gönder
+          </button>
         </div>
       )}
 

@@ -701,14 +701,6 @@ export async function sendAccountEmail(
   let text = "";
 
   if (input.template === "account.verify_email") {
-    const otpDigitsHtml = safeOtp
-      .split("")
-      .map(
-        (d) =>
-          `<td style="padding:0 4px;"><div style="width:40px;height:48px;line-height:48px;text-align:center;font-size:22px;font-weight:700;color:#1c1917;background:#fafaf9;border:1px solid #d6d3d1;border-radius:8px;font-family:monospace;">${d}</div></td>`,
-      )
-      .join("");
-
     subject = `${storeName} — E-posta Doğrulama Kodunuz`;
     html = `
       <div style="background:#f5f5f4;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1c1917;">
@@ -720,9 +712,10 @@ export async function sendAccountEmail(
           <div style="padding:28px;">
             <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#44403c;">Merhaba${safeName ? ` <strong>${safeName}</strong>` : ""},</p>
             <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#44403c;">Kaydınızı tamamlamak için aşağıdaki 6 haneli tek kullanımlık doğrulama kodunu kullanabilirsiniz:</p>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto 20px;">
-              <tr>${otpDigitsHtml}</tr>
-            </table>
+            <div style="text-align:center;margin:0 0 10px;">
+              <div style="display:inline-block;padding:14px 26px;background:#fafaf9;border:1px solid #d6d3d1;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:8px;color:#1c1917;user-select:all;-webkit-user-select:all;">${safeOtp}</div>
+            </div>
+            <p style="margin:0 0 20px;font-size:11px;color:#78716c;text-align:center;">Kodu kopyalamak için üzerine çift tıklayabilirsiniz.</p>
             <p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#57534e;text-align:center;">Bu kod <strong>15 dakika</strong> boyunca geçerlidir.</p>
             ${
               safeUrl

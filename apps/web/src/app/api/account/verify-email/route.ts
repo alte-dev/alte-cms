@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { medusaAccountFetch } from "../../../../lib/medusa/account";
+import { setCustomerSessionToken } from "../../../../lib/medusa/cookies";
 import { extractClientIp, requireAccountOrigin } from "../../../../lib/security/origin-guard";
 import { handleAccountApiError } from "../_utils";
 
@@ -26,16 +27,28 @@ export async function POST(req: Request) {
       );
     }
 
-    const data = await medusaAccountFetch<{ ok: boolean; linked_orders: number; message: string }>(
-      "/store/account/verify-email",
-      {
-        method: "POST",
-        clientIp: extractClientIp(req),
-        body: JSON.stringify({ email: parsed.data.email, code: parsed.data.code }),
-      },
-    );
+    const data = await medusaAccountFetch<{
+      ok: boolean;
+      linked_orders: number;
+      token?: string;
+      expires_at?: string;
+      message: string;
+    }>("/store/account/verify-email", {
+      method: "POST",
+      clientIp: extractClientIp(req),
+      body: JSON.stringify({ email: parsed.data.email, code: parsed.data.code }),
+    });
 
-    return NextResponse.json(data);
+    if (data.token) {
+      await setCustomerSessionToken(data.token);
+    }
+
+    return NextResponse.json({
+      ok: data.ok,
+      linked_orders: data.linked_orders,
+      authenticated: Boolean(data.token),
+      message: data.message,
+    });
   } catch (err) {
     return handleAccountApiError(err, "E-posta doğrulanamadı.");
   }
