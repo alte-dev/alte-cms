@@ -76,6 +76,21 @@ pnpm --filter @alte/medusa start
 pnpm --filter @alte/web start
 ```
 
+### WooCommerce Müşteri İçe Aktarma (Faz 10.1)
+
+```bash
+# Kuru çalıştırma (hiçbir şey yazmaz, maskeli rapor üretir):
+pnpm migrate:customers -- migration-data/customers.csv
+
+# Gerçek yazma (yalnızca kayıtlı kullanıcılar):
+pnpm migrate:customers -- migration-data/customers.csv --apply --confirm-database medusa_db
+
+# Misafir müşteriler dahil:
+pnpm migrate:customers -- migration-data/customers.csv --apply --confirm-database medusa_db --include-guests
+```
+
+Üretim ortamında (`NODE_ENV=production`) ayrıca `--allow-production` bayrağı zorunludur. Ayrıntılar için `docs/MIGRATION-WOOCOMMERCE.md` dosyasına bakın.
+
 ---
 
 ## 2. Şema Değişikliği ve Yeni Migrasyon Oluşturma (Geliştirici Rehberi)

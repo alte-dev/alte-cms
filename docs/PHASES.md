@@ -60,11 +60,10 @@ Her faz kendi PR'ı ve kendi `verify-*` betiğiyle gelir. **Güncel yürütme s�
 
 ### Faz 10 — WooCommerce geçişi ve katalog araçları
 
-- `docs/MIGRATION-WOOCOMMERCE.md` esas alınarak ürün/kategori/müşteri/sipariş içe aktarma betikleri (CSV), kuru çalıştırma modu, hata raporu.
-- Müşteri şifreleri: WP hash'i şifreli alanda saklanır, ilk girişte doğrulanıp Medusa biçimine çevrilir (tembel taşıma). Hash'ler repoya, loga, teste girmez, testlerde sahte hash kullanılır. Gerçek örnek hash biçimi insandan (yalnızca ilk karakterler) teyit edilir. Hiç girmeyenler için şifremi unuttum akışı yedektir.
-- Eski siparişler geçmiş kayıt olarak içe aktarılır (ödeme/kargo/stok/e-posta tetiklenmez), tutar ve KDV birebir korunur.
-- Toplu ürün içe/dışa aktarma, varyant görselleri, düşük stok uyarı e-postası.
-- 301 yönlendirme listesi eski URL'ler için (Payload `redirects`).
+- **10.1 (Tamamlandı — PR `phase-10-1-customer-migration`):** Üretim parola doğrulayıcıları (`wp-bcrypt-sha384`, `bcrypt`, `phpass`, `md5`), ortak akış tabanlı CSV içe aktarma çerçevesi (`scripts/migration/`), `pnpm migrate:customers` (kuru çalıştırma, `--apply --confirm-database`, `--include-guests`, maskeli rapor, 0 e-posta), zayıf parola uyarısı (`needs_password_upgrade`), `verify:migration`.
+- **10.2 (Sıradaki):** Ürün/kategori/görsel CSV içe aktarma + eski URL'ler için 301 yönlendirmeleri (Payload `redirects`).
+- **10.3:** Geçmiş siparişlerin içe aktarılması (ödeme/kargo/stok/e-posta tetiklenmez, tutar ve KDV birebir korunur).
+- **10.4:** Toplu ürün içe/dışa aktarma, varyant görselleri, düşük stok uyarı e-postası.
 
 ### Faz 13 — Güvenlik sertleştirme
 
