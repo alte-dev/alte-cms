@@ -1,10 +1,17 @@
 import { generateResetPasswordTokenWorkflow } from "@medusajs/core-flows";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { AuthWorkflowEvents, ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { hashEmailLookup, normalizeEmail } from "../../../../../modules/customer-account/helpers";
 import { waitTimingFloor } from "../../../../../utils/timing-floor";
-import { getTrustedClientIp, resetEmailLimiter, resetIpLimiter } from "../../_shared";
+import {
+  findRegisteredCustomerByEmail,
+  getPgConnection,
+  getTrustedClientIp,
+  resetEmailLimiter,
+  resetIpLimiter,
+  signResetJwtForMigratedCustomer,
+} from "../../_shared";
 
 const resetRequestSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -54,6 +61,31 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     },
     throwOnError: false,
   });
+
+  // Fallback for migrated WooCommerce customers who have has_account=true but no emailpass provider yet
+  const pgConnection = getPgConnection(req);
+  const existingProvider = await pgConnection("provider_identity")
+    .where({ entity_id: email, provider: "emailpass" })
+    .first();
+
+  if (!existingProvider) {
+    const customer = await findRegisteredCustomerByEmail(pgConnection, email);
+    if (customer?.id) {
+      const jwtSecret = String(http.jwtSecret || process.env.JWT_SECRET || "");
+      if (jwtSecret) {
+        const token = signResetJwtForMigratedCustomer(email, jwtSecret);
+        const eventBus = req.scope.resolve(Modules.EVENT_BUS);
+        await eventBus.emit({
+          name: AuthWorkflowEvents.PASSWORD_RESET,
+          data: {
+            entity_id: email,
+            actor_type: "customer",
+            token,
+          },
+        });
+      }
+    }
+  }
 
   await waitTimingFloor(startMs);
   return res.status(202).json(UNIFORM_RESET_RESPONSE);

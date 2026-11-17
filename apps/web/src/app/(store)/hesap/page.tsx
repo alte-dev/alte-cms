@@ -23,7 +23,11 @@ export default async function AccountDashboardPage() {
   const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ") || "Müşteri";
 
   return (
-    <AccountShell customerName={fullName} emailVerified={customer.email_verified}>
+    <AccountShell
+      customerName={fullName}
+      emailVerified={customer.email_verified}
+      needsPasswordUpgrade={Boolean(customer.needs_password_upgrade)}
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="rounded-lg border border-stone-200 bg-white p-5">
           <h2 className="text-sm font-medium text-stone-500">Toplam Sipariş</h2>

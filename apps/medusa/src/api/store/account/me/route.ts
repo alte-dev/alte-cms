@@ -11,7 +11,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const customer = await pgConnection("customer")
     .where({ id: customerId, has_account: true })
     .whereNull("deleted_at")
-    .select("id", "email", "first_name", "last_name", "phone")
+    .select("id", "email", "first_name", "last_name", "phone", "metadata")
     .first();
 
   if (!customer) {
@@ -32,6 +32,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       phone: customer.phone || "",
       email_verified: Boolean(state?.email_verified_at),
       email_verified_at: state?.email_verified_at || null,
+      needs_password_upgrade: Boolean(customer.metadata?.needs_password_upgrade),
     },
   });
 };

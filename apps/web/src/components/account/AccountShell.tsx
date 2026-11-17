@@ -16,10 +16,12 @@ const NAV_LINKS = [
 export function AccountShell({
   customerName,
   emailVerified,
+  needsPasswordUpgrade = false,
   children,
 }: {
   customerName: string;
   emailVerified: boolean;
+  needsPasswordUpgrade?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -78,6 +80,24 @@ export function AccountShell({
           >
             Doğrulama Bağlantısı Gönder
           </button>
+        </div>
+      )}
+
+      {needsPasswordUpgrade && (
+        <div
+          role="status"
+          className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
+          <span>
+            Güvenliğiniz için taşınan parolanızı yeni parola kurallarımıza uygun şekilde
+            güncellemenizi öneririz.
+          </span>
+          <Link
+            href="/hesap/sifre"
+            className="shrink-0 px-3 py-1.5 rounded bg-amber-900 text-white text-xs font-medium hover:bg-amber-800"
+          >
+            Parolamı Güncelle
+          </Link>
         </div>
       )}
 

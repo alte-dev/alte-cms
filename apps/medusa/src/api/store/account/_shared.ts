@@ -188,3 +188,44 @@ export async function revokeAllCustomerSessions(
     .whereNull("revoked_at")
     .update({ revoked_at: now, updated_at: now });
 }
+
+export function markNeedsPasswordUpgradeMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  return {
+    ...(metadata && typeof metadata === "object" ? metadata : {}),
+    needs_password_upgrade: true,
+  };
+}
+
+export function clearNeedsPasswordUpgradeMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const next = { ...(metadata && typeof metadata === "object" ? metadata : {}) };
+  delete next.needs_password_upgrade;
+  return next;
+}
+
+export function signResetJwtForMigratedCustomer(
+  email: string,
+  jwtSecret: string,
+  ttlSeconds = 15 * 60,
+): string {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({
+      entity_id: normalizeEmail(email),
+      actor_type: "customer",
+      provider: "emailpass",
+      purpose: "reset",
+      iat: nowSec,
+      exp: nowSec + ttlSeconds,
+    }),
+  ).toString("base64url");
+  const sig = crypto
+    .createHmac("sha256", jwtSecret)
+    .update(`${header}.${payload}`)
+    .digest("base64url");
+  return `${header}.${payload}.${sig}`;
+}
