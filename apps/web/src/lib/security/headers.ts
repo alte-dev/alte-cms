@@ -18,12 +18,12 @@ export function buildStorefrontCsp(isProd: boolean): string {
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'self'",
-    `script-src 'self' 'unsafe-inline'${devEval} https://www.paytr.com https://sandbox-static.iyzipay.com https://static.iyzipay.com`,
+    `script-src 'self' 'unsafe-inline'${devEval} https://www.paytr.com`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https:${devImg}`,
     "font-src 'self' data:",
     "frame-src 'self' https://www.paytr.com https://sandbox-cpp.iyzipay.com https://cpp.iyzipay.com",
-    `connect-src 'self' https://www.paytr.com https://sandbox-cpp.iyzipay.com https://cpp.iyzipay.com https://sandbox-static.iyzipay.com https://static.iyzipay.com${devConnect}`,
+    `connect-src 'self' https://www.paytr.com${devConnect}`,
     "form-action 'self' https://www.paytr.com https://sandbox-cpp.iyzipay.com https://cpp.iyzipay.com",
   ].join("; ");
 }

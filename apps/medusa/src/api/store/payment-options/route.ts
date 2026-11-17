@@ -67,6 +67,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
   res.status(200).json({
     iyzico: {
       enabled: iyzicoEnabled,
+      mode: settings?.iyzico_mode === "live" ? "live" : "sandbox",
       display_mode: settings?.iyzico_display_mode === "embedded" ? "embedded" : "redirect",
     },
     paytr: {

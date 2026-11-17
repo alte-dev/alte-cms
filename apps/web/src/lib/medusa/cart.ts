@@ -270,6 +270,7 @@ export interface CompleteCartResult {
 export interface PaymentOptionsResult {
   iyzico: {
     enabled: boolean;
+    mode?: "sandbox" | "live";
     display_mode: "redirect" | "embedded";
   };
   paytr: {

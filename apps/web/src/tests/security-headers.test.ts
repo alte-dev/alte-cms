@@ -18,7 +18,8 @@ describe("Security Headers & CSP", () => {
     expect(csp).toContain(
       "frame-src 'self' https://www.paytr.com https://sandbox-cpp.iyzipay.com https://cpp.iyzipay.com",
     );
-    expect(csp).toContain("https://sandbox-static.iyzipay.com https://static.iyzipay.com");
+    expect(csp).not.toContain("sandbox-static.iyzipay.com");
+    expect(csp).not.toContain("static.iyzipay.com");
     expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).not.toContain("localhost");
     expect(csp).not.toContain("127.0.0.1");

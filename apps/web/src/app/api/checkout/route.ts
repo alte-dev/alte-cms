@@ -313,7 +313,11 @@ export async function POST(req: Request) {
       }
 
       const iyzicoData = await initiateIyzicoPayment(cart.id);
-      if (iyzicoData.paymentPageUrl && !isAllowedIyzicoRedirectUrl(iyzicoData.paymentPageUrl)) {
+      const iyzicoMode = paymentOptions.iyzico?.mode === "live" ? "live" : "sandbox";
+      if (
+        iyzicoData.paymentPageUrl &&
+        !isAllowedIyzicoRedirectUrl(iyzicoData.paymentPageUrl, iyzicoMode)
+      ) {
         return NextResponse.json(
           {
             success: false,
