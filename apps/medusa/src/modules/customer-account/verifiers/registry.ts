@@ -1,4 +1,8 @@
+import { bcryptVerifier } from "./bcrypt";
+import { md5Verifier } from "./md5";
+import { phpassVerifier } from "./phpass";
 import type { LegacyPasswordVerifier } from "./types";
+import { wpBcryptSha384Verifier } from "./wp-bcrypt-sha384";
 
 const TEST_ALGORITHMS = new Set(["fake-test", "test"]);
 
@@ -50,3 +54,7 @@ export class LegacyVerifierRegistry {
 }
 
 export const defaultLegacyVerifierRegistry = new LegacyVerifierRegistry();
+defaultLegacyVerifierRegistry.register(wpBcryptSha384Verifier);
+defaultLegacyVerifierRegistry.register(bcryptVerifier);
+defaultLegacyVerifierRegistry.register(phpassVerifier);
+defaultLegacyVerifierRegistry.register(md5Verifier);
