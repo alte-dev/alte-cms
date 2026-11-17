@@ -1453,16 +1453,18 @@ async function run() {
       body: new URLSearchParams({ token: iyzFail.token }).toString(),
       redirect: "manual",
     });
-    const failStatusRes = await fetch(
+    const iyzFailStatusRes = await fetch(
       `${MEDUSA_URL}/store/checkout-status?cart_id=${encodeURIComponent(iyzFail.cartId)}`,
       { headers: { "x-publishable-api-key": PUBLISHABLE_KEY } },
     );
-    const failStatusJson = (await failStatusRes.json()) as any;
+    const iyzFailStatusJson = (await iyzFailStatusRes.json()) as any;
     recordStep(
       20,
       "iyzico Başarısız Ödemede Sipariş Oluşmaz",
-      cbFailRes.status === 303 && failStatusJson.status !== "completed" && !failStatusJson.order_id,
-      `Başarısız ödeme reddedildi (status=${failStatusJson.status}).`,
+      cbFailRes.status === 303 &&
+        iyzFailStatusJson.status !== "completed" &&
+        !iyzFailStatusJson.order_id,
+      `Başarısız ödeme reddedildi (status=${iyzFailStatusJson.status}).`,
     );
 
     // ----------------------------------------------------
