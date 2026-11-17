@@ -8,6 +8,7 @@ import {
   normalizeEmail,
 } from "../../../../modules/customer-account/helpers";
 import { defaultLegacyVerifierRegistry } from "../../../../modules/customer-account/verifiers/registry";
+import { validateCustomerPassword } from "../../../../utils/password-policy";
 import { dummyScryptWork, waitTimingFloor } from "../../../../utils/timing-floor";
 import {
   findRegisteredCustomerByEmail,
@@ -18,6 +19,7 @@ import {
   loginEmailGuard,
   loginIpEmailGuard,
   loginIpLimiter,
+  markNeedsPasswordUpgradeMetadata,
 } from "../_shared";
 
 const loginSchema = z.object({
@@ -154,6 +156,13 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
               .where({ id: legacyRow.id })
               .del();
             if (deletedCount > 0) {
+              const pwPolicy = validateCustomerPassword(password, email);
+              if (!pwPolicy.valid) {
+                const updatedMeta = markNeedsPasswordUpgradeMetadata(customer.metadata);
+                await pgConnection("customer")
+                  .where({ id: customer.id })
+                  .update({ metadata: JSON.stringify(updatedMeta), updated_at: new Date() });
+              }
               authenticatedCustomerId = customer.id;
               authenticatedAuthIdentityId = authIdentityId;
             }

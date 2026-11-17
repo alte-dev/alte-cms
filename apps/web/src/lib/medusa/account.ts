@@ -9,6 +9,7 @@ export interface CustomerProfile {
   phone: string;
   email_verified: boolean;
   email_verified_at: string | null;
+  needs_password_upgrade?: boolean;
 }
 
 export interface CustomerAddress {

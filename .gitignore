@@ -73,3 +73,7 @@ temp/
 docs/measurements/*.csv
 docs/measurements/seed-catalog-*.json
 
+# WooCommerce Migration Data & Reports (sensitive PII/hashes, never commit)
+migration-data/
+
+

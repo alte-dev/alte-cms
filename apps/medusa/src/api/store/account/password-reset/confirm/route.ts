@@ -5,6 +5,7 @@ import { z } from "zod";
 import { hashToken, normalizeEmail } from "../../../../../modules/customer-account/helpers";
 import { verifyJwtHs256 } from "../../../../middleware-guards";
 import {
+  clearNeedsPasswordUpgradeMetadata,
   getPgConnection,
   getTrustedClientIp,
   revokeAllCustomerSessions,
@@ -76,7 +77,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const customer = await pgConnection("customer")
     .where({ id: customerId, has_account: true })
     .whereNull("deleted_at")
-    .select("id", "email")
+    .select("id", "email", "metadata")
     .first();
 
   if (!customer?.email || normalizeEmail(customer.email) !== emailFromToken) {
@@ -133,6 +134,17 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     await trx("customer_legacy_credential").where({ customer_id: customerId }).del();
+    if (
+      customer.metadata &&
+      (customer.metadata as Record<string, unknown>).needs_password_upgrade
+    ) {
+      await trx("customer")
+        .where({ id: customerId })
+        .update({
+          metadata: JSON.stringify(clearNeedsPasswordUpgradeMetadata(customer.metadata)),
+          updated_at: now,
+        });
+    }
     await trx("customer_password_reset")
       .where({ customer_id: customerId })
       .whereNull("used_at")

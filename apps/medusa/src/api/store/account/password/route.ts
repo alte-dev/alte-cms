@@ -4,6 +4,7 @@ import { validateCustomerPassword } from "../../../../utils/password-policy";
 import { z } from "zod";
 import { normalizeEmail } from "../../../../modules/customer-account/helpers";
 import {
+  clearNeedsPasswordUpgradeMetadata,
   getCustomerIdFromRequest,
   getPgConnection,
   issueCustomerSession,
@@ -33,7 +34,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const customer = await pgConnection("customer")
     .where({ id: customerId, has_account: true })
     .whereNull("deleted_at")
-    .select("id", "email")
+    .select("id", "email", "metadata")
     .first();
 
   if (!customer?.email) {
@@ -80,8 +81,19 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json({ error: "Parola güncellenemedi." });
   }
 
-  // Revoke all sessions and issue a fresh session atomically in a single transaction
+  // Revoke all sessions, clear needs_password_upgrade, and issue a fresh session atomically in a single transaction
   const { token, expiresAt } = await pgConnection.transaction(async (trx: any) => {
+    if (
+      customer.metadata &&
+      (customer.metadata as Record<string, unknown>).needs_password_upgrade
+    ) {
+      await trx("customer")
+        .where({ id: customerId })
+        .update({
+          metadata: JSON.stringify(clearNeedsPasswordUpgradeMetadata(customer.metadata)),
+          updated_at: new Date(),
+        });
+    }
     await revokeAllCustomerSessions(trx, customerId);
     return issueCustomerSession(req, customerId, verifyCurrent.authIdentity!.id, trx);
   });

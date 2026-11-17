@@ -3,20 +3,27 @@ import Link from "next/link";
 import { ShoppingBag, User } from "lucide-react";
 import { getCategories } from "../lib/medusa/products";
 import { getCart } from "../lib/medusa/cart";
+import { getServerCustomer } from "../lib/medusa/account";
 import { getCartId } from "../lib/medusa/cookies";
 import { getNavigation, getSiteSettings } from "../lib/payload/content";
 import { safeHref } from "../lib/safe-href";
+import { AccountMenuButton } from "./account/AccountMenuButton";
 import { MobileMenu, type MenuItem } from "./mobile-menu";
 import { DesktopNavLinks } from "./desktop-nav-links";
 import { SearchBar } from "./search/search-bar";
 
 export async function Navbar() {
-  const [categories, cartId, navigationGlobal, settingsGlobal] = await Promise.all([
+  const [categories, cartId, navigationGlobal, settingsGlobal, customer] = await Promise.all([
     getCategories().catch(() => []),
     getCartId().catch(() => null),
     getNavigation().catch(() => null),
     getSiteSettings().catch(() => null),
+    getServerCustomer().catch(() => null),
   ]);
+
+  const customerName = customer
+    ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || customer.email
+    : null;
 
   const cart = cartId ? await getCart(cartId).catch(() => null) : null;
   const itemCount = cart?.items?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
@@ -122,14 +129,7 @@ export async function Navbar() {
           </div>
 
           <div className="justify-self-end flex items-center gap-4">
-            <Link
-              href="/hesap"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
-              aria-label="Hesabım"
-            >
-              <User className="w-4 h-4 text-stone-700" />
-              <span>Hesabım</span>
-            </Link>
+            <AccountMenuButton customerName={customerName} />
 
             <Link
               href="/sepet"
@@ -182,9 +182,9 @@ export async function Navbar() {
 
           <div className="flex items-center gap-1">
             <Link
-              href="/hesap"
+              href={customer ? "/hesap" : "/hesap/giris"}
               className="p-2 text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
-              aria-label="Hesabım"
+              aria-label={customer ? "Hesabım" : "Giriş Yap"}
             >
               <User className="w-5 h-5" />
             </Link>
