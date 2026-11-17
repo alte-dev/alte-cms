@@ -72,7 +72,7 @@ export async function POST(req: Request): Promise<Response> {
     process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ||
     "http://127.0.0.1:9000"
   ).replace(/\/+$/, "");
-  const internalSecret = process.env.MEDUSA_INTERNAL_SECRET || "";
+  const internalSecret = process.env.INTERNAL_API_SECRET || "";
   const webBaseUrl = getWebBaseUrl(req);
 
   try {

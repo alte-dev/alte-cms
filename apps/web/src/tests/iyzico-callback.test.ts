@@ -7,7 +7,7 @@ import { isAllowedIyzicoRedirectUrl } from "../lib/security/iyzico";
 
 describe("iyzico web callback & redirect URL validation", () => {
   beforeEach(() => {
-    process.env.MEDUSA_INTERNAL_SECRET = "test-internal-secret";
+    process.env.INTERNAL_API_SECRET = "test-internal-secret";
     process.env.MEDUSA_BACKEND_URL = "http://127.0.0.1:9000";
     process.env.NEXT_PUBLIC_SERVER_URL = "http://localhost:3100";
   });
