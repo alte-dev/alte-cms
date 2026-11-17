@@ -281,7 +281,12 @@ export async function getOrderPayloadById(
       shippingTRY: Number(order.shipping_total || 0),
       codFeeTRY: meta.cod_fee ? Number(meta.cod_fee) : undefined,
       totalTRY: Number(order.total || 0),
-      paymentMethod: meta.payment_provider === "cod" ? "Kapıda Ödeme" : "Kredi Kartı (PayTR)",
+      paymentMethod:
+        meta.payment_provider === "cod"
+          ? "Kapıda Ödeme"
+          : meta.payment_provider === "iyzico"
+            ? "Kredi Kartı (iyzico)"
+            : "Kredi Kartı (PayTR)",
       shippingAddress: {
         address1: address.address_1 || "",
         city: address.city || "",
