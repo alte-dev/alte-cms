@@ -134,7 +134,7 @@ export function startMockIyzicoServer(opts: { port: number; apiKey: string; secr
           status: "success",
           conversationId,
           token,
-          paymentPageUrl: `http://127.0.0.1:${opts.port}/checkout/${token}`,
+          paymentPageUrl: `https://sandbox-cpp.iyzipay.com/checkout/${token}`,
           checkoutFormContent: `<div id="iyzipay-checkout-form">mock-${token}</div>`,
           signature,
         }),
