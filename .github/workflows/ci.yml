@@ -301,7 +301,7 @@ jobs:
           echo "Medusa is healthy. Seeding fake catalog..."
           pnpm seed:fake -- --count 40
 
-          RUNNER_TRACKING_ID="" nohup env CHECKOUT_IP_LIMIT_MAX=100 IYZICO_CALLBACK_LIMIT_MAX=100 pnpm --filter @alte/web start > verify-logs/web-server.log 2>&1 </dev/null &
+          RUNNER_TRACKING_ID="" nohup pnpm --filter @alte/web start > verify-logs/web-server.log 2>&1 </dev/null &
           WEB_PID=$!
           echo "Waiting for Web server on http://localhost:3100/ (PID: $WEB_PID)..."
           WEB_READY=0
