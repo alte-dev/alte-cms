@@ -53,7 +53,16 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
 
       const orphanRows = await pgConnection("orphan_payment")
         .where({ status: "needs_manual_refund" })
-        .select("id", "cart_id", "amount", "currency", "status", "reason", "iyzico_payment_id", "created_at")
+        .select(
+          "id",
+          "cart_id",
+          "amount",
+          "currency",
+          "status",
+          "reason",
+          "iyzico_payment_id",
+          "created_at",
+        )
         .orderBy("created_at", "desc");
 
       for (const orp of orphanRows) {

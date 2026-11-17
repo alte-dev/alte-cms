@@ -112,7 +112,8 @@ export async function processIyzicoCallback(
       let deletedSession: any = null;
       try {
         if (deps.pgConnection) {
-          const delRows = await deps.pgConnection("payment_session")
+          const delRows = await deps
+            .pgConnection("payment_session")
             .whereRaw("data->>'token' = ?", [token])
             .orderBy("created_at", "desc")
             .limit(1);
@@ -160,15 +161,15 @@ export async function processIyzicoCallback(
         ) {
           const paidAmount = Number(orphanRetrieve.paidPrice || 0);
           const paymentIdStr = orphanRetrieve.paymentId ? String(orphanRetrieve.paymentId) : null;
-          const orphanCartId =
-            deletedSession?.data?.cart_id || orphanRetrieve.basketId || null;
+          const orphanCartId = deletedSession?.data?.cart_id || orphanRetrieve.basketId || null;
 
           console.error(
             `[CRITICAL ALERT] Ödeme iyzico tarafından tahsil edildi fakat aktif ödeme oturumu bulunamadı (sepet değiştirilmiş olabilir)! (orphan_payment, ref=${tokenHash}, payment_id=${paymentIdStr || "yok"}, amount=${paidAmount})`,
           );
 
           if (deps.pgConnection) {
-            await deps.pgConnection("orphan_payment")
+            await deps
+              .pgConnection("orphan_payment")
               .insert({
                 id: `orp_${tokenHash}`,
                 token_hash: tokenHash,

@@ -320,25 +320,35 @@ describe("processIyzicoCallback", () => {
   it("records orphan_payment once when session was deleted (cart mutated) and iyzico succeeded, but ignores fake tokens", async () => {
     const h = makeHarness({}, { deletedSession: true });
     const sig = calculateIyzicoHmacSha256(
-      ["SUCCESS", "iyz_pay_orphan", "TRY", "cart_1", "conv_1", "189.9", "189.9", "valid-iyz-token-123"],
+      [
+        "SUCCESS",
+        "iyz_pay_orphan",
+        "TRY",
+        "cart_1",
+        "conv_1",
+        "189.9",
+        "189.9",
+        "valid-iyz-token-123",
+      ],
       "sandbox-secret-test",
     );
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(
-        JSON.stringify({
-          status: "success",
-          paymentStatus: "SUCCESS",
-          paymentId: "iyz_pay_orphan",
-          currency: "TRY",
-          basketId: "cart_1",
-          conversationId: "conv_1",
-          paidPrice: "189.90",
-          price: "189.90",
-          token: "valid-iyz-token-123",
-          signature: sig,
-        }),
-        { status: 200 },
-      ),
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            status: "success",
+            paymentStatus: "SUCCESS",
+            paymentId: "iyz_pay_orphan",
+            currency: "TRY",
+            basketId: "cart_1",
+            conversationId: "conv_1",
+            paidPrice: "189.90",
+            price: "189.90",
+            token: "valid-iyz-token-123",
+            signature: sig,
+          }),
+          { status: 200 },
+        ),
     );
 
     const r1 = await processIyzicoCallback(

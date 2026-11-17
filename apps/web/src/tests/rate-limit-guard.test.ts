@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  RATE_LIMIT_OVERRIDE_ENV_VARS,
-  assertNoRateLimitOverridesInProduction,
-} from "@alte/shared";
+import { RATE_LIMIT_OVERRIDE_ENV_VARS, assertNoRateLimitOverridesInProduction } from "@alte/shared";
 
 describe("Web & Shared Rate Limit Override Production Guard", () => {
   const savedEnv = { ...process.env };
