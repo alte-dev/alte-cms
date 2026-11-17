@@ -56,17 +56,10 @@ export function AccountMenuButton({ customerName }: { customerName: string | nul
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-stone-200 bg-white text-left hover:bg-stone-50 hover:border-stone-300 transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+        className="inline-flex h-9 items-center gap-1.5 px-3 rounded-md text-sm font-medium text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition focus:outline-none focus:ring-2 focus:ring-stone-900"
       >
         <User className="w-4 h-4 text-stone-700 shrink-0" />
-        <span className="leading-tight">
-          <span className="block text-xs font-semibold text-stone-900">
-            {isLoggedIn ? "Hesabım" : "Giriş Yap"}
-          </span>
-          <span className="block text-[11px] text-stone-500 max-w-[110px] truncate">
-            {isLoggedIn ? customerName : "veya üye ol"}
-          </span>
-        </span>
+        <span className="max-w-[120px] truncate">{isLoggedIn ? "Hesabım" : "Giriş Yap"}</span>
         <ChevronDown
           className={`w-3.5 h-3.5 text-stone-500 transition-transform ${open ? "rotate-180" : ""}`}
         />
