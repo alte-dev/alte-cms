@@ -6,7 +6,7 @@ export interface PaymentGuardOptions {
   allowDummyInDev?: boolean;
 }
 
-export const CERTIFIED_PAYMENT_PROVIDERS = ["pp_paytr_paytr", "pp_cod_cod"];
+export const CERTIFIED_PAYMENT_PROVIDERS = ["pp_paytr_paytr", "pp_iyzico_iyzico", "pp_cod_cod"];
 
 /**
  * Asserts that prohibited development-only environment variables are NOT defined in production.
@@ -27,6 +27,12 @@ export function assertUndefinedInProduction(
   if (process.env.DEV_PAYTR_USER_IP && process.env.DEV_PAYTR_USER_IP.trim() !== "") {
     throw new Error(
       "FAIL-CLOSED: DEV_PAYTR_USER_IP environment variable is strictly prohibited in production.",
+    );
+  }
+
+  if (process.env.IYZICO_API_BASE && process.env.IYZICO_API_BASE.trim() !== "") {
+    throw new Error(
+      "FAIL-CLOSED: IYZICO_API_BASE environment variable is strictly prohibited in production.",
     );
   }
 

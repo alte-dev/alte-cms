@@ -87,8 +87,8 @@ export default async function setupStore({
     logger.info(`Region '${STORE_DEFAULTS.region.name}' already exists (ID: ${turkeyRegion.id}).`);
   }
 
-  // Link region to payment providers (PayTR, COD, and dev dummy if not prod)
-  const providersToLink = ["pp_paytr_paytr", "pp_cod_cod"];
+  // Link region to payment providers (PayTR, iyzico, COD, and dev dummy if not prod)
+  const providersToLink = ["pp_paytr_paytr", "pp_iyzico_iyzico", "pp_cod_cod"];
   if (process.env.NODE_ENV !== "production" && providerIds.includes("pp_system_default")) {
     providersToLink.push("pp_system_default");
   }
@@ -738,7 +738,10 @@ export default async function setupStore({
       await pgConn.raw(
         "CREATE INDEX IF NOT EXISTS idx_payment_session_merchant_oid ON payment_session (((data->>'merchant_oid'))) WHERE deleted_at IS NULL;",
       );
-      logger.info("Ensured index idx_payment_session_merchant_oid exists.");
+      await pgConn.raw(
+        "CREATE INDEX IF NOT EXISTS idx_payment_session_iyzico_token ON payment_session (((data->>'token'))) WHERE deleted_at IS NULL;",
+      );
+      logger.info("Ensured indexes idx_payment_session_merchant_oid & idx_payment_session_iyzico_token exist.");
     }
     const updatedRoles = await ensureExistingAdminRoles(pgConn);
     if (updatedRoles > 0) {
