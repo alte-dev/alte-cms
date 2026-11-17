@@ -1,3 +1,4 @@
+import { assertNoRateLimitOverridesInProduction } from "@alte/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { setOrderConfirmation } from "../../../../../lib/medusa/cookies";
@@ -13,6 +14,7 @@ const callbackTokenSchema = z.object({
 });
 
 function getCallbackLimitMax(): number {
+  assertNoRateLimitOverridesInProduction(process.env.NODE_ENV);
   const raw = process.env.IYZICO_CALLBACK_LIMIT_MAX;
   if (raw && /^\d+$/.test(raw.trim())) {
     return Math.max(1, Number.parseInt(raw.trim(), 10));

@@ -44,3 +44,8 @@ export {
   validateCustomerPassword,
   type PasswordValidationResult,
 } from "./password-policy";
+
+export {
+  RATE_LIMIT_OVERRIDE_ENV_VARS,
+  assertNoRateLimitOverridesInProduction,
+} from "./rate-limit-config";

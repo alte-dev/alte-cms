@@ -1,3 +1,4 @@
+import { assertNoRateLimitOverridesInProduction } from "@alte/shared";
 import { NextResponse } from "next/server";
 import {
   addItemToCart,
@@ -29,6 +30,7 @@ import { FixedWindowRateLimiter } from "../../../lib/security/rate-limiter";
 import { isAllowedIyzicoRedirectUrl } from "../../../lib/security/iyzico";
 
 function getCheckoutLimitMax(): number {
+  assertNoRateLimitOverridesInProduction(process.env.NODE_ENV);
   const raw = process.env.CHECKOUT_IP_LIMIT_MAX;
   if (raw && /^\d+$/.test(raw.trim())) {
     return Math.max(1, Number.parseInt(raw.trim(), 10));
