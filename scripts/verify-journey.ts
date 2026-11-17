@@ -779,14 +779,16 @@ async function main() {
           await otpInputsB.nth(i).fill(otpB[i] || "");
         }
         await pageB.getByRole("button", { name: "Doğrula" }).click();
-        await pageB.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
+        await pageB.waitForURL("**/hesap", { timeout: 15000 });
       }
 
-      await pageB.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
-      await pageB.fill("#login-email", emailB);
-      await pageB.fill("#login-password", passwordB);
-      await pageB.locator("main form button[type='submit']").click();
-      await pageB.waitForURL("**/hesap", { timeout: 15000 });
+      if (pageB.url().indexOf("/hesap") === -1 || pageB.url().indexOf("/hesap/dogrula") !== -1) {
+        await pageB.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
+        await pageB.fill("#login-email", emailB);
+        await pageB.fill("#login-password", passwordB);
+        await pageB.locator("main form button[type='submit']").click();
+        await pageB.waitForURL("**/hesap", { timeout: 15000 });
+      }
 
       const cookiesB = await ctxB.cookies(WEB_URL);
       const cookieHeaderB = cookiesB.map((c) => `${c.name}=${c.value}`).join("; ");

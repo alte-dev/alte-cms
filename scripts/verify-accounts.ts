@@ -536,7 +536,7 @@ async function main() {
         3,
         "Doğrulamasız misafir sipariş bağlanmaz, doğrulama sonrası bağlanır",
         pass,
-        `countBefore=${countBefore}, countAfter=${countAfter}, tokenFound=${Boolean(tokenB)}`,
+        `countBefore=${countBefore}, countAfter=${countAfter}, tokenFound=${Boolean(otpB)}`,
       );
     } catch (err) {
       recordStep(3, "Misafir sipariş bağlama", false, (err as Error).message);
