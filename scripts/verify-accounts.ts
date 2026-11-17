@@ -58,6 +58,25 @@ function extractSetCookieValue(res: Response, cookieName: string): string | null
   return null;
 }
 
+function decodeQuotedPrintable(input: string): string {
+  const unfolded = input.replace(/=\r?\n/g, "");
+  const bytes: number[] = [];
+  for (let i = 0; i < unfolded.length; i++) {
+    if (
+      unfolded[i] === "=" &&
+      i + 2 < unfolded.length &&
+      /^[0-9A-Fa-f]{2}$/.test(unfolded.slice(i + 1, i + 3))
+    ) {
+      bytes.push(parseInt(unfolded.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      const buf = Buffer.from(unfolded[i], "utf8");
+      for (const b of buf) bytes.push(b);
+    }
+  }
+  return Buffer.from(bytes).toString("utf8");
+}
+
 function extractTokenFromEmailBody(body: string, pathPrefix: string): string | null {
   const idx = body.indexOf(pathPrefix);
   if (idx === -1) return null;
@@ -255,7 +274,7 @@ async function main() {
         capturedEmails.push({
           to: (toMatch?.[1] || "").trim(),
           subject: (subjMatch?.[1] || "").trim(),
-          body: raw.replace(/=\r?\n/g, "").replace(/=3D/g, "="),
+          body: decodeQuotedPrintable(raw),
         });
         callback();
       });
