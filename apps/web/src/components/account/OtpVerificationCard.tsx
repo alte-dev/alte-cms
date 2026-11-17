@@ -7,9 +7,11 @@ import { useRouter } from "next/navigation";
 export function OtpVerificationCard({
   initialEmail = "",
   initialMessage,
+  redirectTo = "/hesap",
 }: {
   initialEmail?: string;
   initialMessage?: string;
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
@@ -93,7 +95,7 @@ export function OtpVerificationCard({
       setStatus("success");
       setMessage(data.message || "E-posta adresiniz başarıyla doğrulandı.");
       if (data.authenticated) {
-        router.push("/hesap");
+        router.push(redirectTo);
         router.refresh();
       }
     } catch {

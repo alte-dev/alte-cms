@@ -1,13 +1,21 @@
 import { redirect } from "next/navigation";
 import { LoginForm } from "../../../../components/account/LoginForm";
 import { getServerCustomer } from "../../../../lib/medusa/account";
+import { sanitizeRedirectPath } from "../../../../lib/medusa/safe-redirect";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect?: string }>;
+}) {
+  const params = await searchParams;
+  const redirectTo = sanitizeRedirectPath(params.redirect, "/hesap");
+
   const customer = await getServerCustomer();
   if (customer) {
-    redirect("/hesap");
+    redirect(redirectTo);
   }
 
   return (
@@ -17,7 +25,7 @@ export default async function LoginPage() {
         <p className="text-sm text-stone-600 mb-6">
           Siparişlerinizi ve adreslerinizi yönetmek için hesabınıza giriş yapın.
         </p>
-        <LoginForm />
+        <LoginForm redirectTo={redirectTo} />
       </div>
     </div>
   );
