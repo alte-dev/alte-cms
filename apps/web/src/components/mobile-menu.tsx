@@ -37,6 +37,11 @@ export function MobileMenu({ items }: MobileMenuProps) {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
+    const handleNavigate = () => {
+      document.body.style.overflow = "";
+      setIsOpen(false);
+    };
+
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
@@ -47,10 +52,20 @@ export function MobileMenu({ items }: MobileMenuProps) {
     } else {
       document.body.style.overflow = "";
     }
+    const handleNavigate = () => {
+      document.body.style.overflow = "";
+      setIsOpen(false);
+    };
+
     return () => {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  const handleNavigate = () => {
+    document.body.style.overflow = "";
+    setIsOpen(false);
+  };
 
   return (
     <div className="md:hidden">
@@ -104,7 +119,7 @@ export function MobileMenu({ items }: MobileMenuProps) {
                       href={safeHref(item.href)}
                       target={item.openInNewTab ? "_blank" : undefined}
                       rel={item.openInNewTab ? "noopener noreferrer" : undefined}
-                      onClick={() => setIsOpen(false)}
+                      onClick={handleNavigate}
                       className="text-base font-semibold text-stone-900 hover:text-blue-600 transition-colors py-1"
                     >
                       {item.label}
@@ -118,7 +133,7 @@ export function MobileMenu({ items }: MobileMenuProps) {
                             href={safeHref(child.href)}
                             target={child.openInNewTab ? "_blank" : undefined}
                             rel={child.openInNewTab ? "noopener noreferrer" : undefined}
-                            onClick={() => setIsOpen(false)}
+                            onClick={handleNavigate}
                             className="text-sm text-stone-600 hover:text-stone-900 transition-colors py-1"
                           >
                             {child.label}
