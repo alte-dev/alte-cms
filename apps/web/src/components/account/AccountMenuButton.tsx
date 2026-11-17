@@ -56,7 +56,6 @@ export function AccountMenuButton({ customerName }: { customerName: string | nul
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={isLoggedIn ? "Hesabım" : "Giriş Yap"}
         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-stone-200 bg-white text-left hover:bg-stone-50 hover:border-stone-300 transition focus:outline-none focus:ring-2 focus:ring-stone-900"
       >
         <User className="w-4 h-4 text-stone-700 shrink-0" />
