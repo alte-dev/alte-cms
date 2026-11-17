@@ -5,11 +5,20 @@ export const SESSION_ABSOLUTE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const SESSION_IDLE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 export const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const EMAIL_VERIFICATION_OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 export const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000; // 15 minutes (matches Medusa RESET_PASSWORD_TOKEN_TTL_SECONDS)
 
 export function generateOpaqueToken(): { raw: string; hash: string } {
   const raw = crypto.randomBytes(32).toString("base64url");
   return { raw, hash: hashToken(raw) };
+}
+
+export function generateEmailOtp(): string {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+export function hashEmailOtp(email: string, otp: string): string {
+  return hashToken(`${normalizeEmail(email)}:${otp.trim()}`);
 }
 
 export function hashToken(raw: string): string {

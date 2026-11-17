@@ -36,15 +36,18 @@ export default async function customerAccountEmailSubscriber({
 
   if (name === "customer_account.verification_requested") {
     const email = typeof data.email === "string" ? data.email : "";
-    const token = typeof data.token === "string" ? data.token : "";
+    const otp = typeof data.otp === "string" ? data.otp : "";
+    const firstName = typeof data.first_name === "string" ? data.first_name : "";
     const customerId = typeof data.customer_id === "string" ? data.customer_id : "anon";
-    if (!email || !token) return;
+    if (!email || !otp) return;
 
     await sendAccountEmail(pgConnection, {
       template: "account.verify_email",
       recipientEmail: email,
+      recipientName: firstName,
       referenceId: customerId,
-      actionUrl: `${webBase}/hesap/dogrula?token=${encodeURIComponent(token)}`,
+      otpCode: otp,
+      actionUrl: `${webBase}/hesap/dogrula?email=${encodeURIComponent(email)}`,
     });
     return;
   }

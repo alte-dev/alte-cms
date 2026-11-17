@@ -389,6 +389,7 @@ async function main() {
     // -------------------------------------------------------------------------
     // 1 & 2. Tarayıcıda kayıt (<script> içeren ad) + doğrulama e-postası
     // -------------------------------------------------------------------------
+    let verifyOtpA = "";
     let verifyUrl = "";
     const ctxA = await browser.newContext();
     const pageA = await ctxA.newPage();
@@ -409,10 +410,10 @@ async function main() {
 
       expectedEmailCount += 1;
       const verEmail = await waitForCapturedEmailCount(capturedEmails, expectedEmailCount);
-      verifyUrl = verEmail ? extractUrlFromEmail(verEmail, "/hesap/dogrula?token=") || "" : "";
-      if (verifyUrl) {
-        const tok = new URL(verifyUrl).searchParams.get("token");
-        if (tok) extractedTokens.push(tok);
+      verifyOtpA = verEmail?.text.match(/Doğrulama Kodunuz:\s*(\d{6})/i)?.[1] || "";
+      verifyUrl = verEmail ? extractUrlFromEmail(verEmail, "/hesap/dogrula?email=") || "" : "";
+      if (verifyOtpA) {
+        extractedTokens.push(verifyOtpA);
       }
 
       const exactCount = capturedEmails.length === expectedEmailCount;
@@ -494,23 +495,41 @@ async function main() {
     }
 
     // -------------------------------------------------------------------------
-    // 4. Doğrulama bağlantısına tıkla + tek kullanımlık + süresi dolmuş token
+    // 4. Doğrulama kodunu gir + tek kullanımlık + süresi dolmuş kod
     // -------------------------------------------------------------------------
     try {
-      await pageA.goto(verifyUrl, { waitUntil: "networkidle", timeout: 20000 });
-      await pageA.getByRole("button", { name: "E-posta Adresimi Doğrula" }).click();
-      await pageA.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
-      const verifyStatusText = await pageA.locator("[role='status']").innerText();
-      const verifiedInUi = verifyStatusText.indexOf("doğrulandı") !== -1;
+      await pageA.goto(
+        verifyUrl || `${WEB_URL}/hesap/dogrula?email=${encodeURIComponent(emailA)}`,
+        {
+          waitUntil: "networkidle",
+          timeout: 20000,
+        },
+      );
+      const otpInputs = pageA.locator("input[aria-label^='Doğrulama kodu']");
+      for (let i = 0; i < 6; i++) {
+        await otpInputs.nth(i).fill(verifyOtpA[i] || "");
+      }
+      await pageA.getByRole("button", { name: "Doğrula" }).click();
+      await pageA.waitForURL("**/hesap", { timeout: 15000 }).catch(() => null);
+      const bodyTextAfterVerify = await pageA.locator("main").innerText();
+      const verifiedInUi =
+        pageA.url().indexOf("/hesap") !== -1 || bodyTextAfterVerify.indexOf("doğrulandı") !== -1;
 
-      const rawVerifyToken = new URL(verifyUrl).searchParams.get("token") || "";
+      if (pageA.url().indexOf("/hesap") !== -1 && pageA.url().indexOf("/hesap/dogrula") === -1) {
+        const logoutBtn = pageA.locator("button:has-text('Çıkış Yap')");
+        if (await logoutBtn.isVisible().catch(() => false)) {
+          await logoutBtn.click();
+          await pageA.waitForURL("**/hesap/giris", { timeout: 15000 });
+        }
+      }
+
       const reuseRes = await fetch(`${WEB_URL}/api/account/verify-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Origin: WEB_URL },
-        body: JSON.stringify({ token: rawVerifyToken }),
+        body: JSON.stringify({ email: emailA, code: verifyOtpA }),
       });
 
-      // Süresi dolmuş token testi (DB üzerinden geçmişe çek)
+      // Süresi dolmuş OTP testi (DB üzerinden geçmişe çek)
       const custRes = await pool.query(
         "SELECT id FROM customer WHERE LOWER(email) = LOWER($1) AND has_account = true AND deleted_at IS NULL LIMIT 1",
         [emailA],
@@ -523,8 +542,11 @@ async function main() {
           )
         : { rows: [] };
       const dbVerifiedOk = Boolean(stateAfterVerify.rows[0]?.email_verified_at);
-      const expiredRaw = crypto.randomBytes(24).toString("hex");
-      const expiredHash = crypto.createHash("sha256").update(expiredRaw).digest("hex");
+      const expiredOtp = "999888";
+      const expiredHash = crypto
+        .createHash("sha256")
+        .update(`${emailA.toLowerCase()}:${expiredOtp}`)
+        .digest("hex");
       await pool.query(
         `INSERT INTO customer_email_verification (id, customer_id, token_hash, expires_at, used_at, created_at, updated_at)
          VALUES ($1, $2, $3, NOW() - INTERVAL '2 hours', NULL, NOW(), NOW())`,
@@ -533,7 +555,7 @@ async function main() {
       const expiredRes = await fetch(`${WEB_URL}/api/account/verify-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Origin: WEB_URL },
-        body: JSON.stringify({ token: expiredRaw }),
+        body: JSON.stringify({ email: emailA, code: expiredOtp }),
       });
 
       recordStep(
@@ -749,22 +771,24 @@ async function main() {
 
       expectedEmailCount += 1;
       const verEmailB = await waitForCapturedEmailCount(capturedEmails, expectedEmailCount);
-      const verifyUrlB = verEmailB
-        ? extractUrlFromEmail(verEmailB, "/hesap/dogrula?token=") || ""
-        : "";
-      if (verifyUrlB) {
-        const tokB = new URL(verifyUrlB).searchParams.get("token");
-        if (tokB) extractedTokens.push(tokB);
-        await pageB.goto(verifyUrlB, { waitUntil: "networkidle", timeout: 15000 });
-        await pageB.getByRole("button", { name: "E-posta Adresimi Doğrula" }).click();
-        await pageB.locator("[role='status']").waitFor({ state: "visible", timeout: 15000 });
+      const otpB = verEmailB?.text.match(/Doğrulama Kodunuz:\s*(\d{6})/i)?.[1] || "";
+      if (otpB) {
+        extractedTokens.push(otpB);
+        const otpInputsB = pageB.locator("input[aria-label^='Doğrulama kodu']");
+        for (let i = 0; i < 6; i++) {
+          await otpInputsB.nth(i).fill(otpB[i] || "");
+        }
+        await pageB.getByRole("button", { name: "Doğrula" }).click();
+        await pageB.waitForURL("**/hesap", { timeout: 15000 });
       }
 
-      await pageB.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
-      await pageB.fill("#login-email", emailB);
-      await pageB.fill("#login-password", passwordB);
-      await pageB.locator("main form button[type='submit']").click();
-      await pageB.waitForURL("**/hesap", { timeout: 15000 });
+      if (pageB.url().indexOf("/hesap") === -1 || pageB.url().indexOf("/hesap/dogrula") !== -1) {
+        await pageB.goto(`${WEB_URL}/hesap/giris`, { waitUntil: "networkidle", timeout: 15000 });
+        await pageB.fill("#login-email", emailB);
+        await pageB.fill("#login-password", passwordB);
+        await pageB.locator("main form button[type='submit']").click();
+        await pageB.waitForURL("**/hesap", { timeout: 15000 });
+      }
 
       const cookiesB = await ctxB.cookies(WEB_URL);
       const cookieHeaderB = cookiesB.map((c) => `${c.name}=${c.value}`).join("; ");

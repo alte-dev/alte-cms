@@ -42,6 +42,10 @@ export function AccountShell({
     setResendMsg(null);
     const res = await fetch("/api/account/verify-email/resend", { method: "POST" });
     const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      router.push("/hesap/dogrula");
+      return;
+    }
     setResendMsg(data.message || data.error || "İstek işlendi.");
   }
 
@@ -76,7 +80,7 @@ export function AccountShell({
             onClick={handleResendVerification}
             className="shrink-0 px-3 py-1.5 rounded bg-amber-900 text-white text-xs font-medium hover:bg-amber-800"
           >
-            Doğrulama Bağlantısı Gönder
+            Doğrulama Kodu Gönder
           </button>
         </div>
       )}

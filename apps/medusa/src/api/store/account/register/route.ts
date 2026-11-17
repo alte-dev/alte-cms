@@ -4,9 +4,10 @@ import { Modules } from "@medusajs/framework/utils";
 import { validateCustomerPassword } from "../../../../utils/password-policy";
 import { z } from "zod";
 import {
-  EMAIL_VERIFICATION_TTL_MS,
-  generateOpaqueToken,
+  EMAIL_VERIFICATION_OTP_TTL_MS,
+  generateEmailOtp,
   hashEmailLookup,
+  hashEmailOtp,
   normalizeEmail,
 } from "../../../../modules/customer-account/helpers";
 import { waitTimingFloor } from "../../../../utils/timing-floor";
@@ -34,7 +35,8 @@ const registerSchema = z.object({
 
 const UNIFORM_REGISTER_RESPONSE = {
   ok: true,
-  message: "Kaydınız alındı. Devam etmek için e-posta adresinize gönderilen bağlantıyı kullanın.",
+  message:
+    "Kaydınız alındı. Devam etmek için e-posta adresinize gönderilen 6 haneli doğrulama kodunu giriniz.",
 };
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -113,7 +115,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   });
 
   const now = new Date();
-  const { raw: rawToken, hash: tokenHash } = generateOpaqueToken();
+  const otp = generateEmailOtp();
+  const tokenHash = hashEmailOtp(email, otp);
 
   try {
     await authService.updateAuthIdentities({
@@ -158,7 +161,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         id: `cver_${crypto.randomUUID().replace(/-/g, "")}`,
         customer_id: customer.id,
         token_hash: tokenHash,
-        expires_at: new Date(now.getTime() + EMAIL_VERIFICATION_TTL_MS),
+        expires_at: new Date(now.getTime() + EMAIL_VERIFICATION_OTP_TTL_MS),
         used_at: null,
         created_at: now,
         updated_at: now,
@@ -185,7 +188,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       data: {
         customer_id: customer.id,
         email,
-        token: rawToken,
+        first_name: data.first_name,
+        otp,
       },
     });
   } catch {

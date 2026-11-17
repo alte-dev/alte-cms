@@ -679,7 +679,9 @@ export async function sendAccountEmail(
   input: {
     template: "account.verify_email" | "account.password_reset" | "account.duplicate_register";
     recipientEmail: string;
+    recipientName?: string;
     referenceId: string;
+    otpCode?: string;
     actionUrl?: string;
     storeName?: string;
   },
@@ -691,22 +693,41 @@ export async function sendAccountEmail(
   const maskedRecipient = maskEmail(input.recipientEmail);
   const storeName = escapeHtml(input.storeName || process.env.STORE_NAME || "Mağaza");
   const safeUrl = input.actionUrl ? escapeHtml(input.actionUrl) : "";
+  const safeName = input.recipientName ? escapeHtml(input.recipientName.trim()) : "";
+  const safeOtp = (input.otpCode || "").replace(/\D/g, "").slice(0, 6);
 
   let subject = "";
   let html = "";
   let text = "";
 
   if (input.template === "account.verify_email") {
-    subject = `${storeName} — E-posta Adresinizi Doğrulayın`;
+    subject = `${storeName} — E-posta Doğrulama Kodunuz`;
     html = `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#111827;">
-        <h2 style="margin-top:0;">E-posta Doğrulama</h2>
-        <p>${storeName} hesabınızı doğrulamak için aşağıdaki bağlantıya tıklayınız (bağlantı 24 saat geçerlidir):</p>
-        <p><a href="${safeUrl}" style="display:inline-block;padding:12px 20px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;">E-postamı Doğrula</a></p>
-        <p style="font-size:12px;color:#6b7280;">Bu talebi siz oluşturmadıysanız bu e-postayı dikkate almayınız.</p>
+      <div style="background:#f5f5f4;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1c1917;">
+        <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e7e5e4;border-radius:12px;overflow:hidden;">
+          <div style="background:#1c1917;padding:24px 28px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#a8a29e;">${storeName}</p>
+            <h1 style="margin:0;font-size:20px;font-weight:600;color:#ffffff;">E-posta Adresinizi Doğrulayın</h1>
+          </div>
+          <div style="padding:28px;">
+            <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#44403c;">Merhaba${safeName ? ` <strong>${safeName}</strong>` : ""},</p>
+            <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#44403c;">Kaydınızı tamamlamak için aşağıdaki 6 haneli tek kullanımlık doğrulama kodunu kullanabilirsiniz:</p>
+            <div style="text-align:center;margin:0 0 10px;">
+              <div style="display:inline-block;padding:14px 26px;background:#fafaf9;border:1px solid #d6d3d1;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:8px;color:#1c1917;user-select:all;-webkit-user-select:all;">${safeOtp}</div>
+            </div>
+            <p style="margin:0 0 20px;font-size:11px;color:#78716c;text-align:center;">Kodu kopyalamak için üzerine çift tıklayabilirsiniz.</p>
+            <p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#57534e;text-align:center;">Bu kod <strong>15 dakika</strong> boyunca geçerlidir.</p>
+            ${
+              safeUrl
+                ? `<div style="text-align:center;margin:0 0 20px;"><a href="${safeUrl}" style="display:inline-block;padding:11px 22px;background:#1c1917;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;border-radius:8px;">Doğrulama Ekranını Aç</a></div>`
+                : ""
+            }
+            <p style="margin:0;padding-top:16px;border-top:1px solid #f5f5f4;font-size:12px;color:#78716c;">Bu talebi siz oluşturmadıysanız bu e-postayı güvenle dikkate almayabilirsiniz.</p>
+          </div>
+        </div>
       </div>
     `;
-    text = `E-posta adresinizi doğrulamak için bağlantıyı açınız (24 saat geçerlidir): ${input.actionUrl || ""}`;
+    text = `${storeName} E-posta Doğrulama Kodunuz: ${safeOtp} (15 dakika geçerlidir).${input.actionUrl ? ` Doğrulama sayfası: ${input.actionUrl}` : ""}`;
   } else if (input.template === "account.password_reset") {
     subject = `${storeName} — Şifre Sıfırlama Talebi`;
     html = `

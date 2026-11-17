@@ -49,6 +49,14 @@ export const resendVerificationCustomerLimiter = new FixedWindowRateLimiter({
   maxRequests: rateLimitConfig.resendVerificationLimitMax,
   windowMs: 60 * 60_000,
 });
+export const resendVerificationEmailLimiter = new FixedWindowRateLimiter({
+  maxRequests: rateLimitConfig.resendVerificationLimitMax,
+  windowMs: 60 * 60_000,
+});
+export const otpVerifyEmailGuard = new BruteForceGuard({
+  maxFailures: 5,
+  blockDurationMs: 15 * 60_000,
+});
 
 // Tiered password-verification brute-force guards (keyed by customerId):
 // Tier 1: 5 wrong current-password attempts -> 429 + 15 min cooldown (session preserved)
