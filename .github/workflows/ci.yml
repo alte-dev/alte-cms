@@ -192,6 +192,7 @@ jobs:
       MEDUSA_ADMIN_EMAIL: "admin@example.test"
       MEDUSA_ADMIN_PASSWORD: "supersecret-test-password"
       PAYTR_API_BASE: "http://127.0.0.1:9099"
+      IYZICO_API_BASE: "http://127.0.0.1:9098"
       DEV_PAYTR_USER_IP: "88.230.10.20"
       ALLOW_DEV_PAYMENT: "true"
 

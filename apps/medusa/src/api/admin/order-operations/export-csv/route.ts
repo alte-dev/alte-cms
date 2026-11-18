@@ -61,8 +61,15 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         meta.payment_provider === "cod" ||
         meta.is_cod === true ||
         payments.some((p: any) => p.provider_id?.includes("cod"));
+      const isIyzico =
+        meta.payment_provider === "iyzico" ||
+        payments.some((p: any) => p.provider_id?.includes("iyzico"));
 
-      const paymentMethod = isCod ? "Kapıda Ödeme" : "Kredi Kartı (PayTR)";
+      const paymentMethod = isCod
+        ? "Kapıda Ödeme"
+        : isIyzico
+          ? "Kredi Kartı (iyzico)"
+          : "Kredi Kartı (PayTR)";
       const codFee = isCod && meta.cod_fee ? Number(meta.cod_fee) : 0;
       const dateStr = new Date(order.created_at).toISOString().split("T")[0];
 

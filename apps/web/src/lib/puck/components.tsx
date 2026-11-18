@@ -401,7 +401,7 @@ export function ProductGridComponent({ title = "Öne Çıkan Ürünler", limit =
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900">{title}</h2>
-        <Link href="/magaza" className="text-sm font-semibold text-zinc-900 hover:underline">
+        <Link href="/urunler" className="text-sm font-semibold text-zinc-900 hover:underline">
           Tümünü Gör &rarr;
         </Link>
       </div>

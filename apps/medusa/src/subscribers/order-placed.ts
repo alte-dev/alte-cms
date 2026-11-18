@@ -66,9 +66,14 @@ export default async function orderPlacedHandler({
       order.metadata?.payment_provider === "cod" ||
       order.metadata?.is_cod === true ||
       payments.some((p: any) => p.provider_id?.includes("cod"));
+    const isIyzico =
+      order.metadata?.payment_provider === "iyzico" ||
+      payments.some((p: any) => p.provider_id?.includes("iyzico"));
 
     if (isCod) {
       paymentMethod = "Kapıda Ödeme (Nakit / Kart)";
+    } else if (isIyzico) {
+      paymentMethod = "Kredi Kartı (iyzico)";
     }
 
     // Check for COD fee item

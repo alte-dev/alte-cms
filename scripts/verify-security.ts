@@ -161,6 +161,7 @@ async function run() {
   const blockedProbes: Array<{ method: string; path: string }> = [
     { method: "GET", path: "/medusa-api/store/products" },
     { method: "GET", path: "/medusa-api/hooks/payment/pp_paytr_paytr" },
+    { method: "POST", path: "/medusa-api/internal/payment/iyzico/callback" },
     { method: "GET", path: "/medusa-api/internal/admin-sso" },
     { method: "GET", path: "/medusa-api/auth/customer/emailpass" },
     { method: "GET", path: "/medusa-api/admin/%2e%2e/store/products?limit=1" },

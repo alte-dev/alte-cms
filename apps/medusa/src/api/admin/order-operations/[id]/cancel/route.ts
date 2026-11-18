@@ -64,13 +64,16 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       });
     }
 
-    // 2. Check payment method: if paid by Card (PayTR), mark as needs_manual_refund
+    // 2. Check payment method: if paid by Card (PayTR or iyzico), mark as needs_manual_refund
     const payments = order.payment_collections?.flatMap((pc: any) => pc.payments || []) || [];
-    const isPaytr =
+    const isCardPayment =
       currentMeta.payment_provider === "paytr" ||
-      payments.some((p: any) => p.provider_id?.includes("paytr"));
+      currentMeta.payment_provider === "iyzico" ||
+      payments.some(
+        (p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"),
+      );
 
-    const needsManualRefund = isPaytr && Number(order.total) > 0;
+    const needsManualRefund = isCardPayment && Number(order.total) > 0;
 
     const updatedMeta = {
       ...currentMeta,

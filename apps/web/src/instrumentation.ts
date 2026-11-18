@@ -1,9 +1,12 @@
+import { assertNoRateLimitOverridesInProduction } from "@alte/shared";
+
 /**
  * Next.js Server Instrumentation Hook
  * Runs once upon Node.js server initialization.
  * Pre-warms Payload CMS connection and schemas to prevent cold-start HTTP 500 races.
  */
 export async function register(): Promise<void> {
+  assertNoRateLimitOverridesInProduction(process.env.NODE_ENV);
   if (process.env.NEXT_RUNTIME === "nodejs") {
     try {
       const { getPayload } = await import("payload");
