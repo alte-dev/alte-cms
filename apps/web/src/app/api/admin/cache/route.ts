@@ -7,7 +7,7 @@ import {
   getLastWarmSummary,
   isWarmRunning,
   purgeAllStorefrontCache,
-  warmStorefrontCache,
+  startStorefrontCacheWarm,
 } from "../../../../lib/cache-warmer";
 
 const NO_STORE_HEADERS = {
@@ -18,6 +18,18 @@ const NO_STORE_HEADERS = {
 const cacheActionSchema = z.object({
   action: z.enum(["purge", "warm"]),
 });
+
+function isSameOriginPost(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  const host = (req.headers.get("x-forwarded-host") || req.headers.get("host") || "").toLowerCase();
+  if (!host) return false;
+  try {
+    return new URL(origin).host.toLowerCase() === host;
+  } catch {
+    return false;
+  }
+}
 
 async function authenticateAdmin(req: NextRequest) {
   const payload = await getPayload({ config: configPromise });
@@ -61,6 +73,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isSameOriginPost(req)) {
+    return NextResponse.json(
+      { error: "Geçersiz istek kaynağı." },
+      { status: 403, headers: NO_STORE_HEADERS },
+    );
+  }
+
   const auth = await authenticateAdmin(req);
   if ("error" in auth && auth.error) {
     return auth.error;
@@ -90,10 +109,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const summary = await warmStorefrontCache();
-  const status = summary.status === "failed" ? 500 : 200;
+  const { summary } = startStorefrontCacheWarm();
   return NextResponse.json(
-    { ok: summary.status === "completed", action: "warm", summary },
-    { status, headers: NO_STORE_HEADERS },
+    { ok: true, action: "warm", summary },
+    { status: 202, headers: NO_STORE_HEADERS },
   );
 }

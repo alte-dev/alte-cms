@@ -84,7 +84,7 @@ export function getSecurityHeadersConfig(isProd: boolean): HeaderRule[] {
     "/onizleme/:path*",
     "/admin",
     "/app",
-    "/api/:path*",
+    "/api/((?!media/file/).*)",
     "/medusa-api/:path*",
   ];
 

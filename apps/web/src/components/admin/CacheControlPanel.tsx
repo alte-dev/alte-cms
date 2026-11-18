@@ -62,6 +62,14 @@ export function CacheControlPanel() {
     };
   }, [loadSummary]);
 
+  useEffect(() => {
+    if (!allowed || summary?.status !== "running") return;
+    const timer = window.setInterval(() => {
+      void loadSummary();
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [allowed, summary?.status, loadSummary]);
+
   async function handleAction(action: "purge" | "warm") {
     setBusyAction(action);
     setFeedback(null);
@@ -97,9 +105,12 @@ export function CacheControlPanel() {
         const s = data.summary;
         setFeedback({
           type: "success",
-          text: s
-            ? `Site ısıtma tamamlandı: ${s.succeeded}/${s.scanned} sayfa başarılı (${s.durationMs ?? 0} ms).`
-            : "Site ısıtma tamamlandı.",
+          text:
+            s?.status === "running"
+              ? "Site ısıtma arka planda başlatıldı. İlerleme otomatik olarak güncelleniyor..."
+              : s
+                ? `Site ısıtma tamamlandı: ${s.succeeded}/${s.scanned} sayfa başarılı (${s.durationMs ?? 0} ms).`
+                : "Site ısıtma tamamlandı.",
         });
       }
     } catch {

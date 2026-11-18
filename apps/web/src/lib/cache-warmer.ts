@@ -29,6 +29,7 @@ const NON_CACHEABLE_PREFIXES = [
 ];
 
 const MAX_WARM_URLS = 500;
+const MAX_CHILD_SITEMAPS = 25;
 const DEFAULT_CONCURRENCY = 2;
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -102,7 +103,13 @@ function rewriteToBaseOrigin(
   try {
     const base = new URL(baseUrl);
     const parsed = new URL(rawUrl, base);
+    if (parsed.pathname.startsWith("//") || parsed.pathname.includes("\\")) {
+      return null;
+    }
     const target = new URL(parsed.pathname + parsed.search, base);
+    if (target.origin !== base.origin) {
+      return null;
+    }
     return { url: target.toString(), pathname: parsed.pathname };
   } catch {
     return null;
@@ -129,7 +136,7 @@ export async function collectWarmableUrls(
 
   const candidateUrls: string[] = [];
   if (isIndex) {
-    for (const childLoc of rootLocs) {
+    for (const childLoc of rootLocs.slice(0, MAX_CHILD_SITEMAPS)) {
       const rewritten = rewriteToBaseOrigin(childLoc, baseUrl);
       if (!rewritten) continue;
       const childRes = await fetchImpl(rewritten.url, {
@@ -255,6 +262,22 @@ export async function warmStorefrontCache(options?: {
     lastWarmSummary.error = err instanceof Error ? err.message : "Önbellek ısıtma başarısız oldu.";
     return getLastWarmSummary();
   }
+}
+
+/**
+ * Starts storefront cache warming in the background without blocking the HTTP request.
+ * Sets status to "running" synchronously before returning to prevent concurrent starts.
+ */
+export function startStorefrontCacheWarm(options?: {
+  baseUrl?: string;
+  concurrency?: number;
+  fetchImpl?: typeof fetch;
+}): { started: boolean; summary: CacheWarmSummary } {
+  if (isWarmRunning()) {
+    return { started: false, summary: getLastWarmSummary() };
+  }
+  void warmStorefrontCache(options);
+  return { started: true, summary: getLastWarmSummary() };
 }
 
 /**

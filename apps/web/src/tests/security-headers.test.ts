@@ -78,7 +78,7 @@ describe("Security Headers & CSP", () => {
       "/admin/:path*",
       "/app",
       "/app/:path*",
-      "/api/:path*",
+      "/api/((?!media/file/).*)",
       "/medusa-api/:path*",
     ];
 
@@ -89,5 +89,8 @@ describe("Security Headers & CSP", () => {
       expect(cc?.value, `Expected no-store Cache-Control on ${src}`).toContain("no-store");
       expect(cc?.value, `Expected private Cache-Control on ${src}`).toContain("private");
     }
+
+    // Ensure broad /api/:path* does not force no-store on public Payload media files (/api/media/file/*)
+    expect(rules.find((r) => r.source === "/api/:path*")).toBeUndefined();
   });
 });

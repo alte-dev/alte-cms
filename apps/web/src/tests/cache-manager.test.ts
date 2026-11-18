@@ -129,6 +129,29 @@ describe("Cache Warmer & Non-Cacheable Route Guards", () => {
     expect(result.skipped).toBe(3); // /sepet, /odeme, /admin
   });
 
+  it("blocks protocol-relative SSRF paths (//evil.example.test) from escaping base origin", async () => {
+    const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/sitemap.xml")) {
+        return new Response(
+          `<urlset>
+            <url><loc>https://public.example.test//evil.example.test/steal</loc></url>
+            <url><loc>https://public.example.test/urunler</loc></url>
+          </urlset>`,
+          { status: 200 },
+        );
+      }
+      return new Response("Not Found", { status: 404 });
+    });
+
+    const result = await collectWarmableUrls("http://127.0.0.1:3100", mockFetch);
+    expect(result.urls).toEqual(["http://127.0.0.1:3100/urunler"]);
+    expect(result.skipped).toBe(1);
+    for (const u of result.urls) {
+      expect(new URL(u).origin).toBe("http://127.0.0.1:3100");
+    }
+  });
+
   it("warms storefront URLs and records summary with success and failure counts", async () => {
     const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -237,5 +260,63 @@ describe("Admin Cache API (/api/admin/cache)", () => {
     expect(data.ok).toBe(true);
     expect(data.action).toBe("purge");
     expect(revalidateTag).toHaveBeenCalled();
+  });
+
+  it("rejects cross-origin POST requests with 403 (CSRF protection)", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: { id: "u1", role: "admin", email: "admin@example.test" },
+    });
+    const req = new NextRequest("http://localhost:3100/api/admin/cache", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://evil.example.test",
+        Host: "localhost:3100",
+      },
+      body: JSON.stringify({ action: "purge" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+  });
+
+  it("starts warm asynchronously with 202 Accepted and returns 409 on concurrent warm", async () => {
+    let releaseFetch!: () => void;
+    const pendingFetch = new Promise<Response>((resolve) => {
+      releaseFetch = () =>
+        resolve(
+          new Response("<urlset><url><loc>http://127.0.0.1:3100/</loc></url></urlset>", {
+            status: 200,
+          }),
+        );
+    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementationOnce(() => pendingFetch);
+    fetchSpy.mockImplementationOnce(async () => new Response("<html>OK</html>", { status: 200 }));
+
+    mockAuth.mockResolvedValue({
+      user: { id: "u1", role: "admin", email: "admin@example.test" },
+    });
+
+    const req1 = new NextRequest("http://localhost:3100/api/admin/cache", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "warm" }),
+    });
+    const res1 = await POST(req1);
+    expect(res1.status).toBe(202);
+    const data1 = await res1.json();
+    expect(data1.ok).toBe(true);
+    expect(data1.summary.status).toBe("running");
+
+    const req2 = new NextRequest("http://localhost:3100/api/admin/cache", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "warm" }),
+    });
+    const res2 = await POST(req2);
+    expect(res2.status).toBe(409);
+
+    releaseFetch();
+    await new Promise((r) => setTimeout(r, 20));
+    fetchSpy.mockRestore();
   });
 });
