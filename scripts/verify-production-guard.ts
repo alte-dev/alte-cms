@@ -82,6 +82,8 @@ async function runMedusaProcess(
     // Clear dev overrides unless explicitly provided in envOverrides
     delete cleanEnv.PAYTR_API_BASE;
     delete cleanEnv.DEV_PAYTR_USER_IP;
+    delete cleanEnv.IYZICO_API_BASE;
+    delete cleanEnv.IYZICO_API_BASE;
 
     for (const [k, v] of Object.entries(envOverrides)) {
       if (v === "") {
@@ -239,12 +241,23 @@ async function main() {
     if (!failedClosedD2) {
       throw new Error("TEST (d2) BAŞARISIZ: DEV_PAYTR_USER_IP üretimde tanımlıyken kapanmadı!");
     }
-    console.log("✅ TEST (d2) GEÇTİ: DEV_PAYTR_USER_IP üretimde tanımlıyken exit 1 ile kapandı.\n");
+    console.log("✅ TEST (d2) GEÇTİ: DEV_PAYTR_USER_IP üretimde tanımlıyken exit 1 ile kapandı.");
+
+    const resD3 = await runMedusaProcess({
+      IYZICO_API_BASE: "http://127.0.0.1:9098",
+    });
+    const outputD3 = `${resD3.stderr}\n${resD3.stdout}`;
+    const failedClosedD3 = resD3.code === 1 && outputD3.includes("IYZICO_API_BASE");
+
+    if (!failedClosedD3) {
+      throw new Error("TEST (d3) BAŞARISIZ: IYZICO_API_BASE üretimde tanımlıyken kapanmadı!");
+    }
+    console.log("✅ TEST (d3) GEÇTİ: IYZICO_API_BASE üretimde tanımlıyken exit 1 ile kapandı.\n");
 
     // -------------------------------------------------------------
-    // SCENARIO (c): ONLY pp_paytr_paytr & pp_cod_cod linked
+    // SCENARIO (c): ONLY pp_paytr_paytr, pp_iyzico_iyzico & pp_cod_cod linked
     // -------------------------------------------------------------
-    console.log("--- TEST (c): Yalnızca PayTR + COD bağlıyken üretim açılışı ---");
+    console.log("--- TEST (c): PayTR + iyzico + COD bağlıyken üretim açılışı ---");
     await client.query(
       "UPDATE region_payment_provider SET deleted_at = NOW() WHERE region_id = $1;",
       [regionId],
@@ -253,9 +266,15 @@ async function main() {
       `INSERT INTO region_payment_provider (id, region_id, payment_provider_id, created_at, updated_at)
        VALUES
          ($1, $2, 'pp_paytr_paytr', NOW(), NOW()),
-         ($3, $2, 'pp_cod_cod', NOW(), NOW())
+         ($3, $2, 'pp_iyzico_iyzico', NOW(), NOW()),
+         ($4, $2, 'pp_cod_cod', NOW(), NOW())
        ON CONFLICT (region_id, payment_provider_id) DO UPDATE SET deleted_at = NULL;`,
-      [`regpp_test_paytr_${Date.now()}`, regionId, `regpp_test_cod_${Date.now()}`],
+      [
+        `regpp_test_paytr_${Date.now()}`,
+        regionId,
+        `regpp_test_iyzico_${Date.now()}`,
+        `regpp_test_cod_${Date.now()}`,
+      ],
     );
 
     // Start Medusa in background and poll /health
@@ -268,6 +287,7 @@ async function main() {
     };
     delete cleanEnv.PAYTR_API_BASE;
     delete cleanEnv.DEV_PAYTR_USER_IP;
+    delete cleanEnv.IYZICO_API_BASE;
 
     const prodProc = spawnMedusaStart(prodPort, cleanEnv);
 
@@ -334,12 +354,14 @@ async function main() {
            VALUES
              ($1, $2, 'pp_system_default', NOW(), NOW()),
              ($3, $2, 'pp_paytr_paytr', NOW(), NOW()),
-             ($4, $2, 'pp_cod_cod', NOW(), NOW())
+             ($4, $2, 'pp_iyzico_iyzico', NOW(), NOW()),
+             ($5, $2, 'pp_cod_cod', NOW(), NOW())
            ON CONFLICT (region_id, payment_provider_id) DO UPDATE SET deleted_at = NULL;`,
           [
             `regpp_restore_sys_${Date.now()}`,
             regId,
             `regpp_restore_paytr_${Date.now()}`,
+            `regpp_restore_iyzico_${Date.now()}`,
             `regpp_restore_cod_${Date.now()}`,
           ],
         );

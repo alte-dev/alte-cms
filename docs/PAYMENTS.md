@@ -1,4 +1,4 @@
-# Alte E-Ticaret Ödeme Mimarisi (PayTR & Kapıda Ödeme)
+# Alte E-Ticaret Ödeme Mimarisi (iyzico, PayTR & Kapıda Ödeme)
 
 Bu doküman, Alte CMS e-ticaret platformunda yer alan ödeme sağlayıcılarının mimarisini, veri akışlarını, şifreleme mekanizmalarını, eşzamanlılık kontrolünü ve güvenlik korumalarını açıklar.
 
@@ -6,9 +6,18 @@ Bu doküman, Alte CMS e-ticaret platformunda yer alan ödeme sağlayıcıların�
 
 ## 1. Mimariye Genel Bakış
 
-Sistem, Medusa v2'nin modüler Payment Provider mimarisi üzerine kuruludur. İki temel ödeme sağlayıcısı ve geliştirici ortamı için bir fallback sağlayıcı mevcuttur:
+Sistem, Medusa v2'nin modüler Payment Provider mimarisi üzerine kuruludur. Üç temel ödeme sağlayıcısı (admin panelinden bağımsız açılıp kapatılabilir ve varsayılan seçilebilir) ve geliştirici ortamı için bir fallback sağlayıcı mevcuttur:
 
-1. **PayTR Sağlayıcısı (`pp_paytr_paytr`):**
+1. **iyzico Sağlayıcısı (`pp_iyzico_iyzico`):**
+
+   - **Tip:** iyzico Checkout Form (varsayılan `redirect` modu ile iyzico alan adına yönlendirme; isteğe bağlı `embedded` modunda sayfa içi iframe).
+   - **Akış:** İki adımlı güvenli ödeme:
+     1. Sunucu tarafında `checkoutform/initialize/auth/ecom` (`IYZWSv2` HMAC-SHA256) ile token ve `paymentPageUrl` alınır (tutar yalnızca sunucudaki sepetten hesaplanır).
+     2. iyzico müşteri tarayıcısını `POST /api/payment/iyzico/callback` adresine `token` ile gönderir. Web katmanı bu `token`'ı iç gizli anahtarla Medusa `POST /internal/payment/iyzico/callback` ucuna iletir; Medusa sunucudan sunucuya `checkoutform/auth/ecom/detail` (`retrieve`) ile sonucu iyzico'dan sorgular, `signature` (HMAC-SHA256), `conversationId`/`basketId`, `paidPrice`/`currency` ve token tekilliğini doğrulayıp siparişi tamamlar (`303 /odeme/sonuc`).
+   - **Destek:** Peşin ve taksitli ödeme (`1–12`), iptal (`/payment/cancel`) ve kısmi/tam iade (`/payment/refund`); hata durumunda `needs_manual_refund` takibine düşer.
+   - **TCKN (`identityNumber`):** Müşteriden TCKN toplanmaz/saklanmaz; yer tutucu `"11111111111"` gönderilir (canlı hesapta iyzico onayı insan kararı gerektirir).
+
+2. **PayTR Sağlayıcısı (`pp_paytr_paytr`):**
 
    - **Tip:** iFrame ve Yönlendirmeli (Redirect) Kredi/Banka Kartı Ödemesi.
    - **Akış:** İki adımlı güvenli ödeme (Step 1: Sunucu taraflı Token alma, Step 2: PayTR Webhook Callback).
@@ -16,7 +25,7 @@ Sistem, Medusa v2'nin modüler Payment Provider mimarisi üzerine kuruludur. İk
    - **Çevre:** Sandbox (Test) ve Canlı (Production) modları admin panelinden dinamik olarak yönetilir.
    - **Tahsilat (Capture):** Başarılı webhook bildiriminde ödeme derhal `capturePaymentWorkflow` ile tahsil edilir (`captured_at` dolar, `paid_total = total`).
 
-2. **Kapıda Ödeme Sağlayıcısı (`pp_cod_cod`):**
+3. **Kapıda Ödeme Sağlayıcısı (`pp_cod_cod`):**
 
    - **Tip:** Teslimatta Nakit / Kredi Kartı ile Ödeme (Cash on Delivery).
    - **Kalıcı Satır Kalemi:** Özel hizmet ürünü ("Kapıda Ödeme Hizmet Bedeli", SKU: `SERVICE-COD-FEE`, metadata: `{ is_cod_fee: true, hidden: true }`) sepete sunucu tarafında eklenir; başka ödeme yöntemine geçildiğinde derhal kaldırılır.
@@ -24,7 +33,7 @@ Sistem, Medusa v2'nin modüler Payment Provider mimarisi üzerine kuruludur. İk
    - **Eşik Hesaplamaları:** 1500 TL ücretsiz kargo eşiği ve `cod_max_order_amount` üst sınırı YALNIZCA asıl ürün satırları toplamı üzerinden hesaplanır; hizmet bedeli eşik hesaplamalarına dahil edilmez.
    - **Üst Limit:** Risk yönetimi amacıyla maksimum sepet tutarı sınırı (örn. 5.000 TL).
 
-3. **Geliştirici Sahte Ödeme (`pp_system_default`):**
+4. **Geliştirici Sahte Ödeme (`pp_system_default`):**
    - **Kısıtlama:** Yalnızca `NODE_ENV !== "production"` ve `ALLOW_DEV_PAYMENT="true"` iken vitrinde aktifleşebilir.
    - **Üretim Başlatma Koruması (Startup Guard):** Medusa açılışında `productionPaymentGuard` loader'ı tarafından `region_payment_provider` tablosu taranarak kontrol edilir. Üretimde herhangi bir bölgeye `pp_system_default` bağlıysa veya hiçbir bölgeye gerçek sağlayıcı (`pp_paytr_paytr`, `pp_cod_cod`) bağlı değilse sunucu fail-closed olarak `exit 1` ile kapanır.
 
@@ -81,8 +90,8 @@ sequenceDiagram
 - Bölge-sağlayıcı bağlantılarını `region_payment_provider` tablosundan sorgular.
 - Eğer herhangi bir bölgeye `pp_system_default` bağlıysa derhal `process.exit(1)` vererek durdurur.
 - Eğer hiçbir bölgeye gerçek sağlayıcı (`pp_paytr_paytr` veya `pp_cod_cod`) bağlı değilse derhal `process.exit(1)` vererek durdurur.
-- Üretimde `PAYTR_API_BASE` veya `DEV_PAYTR_USER_IP` tanımlanmışsa `assertUndefinedInProduction` kuralıyla `process.exit(1)` verir.
-- Sadece PayTR ve/veya COD bağlıysa `[Payment Guard] Production payment guard PASSED` loglar ve sunucu açılır.
+- Üretimde `PAYTR_API_BASE`, `DEV_PAYTR_USER_IP` veya `IYZICO_API_BASE` tanımlanmışsa `assertUndefinedInProduction` kuralıyla `process.exit(1)` verir.
+- Sadece sertifikalı sağlayıcılar (`pp_paytr_paytr`, `pp_iyzico_iyzico`, `pp_cod_cod`) bağlıysa `[Payment Guard] Production payment guard PASSED` loglar ve sunucu açılır.
 
 ### 3.2 AES-256-GCM ile Veri Güvenliği
 

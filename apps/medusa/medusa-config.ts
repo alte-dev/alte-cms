@@ -55,6 +55,10 @@ module.exports = defineConfig({
             id: "paytr",
           },
           {
+            resolve: path.resolve(__dirname, "src/modules/payment-iyzico"),
+            id: "iyzico",
+          },
+          {
             resolve: path.resolve(__dirname, "src/modules/payment-cod"),
             id: "cod",
           },

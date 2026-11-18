@@ -24,7 +24,7 @@ Platform iki ana uygulama ve ortak bir kütüphane paketinden (`pnpm monorepo`) 
 |  - Storefront Vitrini              |  HTTP   |  - Tek Doğru Kaynak (Single Source) |
 |  - Payload CMS 3 (/admin)          +-------->+  - Ürün, Varyant, Stok, Fiyat       |
 |  - Görsel Sayfa Düzenleyici (Puck) | (Loop-  |  - Sepet, Kupon, Vergi, Sipariş     |
-|  - Blog, Tema, Sayfa Yönetimi      |  back)  |  - PayTR & Kapıda Ödeme Sağlayıcı   |
+|  - Blog, Tema, Sayfa Yönetimi      |  back)  |  - iyzico, PayTR & COD Sağlayıcı    |
 |                                    |         |  - Medusa Admin UI (/app)           |
 +-----------------+------------------+         +------------------+------------------+
                   |                                               |

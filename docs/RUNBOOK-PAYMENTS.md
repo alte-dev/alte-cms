@@ -91,6 +91,37 @@ PayTR tarafında genel bir kesinti veya acil bir güvenlik durumu meydana gelirs
 
 ---
 
+## 6. iyzico Yönetimi ve Canlıya Geçiş (Faz 5.3)
+
+### 6.1 Sandbox / Live Geçiş Adımları
+
+1. Sunucuda `IYZICO_API_BASE` değişkeninin **tanımlı olmadığından** emin olun (tanımlıysa üretim açılış koruması `exit 1` verir).
+2. Medusa Admin -> `/app/payment-settings` sayfasına girin.
+3. **API Anahtarı (API Key)** ve **Gizli Anahtar (Secret Key)** alanlarını girin (anahtarlar yalnızca admin panelinden girilir, AES-256-GCM ile şifrelenir).
+4. **Ödeme Formu Görünümü:** Varsayılan **Yönlendir (Önerilen)** olarak bırakın (kart bilgisi iyzico alan adında girilir).
+5. **iyzico Bağlantısını Test Et (BIN Sorgusu)** butonuna tıklayarak kimlik doğrulamanın başarılı olduğunu görün.
+6. Canlı moda geçerken çalışma modunu **Canlı Mod (Live)** yapın, onay kutusuna `CANLI` yazın ve **Ayarları Kaydet** butonuna basın.
+7. iyzico panelinde mağaza callback URL / IP ayarlarının `https://<domain>/api/payment/iyzico/callback` adresine izin verdiğini doğrulayın.
+
+### 6.2 Yöntemleri Bağımsız Açma / Kapatma ve Varsayılan Seçim
+
+- `iyzico`, `PayTR` ve `Kapıda Ödeme` admin panelinden birbirinden bağımsız açılıp kapatılabilir.
+- Bir yöntemi kapatmak için ilgili anahtarı kapatıp **Ayarları Kaydet** demeniz yeterlidir; sunucu yeniden başlatılmadan vitrin gizler ve `/api/checkout` sunucu tarafında o yöntemi reddeder.
+- **Varsayılan Seçili Ödeme Yöntemi** alanından müşteriye ilk seçili gelecek yöntem belirlenir.
+
+### 6.3 İptal ve İade
+
+- Kargolanmamış sipariş iptallerinde (`POST /admin/order-operations/:id/cancel`) kartlı ödemeler (`paytr` veya `iyzico`) otomatik geri ödeme yapmaz; `needs_manual_refund = true` olarak işaretlenir ve admin panelindeki **Elle İade Bekleyenler** listesinde görünür.
+- iyzico panelinden iptal (aynı gün) veya kısmi/tam iade tamamlandıktan sonra kayıt kapatılır.
+
+### 6.4 iyzico Panelinde Tahsil Edilmiş Ama Siparişi Olmayan Ödeme (Mutabakat)
+
+Müşteri ödeme sayfasındayken sepet başka sekmede değiştirilirse Medusa eski ödeme oturumunu silebilir, ancak iyzico tahsilatı gerçekleşebilir. Bu durumda:
+
+1. Callback `retrieve` ile iyzico'dan `SUCCESS` sonucunu alır ve `orphan_payment` tablosuna PII içermeyen (`token_hash`, `iyzico_payment_id`, tutar, zaman) tekil bir kayıt yazar, `[CRITICAL ALERT]` loglar.
+2. Ayrıca `SUCCESS` yanıtında imza/tutar/oturum uyuşmazlığı oluşursa oturum `needs_manual_refund: true` olarak işaretlenir.
+3. Operatör Medusa Admin -> `/app/payment-settings` -> **Elle İade Bekleyenler** listesinde bu kayıtları (`orp_...` veya `payses_...`) görür, iyzico panelinden `paymentId` ile eşleştirip manuel iade yapar ve müşteriyi bilgilendirir.
+
 ## 5. İptal Edilen Siparişlerde PayTR İadesi (FAZ 6C)
 
 Yönetici tarafından kargolanmamış bir sipariş iptal edildiğinde:

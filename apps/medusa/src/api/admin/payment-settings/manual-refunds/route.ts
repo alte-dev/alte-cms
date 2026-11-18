@@ -50,6 +50,36 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
             : new Date().toISOString(),
         });
       }
+
+      const orphanRows = await pgConnection("orphan_payment")
+        .where({ status: "needs_manual_refund" })
+        .select(
+          "id",
+          "cart_id",
+          "amount",
+          "currency",
+          "status",
+          "reason",
+          "iyzico_payment_id",
+          "created_at",
+        )
+        .orderBy("created_at", "desc");
+
+      for (const orp of orphanRows) {
+        refunds.push({
+          id: orp.id,
+          cart_id: orp.cart_id || null,
+          amount: Number(orp.amount || 0),
+          currency: orp.currency || "TRY",
+          status: orp.status || "needs_manual_refund",
+          reason: orp.iyzico_payment_id
+            ? `${orp.reason} (iyzico_payment_id: ${orp.iyzico_payment_id})`
+            : orp.reason || "ORPHAN_PAYMENT",
+          created_at: orp.created_at
+            ? new Date(orp.created_at).toISOString()
+            : new Date().toISOString(),
+        });
+      }
     }
   } catch (err: any) {
     console.error("[Manual Refunds API] Error fetching manual refund sessions:", err.message);

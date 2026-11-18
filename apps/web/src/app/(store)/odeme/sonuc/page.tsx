@@ -97,7 +97,7 @@ function PaymentResultContent() {
           <div>
             <h1 className="text-2xl font-bold text-stone-900">Ödemeniz Doğrulanıyor</h1>
             <p className="text-sm text-stone-500 mt-2">
-              PayTR güvenli ödeme onayınız alınıyor. Lütfen bu sayfayı kapatmayınız...
+              Güvenli ödeme onayınız alınıyor. Lütfen bu sayfayı kapatmayınız...
             </p>
             <p className="text-xs text-stone-400 mt-1">
               Geçen süre: {elapsedSeconds} sn / maks 90 sn
