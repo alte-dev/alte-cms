@@ -65,12 +65,36 @@ export function getSecurityHeadersConfig(isProd: boolean): HeaderRule[] {
 
   const adminCsp = buildAdminCsp(isProd);
 
+  const noStoreHeaders: HeaderEntry[] = [
+    { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
+    { key: "Pragma", value: "no-cache" },
+  ];
+
+  const noStoreSources = [
+    "/sepet",
+    "/sepet/:path*",
+    "/odeme",
+    "/odeme/:path*",
+    "/hesap",
+    "/siparis-onay",
+    "/siparis-onay/:path*",
+    "/siparis-takip",
+    "/siparis-takip/:path*",
+    "/onizleme",
+    "/onizleme/:path*",
+    "/admin",
+    "/app",
+    "/api/:path*",
+    "/medusa-api/:path*",
+  ];
+
   return [
     {
       source: "/hesap/:path*",
       headers: [
         { key: "Referrer-Policy", value: "no-referrer" },
         { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ...noStoreHeaders,
       ],
     },
     {
@@ -79,11 +103,15 @@ export function getSecurityHeadersConfig(isProd: boolean): HeaderRule[] {
     },
     {
       source: "/admin/:path*",
-      headers: [{ key: "Content-Security-Policy", value: adminCsp }],
+      headers: [{ key: "Content-Security-Policy", value: adminCsp }, ...noStoreHeaders],
     },
     {
       source: "/app/:path*",
-      headers: [{ key: "Content-Security-Policy", value: adminCsp }],
+      headers: [{ key: "Content-Security-Policy", value: adminCsp }, ...noStoreHeaders],
     },
+    ...noStoreSources.map((source) => ({
+      source,
+      headers: noStoreHeaders,
+    })),
   ];
 }

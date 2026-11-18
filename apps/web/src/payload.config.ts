@@ -28,6 +28,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
     components: {
+      beforeDashboard: ["@/components/admin/CacheControlPanel#CacheControlPanel"],
       afterNavLinks: ["@/components/admin/MedusaSwitchNavLink#MedusaSwitchNavLink"],
     },
   },
