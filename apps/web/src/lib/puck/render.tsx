@@ -11,12 +11,14 @@ import {
   BannerComponent,
   ContactInfoComponent,
   ContactFormBlockComponent,
-  ProductGridComponent,
-  FeaturedProductsComponent,
-  CategoryListComponent,
   FreeShippingBarComponent,
-  LatestPostsComponent,
 } from "./components";
+import {
+  ServerProductGridComponent,
+  ServerFeaturedProductsComponent,
+  ServerCategoryListComponent,
+  ServerLatestPostsComponent,
+} from "./server-blocks";
 
 interface PuckItem {
   type: string;
@@ -42,11 +44,11 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   Banner: BannerComponent,
   ContactInfo: ContactInfoComponent,
   ContactForm: ContactFormBlockComponent,
-  ProductGrid: ProductGridComponent,
-  FeaturedProducts: FeaturedProductsComponent,
-  CategoryList: CategoryListComponent,
+  ProductGrid: ServerProductGridComponent,
+  FeaturedProducts: ServerFeaturedProductsComponent,
+  CategoryList: ServerCategoryListComponent,
   FreeShippingBar: FreeShippingBarComponent,
-  LatestPosts: LatestPostsComponent,
+  LatestPosts: ServerLatestPostsComponent,
 };
 
 /**

@@ -54,6 +54,11 @@
     "prepare": "lefthook install"
   },
   "pnpm": {
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-fc5q-39xc-vjpf"
+      ]
+    },
     "overrides": {
       "next": "15.5.29",
       "dompurify": "3.4.17",

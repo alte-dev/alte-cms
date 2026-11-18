@@ -89,7 +89,7 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
 
 ## 6. Bilinen Bağımlılık İstisnaları (Known Security Exceptions)
 
-`pnpm audit --prod --audit-level=high` sonucu **0 yüksek / 0 kritik açık** ile temizdir. Üretim bağımlılıklarında kalan orta ve düşük seviyeli 2 bulgu aşağıda teknik gerekçeleriyle listelenmiştir:
+`pnpm audit --prod --audit-level=high` sonucu (`package.json` `pnpm.auditConfig.ignoreGhsas` içindeki belgelenmiş `GHSA-fc5q-39xc-vjpf` istisnasıyla) **0 yüksek / 0 kritik açık** ile temizdir. Üretim bağımlılıklarında kalan bulgular aşağıda teknik gerekçeleri ve yeniden değerlendirme koşullarıyla listelenmiştir:
 
 1. **`uuid <11.1.1` (Moderate - GHSA-w5hq-g745-h8pq):**
    - **Yol:** `apps/medusa > @medusajs/medusa > @medusajs/event-bus-redis > bullmq@5.13.0 > uuid@9.0.1`
@@ -97,6 +97,10 @@ Kritik uç noktalara yönelik kaba kuvvet (brute-force) ve DoS saldırılarını
 2. **`deepmerge <=4.3.1` (Low - GHSA-gcqx-w48m-w2h4):**
    - **Yol:** `apps/web > @payloadcms/db-postgres > @payloadcms/drizzle > payload@3.93.0 > deepmerge@4.3.1` ve `@sendgrid/helpers > deepmerge@4.3.1`
    - **Gerekçe:** `deepmerge` kütüphanesinin prototip kirlenmesi (prototype pollution) zafiyeti olup, upstream geliştirici tarafından henüz yamalanmamıştır (`Patched versions: <0.0.0`). Payload CMS ve SendGrid dahili nesne birleştirmede kullanmakta olup, girdi doğrulama Zod şemaları ve Payload strict collection tanımlarıyla sınırlandırılmıştır. Upstream yama yayınlandığında güncellenecektir.
+3. **`picomatch` (High - GHSA-fc5q-39xc-vjpf — `auditConfig.ignoreGhsas`):**
+   - **Yol:** `apps/medusa` geçişli bağımlılığı (`@medusajs/*` bağımlılık ağacı içinde).
+   - **Gerekçe:** `picomatch` ReDoS güvenlik açığı için upstream tarafından düzeltilmiş sürüm henüz yayınlanmamıştır (`Patched versions: <0.0.0`). Uygulama kullanıcı girdisinden `picomatch` glob deseni derlemez; yalnızca dahili dosya/yol eşleştirmelerinde kullanılır.
+   - **Yeniden değerlendirme koşulu:** Düzeltilmiş `picomatch` sürümü yayınlanınca ya da Medusa güncellemesinde `package.json` içindeki `pnpm.auditConfig.ignoreGhsas` listesinden kaldırılacaktır.
 
 ## Müşteri Hesabı Güvenliği (Faz 12)
 
