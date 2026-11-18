@@ -334,7 +334,7 @@ async function run() {
       `status=${draftCheckoutRes.status}, code=${draftCheckoutJson.code}`,
     );
 
-    // Direct Medusa completeCartWorkflow check (must be rejected by validate hook even if /api/checkout is bypassed)
+    // Direct Medusa validate-availability endpoint check
     const directValidateRes = await fetch(
       `${MEDUSA_URL}/store/carts/${cartId}/validate-availability`,
       {
@@ -346,6 +346,21 @@ async function run() {
       "Medusa Doğrudan Validate Endpoint Engeli (409)",
       directValidateRes.status === 409,
       `status=${directValidateRes.status}`,
+    );
+
+    // Direct Medusa completeCartWorkflow check (must be rejected by validate hook even if /api/checkout is bypassed)
+    const directCompleteRes = await fetch(`${MEDUSA_URL}/store/carts/${cartId}/complete`, {
+      method: "POST",
+      headers: { "x-publishable-api-key": pubKey, "Content-Type": "application/json" },
+    });
+    const directCompleteText = await directCompleteRes.text();
+    const directCompleteRejected =
+      (!directCompleteRes.ok || !directCompleteText.includes('"type":"order"')) &&
+      directCompleteText.includes("PRODUCT_UNPUBLISHED");
+    recordStep(
+      "Medusa Doğrudan completeCartWorkflow Hook Engeli (draft)",
+      directCompleteRejected,
+      `status=${directCompleteRes.status}`,
     );
 
     // 7. Scenario C: Delete product

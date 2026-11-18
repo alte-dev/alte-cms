@@ -210,7 +210,7 @@ describe("evaluateCartItemsAvailability", () => {
     expect(issues).toEqual([]);
   });
 
-  it("skips COD service fee line items", () => {
+  it("skips COD service fee line items identified by SKU", () => {
     const items: CartAvailabilityItemInput[] = [
       {
         id: "item_cod",
@@ -225,6 +225,89 @@ describe("evaluateCartItemsAvailability", () => {
 
     const issues = evaluateCartItemsAvailability(items, {});
     expect(issues).toEqual([]);
+  });
+
+  it("does NOT allow spoofed metadata.is_cod_fee to bypass availability checks on regular products", () => {
+    const items: CartAvailabilityItemInput[] = [
+      {
+        id: "item_spoof_unpub",
+        title: "Taslak Ürün",
+        quantity: 1,
+        variant_id: "var_draft",
+        variant_sku: "NORMAL-SKU-1",
+        metadata: { is_cod_fee: true },
+        variant: {
+          id: "var_draft",
+          sku: "NORMAL-SKU-1",
+          manage_inventory: true,
+          allow_backorder: false,
+          deleted_at: null,
+          product: {
+            id: "prod_draft",
+            title: "Taslak Ürün",
+            status: "draft",
+            deleted_at: null,
+          },
+        },
+      },
+      {
+        id: "item_spoof_del",
+        title: "Silinmiş Ürün",
+        quantity: 1,
+        variant_id: "var_del",
+        variant_sku: "NORMAL-SKU-2",
+        metadata: { is_cod_fee: true },
+        variant: null,
+      },
+    ];
+
+    const issues = evaluateCartItemsAvailability(items, { var_draft: { availability: 10 } });
+    expect(issues).toHaveLength(2);
+    expect(issues[0]).toMatchObject({ lineItemId: "item_spoof_unpub", reason: "unpublished" });
+    expect(issues[1]).toMatchObject({ lineItemId: "item_spoof_del", reason: "deleted" });
+  });
+
+  it("aggregates requested quantities across multiple line items sharing the same variant", () => {
+    const sharedVariant = {
+      id: "var_shared",
+      sku: "SHARED-1",
+      manage_inventory: true,
+      allow_backorder: false,
+      deleted_at: null,
+      product: {
+        id: "prod_shared",
+        title: "Keten Yastık",
+        status: "published",
+        deleted_at: null,
+      },
+    };
+
+    const items: CartAvailabilityItemInput[] = [
+      {
+        id: "item_a",
+        title: "Keten Yastık",
+        quantity: 2,
+        variant_id: "var_shared",
+        variant: sharedVariant,
+      },
+      {
+        id: "item_b",
+        title: "Keten Yastık",
+        quantity: 2,
+        variant_id: "var_shared",
+        variant: sharedVariant,
+      },
+    ];
+
+    const issues = evaluateCartItemsAvailability(items, { var_shared: { availability: 3 } });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      lineItemId: "item_b",
+      variantId: "var_shared",
+      reason: "insufficient_stock",
+      requestedQuantity: 4,
+      availableQuantity: 3,
+    });
   });
 });
 

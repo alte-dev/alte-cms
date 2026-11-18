@@ -42,16 +42,16 @@ export interface CartAvailabilityResult {
   issues: CartItemAvailabilityIssue[];
 }
 
+/**
+ * Identifies the server-managed COD service fee line item strictly by SKU.
+ * Never trusts client-writable cart line-item metadata alone to prevent bypass.
+ */
 export function isCodFeeCartItem(item: {
   variant_sku?: string | null;
   variant?: { sku?: string | null } | null;
   metadata?: Record<string, unknown> | null;
 }): boolean {
-  return Boolean(
-    item.metadata?.is_cod_fee === true ||
-      item.variant_sku === "SERVICE-COD-FEE" ||
-      item.variant?.sku === "SERVICE-COD-FEE",
-  );
+  return item.variant_sku === "SERVICE-COD-FEE" || item.variant?.sku === "SERVICE-COD-FEE";
 }
 
 /**
@@ -62,6 +62,7 @@ export function evaluateCartItemsAvailability(
   availabilityMap: VariantAvailabilityMap,
 ): CartItemAvailabilityIssue[] {
   const issues: CartItemAvailabilityIssue[] = [];
+  const cumulativeRequestedByVariant = new Map<string, number>();
 
   for (const item of items) {
     if (isCodFeeCartItem(item)) {
@@ -105,14 +106,18 @@ export function evaluateCartItemsAvailability(
           ? Math.max(0, availableRaw)
           : 0;
 
-      if (available < item.quantity) {
+      const cumulativeRequested =
+        (cumulativeRequestedByVariant.get(variant.id) ?? 0) + item.quantity;
+      cumulativeRequestedByVariant.set(variant.id, cumulativeRequested);
+
+      if (available < cumulativeRequested) {
         issues.push({
           lineItemId: item.id,
           variantId: variant.id,
           productId: product.id,
           title,
           reason: "insufficient_stock",
-          requestedQuantity: item.quantity,
+          requestedQuantity: cumulativeRequested,
           availableQuantity: available,
         });
       }
