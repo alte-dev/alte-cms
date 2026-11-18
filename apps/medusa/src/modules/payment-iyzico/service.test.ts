@@ -198,4 +198,111 @@ describe("IyzicoPaymentService & payment-guard", () => {
       } as any),
     ).rejects.toThrow(/iade/i);
   });
+
+  it("reads buyer email, addresses, ip, and items from input.data on guest checkout without leaking PII into session data", async () => {
+    setValidSettings();
+    let capturedBody: any = null;
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init: any) => {
+      capturedBody = JSON.parse(init.body);
+      const token = "iyz-guest-tok";
+      const signature = calculateIyzicoHmacSha256(
+        [capturedBody.conversationId, token],
+        "sandbox-secret-test",
+      );
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          token,
+          conversationId: capturedBody.conversationId,
+          paymentPageUrl: "https://sandbox-cpp.iyzipay.com?token=iyz-guest-tok&lang=tr",
+          signature,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const svc = new IyzicoPaymentService({}, { fetchImpl: fetchMock });
+    const out = await svc.initiatePayment({
+      amount: 320,
+      currency_code: "try",
+      context: {},
+      data: {
+        cart_id: "cart_guest_1",
+        email: "misafir@example.com",
+        ip: "203.0.113.42",
+        billing_address: {
+          first_name: "Deniz",
+          last_name: "Kaya",
+          phone: "+905551112233",
+          address_1: "Ornek Mah. 5",
+          city: "Ankara",
+          postal_code: "06100",
+        },
+        shipping_address: {
+          first_name: "Deniz",
+          last_name: "Kaya",
+          address_1: "Teslimat Sok. 9",
+          city: "Izmir",
+          postal_code: "35000",
+        },
+        items: [{ id: "li_guest_1", title: "Kupa", unit_price: 250, quantity: 1 }],
+      },
+    } as any);
+
+    expect(capturedBody.buyer.email).toBe("misafir@example.com");
+    expect(capturedBody.buyer.name).toBe("Deniz");
+    expect(capturedBody.buyer.surname).toBe("Kaya");
+    expect(capturedBody.buyer.gsmNumber).toBe("+905551112233");
+    expect(capturedBody.buyer.city).toBe("Ankara");
+    expect(capturedBody.buyer.ip).toBe("203.0.113.42");
+    expect(capturedBody.shippingAddress.city).toBe("Izmir");
+    expect(capturedBody.shippingAddress.address).toBe("Teslimat Sok. 9");
+    expect(capturedBody.basketItems[0]).toMatchObject({
+      id: "li_guest_1",
+      name: "Kupa",
+      price: "250.00",
+    });
+
+    // Ensure session data never persists customer PII
+    const sessionData = out.data as Record<string, unknown>;
+    expect(sessionData.email).toBeUndefined();
+    expect(sessionData.billing_address).toBeUndefined();
+    expect(sessionData.shipping_address).toBeUndefined();
+    expect(sessionData.ip).toBeUndefined();
+    expect(sessionData.cart_id).toBe("cart_guest_1");
+  });
+
+  it("uses an iyzico-accepted fallback email domain when email is omitted", async () => {
+    setValidSettings();
+    let capturedBody: any = null;
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init: any) => {
+      capturedBody = JSON.parse(init.body);
+      const token = "iyz-fallback-tok";
+      const signature = calculateIyzicoHmacSha256(
+        [capturedBody.conversationId, token],
+        "sandbox-secret-test",
+      );
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          token,
+          conversationId: capturedBody.conversationId,
+          paymentPageUrl: "https://sandbox-cpp.iyzipay.com?token=iyz-fallback-tok&lang=tr",
+          signature,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const svc = new IyzicoPaymentService({}, { fetchImpl: fetchMock });
+    await svc.initiatePayment({
+      amount: 100,
+      currency_code: "try",
+      context: {},
+      data: { cart_id: "cart_no_email" },
+    } as any);
+
+    expect(capturedBody.buyer.email).not.toMatch(/\.test$/i);
+    expect(capturedBody.buyer.email).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i);
+  });
 });

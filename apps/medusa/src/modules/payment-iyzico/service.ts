@@ -153,26 +153,32 @@ export class IyzicoPaymentService extends AbstractPaymentProvider {
     }
 
     const { amount, context } = input;
+    const inputData = ((input as any)?.data || {}) as Record<string, any>;
     const expectedKurus = Math.round(Number(amount) * 100);
     if (expectedKurus <= 0) {
       throw new Error("Ödeme tutarı sıfırdan büyük olmalıdır.");
     }
 
     const customer = (context as any)?.customer || {};
-    const billingAddress = (context as any)?.billing_address || {};
-    const shippingAddress = (context as any)?.shipping_address || billingAddress;
+    const billingAddress = inputData.billing_address || (context as any)?.billing_address || {};
+    const shippingAddress =
+      inputData.shipping_address || (context as any)?.shipping_address || billingAddress;
 
-    const rawEmail = (context as any)?.email || customer.email || "musteri@example.test";
-    const email = String(rawEmail).trim() || "musteri@example.test";
+    const rawEmail =
+      inputData.email || (context as any)?.email || customer.email || "musteri@example.com";
+    const email = String(rawEmail).trim() || "musteri@example.com";
 
     const userIp =
-      (context as any)?.ip || (context as any)?.headers?.["x-alte-client-ip"] || "127.0.0.1";
+      inputData.ip ||
+      (context as any)?.ip ||
+      (context as any)?.headers?.["x-alte-client-ip"] ||
+      "127.0.0.1";
 
     const detectedCartId =
       (context as any)?.cart_id ||
       (context as any)?.cartId ||
       (context as any)?.resource_id ||
-      ((input as any)?.data as any)?.cart_id ||
+      inputData.cart_id ||
       "";
 
     const conversationId = `IYZ${Date.now().toString(36)}${String(
@@ -183,7 +189,11 @@ export class IyzicoPaymentService extends AbstractPaymentProvider {
     const basketId = String(detectedCartId || conversationId).slice(0, 64);
 
     const priceStr = (expectedKurus / 100).toFixed(2);
-    const basketItems = buildIyzicoBasketItems((context as any)?.items || [], expectedKurus);
+    const rawItems =
+      Array.isArray(inputData.items) && inputData.items.length > 0
+        ? inputData.items
+        : (context as any)?.items || [];
+    const basketItems = buildIyzicoBasketItems(rawItems, expectedKurus);
 
     const webPublicUrl = (process.env.WEB_PUBLIC_URL || "http://localhost:3100").replace(
       /\/+$/,

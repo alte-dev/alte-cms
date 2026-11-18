@@ -354,6 +354,7 @@ export async function getOrCreatePaymentCollection(cartId: string): Promise<stri
 export async function createPaymentSession(
   cartId: string,
   providerId: "pp_paytr_paytr" | "pp_iyzico_iyzico" | "pp_cod_cod" | "pp_system_default",
+  extraData?: Record<string, unknown>,
 ) {
   const collectionId = await getOrCreatePaymentCollection(cartId);
   const res = await medusaFetch<{
@@ -369,7 +370,7 @@ export async function createPaymentSession(
     method: "POST",
     body: JSON.stringify({
       provider_id: providerId,
-      data: { cart_id: cartId },
+      data: { ...(extraData || {}), cart_id: cartId },
     }),
     cache: "no-store",
   });
@@ -407,11 +408,23 @@ export async function initiatePaytrPayment(cartId: string) {
   };
 }
 
+export interface IyzicoInitiateContext {
+  email?: string;
+  ip?: string;
+  billing_address?: Partial<StoreAddress>;
+  shipping_address?: Partial<StoreAddress>;
+  items?: Array<{ id?: string; title?: string; unit_price?: number; quantity?: number }>;
+}
+
 /**
  * Initiates iyzico Checkout Form payment session and returns token, paymentPageUrl, and displayMode.
  */
-export async function initiateIyzicoPayment(cartId: string) {
-  const { session } = await createPaymentSession(cartId, "pp_iyzico_iyzico");
+export async function initiateIyzicoPayment(cartId: string, context?: IyzicoInitiateContext) {
+  const { session } = await createPaymentSession(
+    cartId,
+    "pp_iyzico_iyzico",
+    context as Record<string, unknown> | undefined,
+  );
   if (!session || !session.data) {
     throw new Error("iyzico ödeme oturumu başlatılamadı.");
   }
