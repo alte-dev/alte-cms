@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { CartDrawerProvider } from "@/components/cart-drawer-provider";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
@@ -51,15 +52,17 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         >
           İçeriğe geç
         </a>
-        <Navbar />
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="flex-1 focus:outline-none w-full max-w-full overflow-x-clip"
-        >
-          {children}
-        </main>
-        <Footer />
+        <CartDrawerProvider>
+          <Navbar />
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 focus:outline-none w-full max-w-full overflow-x-clip"
+          >
+            {children}
+          </main>
+          <Footer />
+        </CartDrawerProvider>
       </body>
     </html>
   );

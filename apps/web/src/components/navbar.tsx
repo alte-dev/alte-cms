@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ShoppingBag, User } from "lucide-react";
+import { User } from "lucide-react";
 import { getCategories } from "../lib/medusa/products";
 import { getCart } from "../lib/medusa/cart";
 import { getServerCustomer } from "../lib/medusa/account";
@@ -8,6 +8,7 @@ import { getCartId } from "../lib/medusa/cookies";
 import { getNavigation, getSiteSettings } from "../lib/payload/content";
 import { safeHref } from "../lib/safe-href";
 import { AccountMenuButton } from "./account/AccountMenuButton";
+import { CartDrawerTrigger } from "./cart-drawer-trigger";
 import { MobileMenu, type MenuItem } from "./mobile-menu";
 import { DesktopNavLinks } from "./desktop-nav-links";
 import { SearchBar } from "./search/search-bar";
@@ -131,21 +132,7 @@ export async function Navbar() {
           <div className="justify-self-end flex items-center gap-2">
             <AccountMenuButton customerName={customerName} />
 
-            <Link
-              href="/sepet"
-              className="relative inline-flex h-9 items-center gap-2.5 px-3 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
-              aria-label={`Sepet (${itemCount} ürün)`}
-            >
-              <span className="relative inline-flex items-center">
-                <ShoppingBag className="w-4 h-4 text-stone-700" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 text-[10px] font-bold leading-none text-white bg-stone-900 rounded-full">
-                    {itemCount}
-                  </span>
-                )}
-              </span>
-              <span>Sepet</span>
-            </Link>
+            <CartDrawerTrigger initialCount={itemCount} variant="desktop" />
           </div>
         </div>
 
@@ -189,18 +176,7 @@ export async function Navbar() {
               <User className="w-5 h-5" />
             </Link>
 
-            <Link
-              href="/sepet"
-              className="relative p-2 text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
-              aria-label={`Sepet (${itemCount} ürün)`}
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {itemCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 text-[10px] font-bold leading-none text-white bg-stone-900 rounded-full">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
+            <CartDrawerTrigger initialCount={itemCount} variant="mobile" />
           </div>
         </div>
 

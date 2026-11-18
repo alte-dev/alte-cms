@@ -7,6 +7,7 @@ import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
 import type { CartItemAvailabilityIssue, PaymentOptionsResult } from "../lib/medusa/cart";
 import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
+import { CheckoutOrderSummaryItem } from "./checkout-order-summary-item";
 import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
 import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
 import {
@@ -450,9 +451,12 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Checkout Form (Col 8) */}
-      <form onSubmit={handleSubmit} className="lg:col-span-8 space-y-8">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[580px_480px] items-start">
+      {/* Checkout Form (Left Column - #FFFFFF) */}
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white px-4 sm:px-6 lg:px-0 lg:pr-11 py-8 space-y-6"
+      >
         {/* Availability Issues Notice */}
         {availabilityIssues.length > 0 && (
           <div
@@ -477,7 +481,6 @@ export function CheckoutForm({
             </Link>
           </div>
         )}
-
         {/* Global Error Notice */}
         {errorMsg && (
           <div
@@ -1196,7 +1199,7 @@ export function CheckoutForm({
           <button
             type="submit"
             disabled={isSubmitting || availabilityIssues.length > 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#3A4A5B] text-white text-sm font-semibold rounded-md hover:bg-[#2E3B49] disabled:opacity-50 transition cursor-pointer"
           >
             {isSubmitting ? (
               <>
@@ -1220,33 +1223,29 @@ export function CheckoutForm({
         </div>
       </form>
 
-      {/* Order Summary & Coupon Sidebar (Col 4) */}
-      <aside className="lg:col-span-4 bg-white border border-stone-200 rounded-lg p-6 space-y-5 sticky top-24">
-        <h3 className="text-base font-bold text-stone-900 pb-3 border-b border-stone-100">
-          Sipariş Özeti ({cart.items.length} Ürün)
+      {/* Order Summary & Coupon Sidebar (Right Column - Normod/Shopify #F5F5F5) */}
+      <aside className="bg-[#F5F5F5] px-4 sm:px-6 lg:pl-11 lg:pr-0 py-8 lg:border-l lg:border-[#DEDEDE] space-y-5 lg:sticky lg:top-0 lg:min-h-[calc(100vh-73px)]">
+        <h3 className="text-base font-semibold text-stone-900 pb-3 border-b border-[#DEDEDE]">
+          Sipariş Özeti (
+          {
+            cart.items.filter(
+              (item) => !item.metadata?.is_cod_fee && item.variant?.sku !== "SERVICE-COD-FEE",
+            ).length
+          }{" "}
+          Ürün)
         </h3>
 
-        {/* Mini Item List */}
-        <div className="divide-y divide-stone-100 max-h-60 overflow-y-auto pr-1">
-          {cart.items.map((item) => (
-            <div key={item.id} className="py-2.5 flex justify-between items-center text-xs">
-              <div className="pr-2 truncate">
-                <span className="font-semibold text-stone-900">{item.title}</span>
-                <span className="text-stone-500 ml-1.5">x {item.quantity}</span>
-              </div>
-              <span className="font-bold text-stone-900 flex-shrink-0">
-                {formatTRY(
-                  (item.unit_price ? item.unit_price * item.quantity : 0) ||
-                    item.total ||
-                    item.subtotal,
-                )}
-              </span>
-            </div>
-          ))}
+        {/* Product List (Shopify/Normod 64x64 thumbnail + quantity badge) */}
+        <div className="space-y-3 max-h-[340px] overflow-y-auto pt-2 pr-1">
+          {cart.items
+            .filter((item) => !item.metadata?.is_cod_fee && item.variant?.sku !== "SERVICE-COD-FEE")
+            .map((item) => (
+              <CheckoutOrderSummaryItem key={item.id} item={item} />
+            ))}
         </div>
 
         {/* Coupon Form */}
-        <div className="pt-2 border-t border-stone-100 space-y-2">
+        <div className="pt-3 border-t border-[#DEDEDE] space-y-2">
           <form onSubmit={handleApplyCoupon} className="flex gap-2">
             <input
               type="text"
@@ -1254,12 +1253,12 @@ export function CheckoutForm({
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               placeholder="İndirim Kodu"
               disabled={isCouponPending}
-              className="w-full px-3 py-1.5 text-xs uppercase font-mono tracking-wider border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+              className="w-full px-3 py-2 text-xs uppercase font-mono tracking-wider bg-white border border-[#DEDEDE] rounded-md focus:outline-none focus:ring-1 focus:ring-[#3A4A5B]"
             />
             <button
               type="submit"
               disabled={isCouponPending || !couponCode.trim()}
-              className="px-3 py-1.5 bg-stone-900 text-white text-xs font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 transition flex items-center gap-1"
+              className="px-4 py-2 bg-[#3A4A5B] text-white text-xs font-medium rounded-md hover:bg-[#2E3B49] disabled:opacity-50 transition flex items-center gap-1.5 flex-shrink-0"
             >
               {isCouponPending ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -1296,13 +1295,13 @@ export function CheckoutForm({
         </div>
 
         {/* Price Breakdown */}
-        <div className="space-y-2 text-xs pt-3 border-t border-stone-100">
-          <div className="flex justify-between text-stone-600">
+        <div className="space-y-2 text-[13px] pt-3 border-t border-[#DEDEDE]">
+          <div className="flex justify-between text-[#666666]">
             <span>Ara Toplam (KDV Hariç)</span>
             <span className="font-medium text-stone-900">{formatTRY(subtotalNet)}</span>
           </div>
 
-          <div className="flex justify-between text-stone-600">
+          <div className="flex justify-between text-[#666666]">
             <span>Hesaplanan KDV (%20 Dahil)</span>
             <span className="font-medium text-stone-900">{formatTRY(taxTotal)}</span>
           </div>
@@ -1314,7 +1313,7 @@ export function CheckoutForm({
             </div>
           )}
 
-          <div className="flex justify-between text-stone-600">
+          <div className="flex justify-between text-[#666666]">
             <span>Kargo Tutarı</span>
             <span className="font-medium text-stone-900">
               {shippingCost === 0 ? "Ücretsiz" : formatTRY(shippingCost)}
@@ -1322,15 +1321,17 @@ export function CheckoutForm({
           </div>
 
           {paymentMethod === "cod" && (
-            <div className="flex justify-between text-stone-600">
+            <div className="flex justify-between text-[#666666]">
               <span>{paymentOptions?.cod?.fee_label || "Kapıda Ödeme Hizmet Bedeli"}</span>
               <span className="font-medium text-stone-900">+{formatTRY(codFee)}</span>
             </div>
           )}
 
-          <div className="pt-3 border-t border-stone-200 flex justify-between items-baseline">
-            <span className="text-sm font-bold text-stone-900">Ödenecek Tutar</span>
-            <span className="text-lg font-extrabold text-stone-900">{formatTRY(total)}</span>
+          <div className="pt-3 border-t border-[#DEDEDE] flex justify-between items-baseline">
+            <span className="text-base font-semibold text-stone-900">Ödenecek Tutar</span>
+            <span className="text-lg font-bold text-stone-900 tabular-nums">
+              {formatTRY(total)}
+            </span>
           </div>
         </div>
 

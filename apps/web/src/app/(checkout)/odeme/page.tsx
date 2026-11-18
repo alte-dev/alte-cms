@@ -14,6 +14,7 @@ import type { StoreProduct } from "@/lib/medusa/types";
 import { getSiteSettings } from "@/lib/payload/content";
 import { getCartId } from "@/lib/medusa/cookies";
 import { CheckoutForm } from "@/components/checkout-form";
+
 export const metadata: Metadata = {
   title: "Ödeme ve Teslimat | Mağaza",
   description: "Güvenli misafir ödeme ve sipariş tamamlama sayfası",
@@ -71,24 +72,19 @@ export default async function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="border-b border-stone-200 pb-4 mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight text-stone-900">Ödeme ve Teslimat</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Lütfen teslimat ve fatura bilgilerinizi eksiksiz doldurunuz.
-        </p>
+    <div className="w-full min-h-[calc(100vh-73px)] lg:bg-[linear-gradient(to_right,#ffffff_50%,#f5f5f5_50%)]">
+      <div className="max-w-[1060px] mx-auto">
+        <CheckoutForm
+          initialCart={cart}
+          shippingOptions={shippingOptions}
+          paymentOptions={paymentOptions}
+          initialCustomer={customer}
+          savedAddresses={savedAddresses}
+          recommendedProducts={recommendedProducts}
+          recommendedTitle={recommendedTitle}
+          initialAvailabilityIssues={availabilityIssues}
+        />
       </div>
-
-      <CheckoutForm
-        initialCart={cart}
-        shippingOptions={shippingOptions}
-        paymentOptions={paymentOptions}
-        initialCustomer={customer}
-        savedAddresses={savedAddresses}
-        recommendedProducts={recommendedProducts}
-        recommendedTitle={recommendedTitle}
-        initialAvailabilityIssues={availabilityIssues}
-      />
     </div>
   );
 }

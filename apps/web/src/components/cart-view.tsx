@@ -13,6 +13,7 @@ import type { CartItemAvailabilityIssue } from "../lib/medusa/cart";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
+import { resolveCartItemThumbnail } from "./checkout-order-summary-item";
 import { PlaceholderImage } from "./placeholder-image";
 
 interface CartViewProps {
@@ -200,84 +201,96 @@ export function CartView({
 
         {/* Items Container */}
         <div className="bg-white border border-stone-200 rounded-lg divide-y divide-stone-100 overflow-hidden">
-          {items.map((item) => (
-            <div key={item.id} className="p-4 sm:p-6 flex gap-4 items-center">
-              {/* Product Thumbnail */}
-              <div className="w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0">
-                <PlaceholderImage title={item.title} className="w-full h-full text-[10px]" />
-              </div>
-
-              {/* Title & Variant Details */}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
-                {item.variant_title && item.variant_title !== "Default Variant" && (
-                  <p className="text-xs text-stone-500 mt-0.5">Seçenek: {item.variant_title}</p>
-                )}
-                {issueByLineItemId.get(item.id) && (
-                  <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mt-1.5 inline-block">
-                    {getAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
-                  </p>
-                )}
-                <div className="text-sm font-semibold text-stone-900 mt-2">
-                  {formatTRY(item.unit_price)}
-                  <span className="text-[11px] font-normal text-stone-500 ml-1">KDV dahil</span>
-                </div>
-              </div>
-
-              {/* Quantity Controls */}
-              {item.metadata?.is_cod_fee || item.variant?.sku === "SERVICE-COD-FEE" ? (
-                <div className="px-2.5 py-1 text-xs font-medium text-stone-500 bg-stone-100 rounded">
-                  1 Adet
-                </div>
-              ) : (
-                <div className="flex items-center border border-stone-300 rounded-md bg-white">
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                    className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
-                    aria-label="Adet Azalt"
-                  >
-                    -
-                  </button>
-                  <span className="px-3 py-1 text-xs font-semibold text-stone-900 select-none min-w-[2rem] text-center">
-                    {item.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={isPending || item.quantity >= 99}
-                    onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                    className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
-                    aria-label="Adet Artır"
-                  >
-                    +
-                  </button>
-                </div>
-              )}
-
-              {/* Line Total */}
-              <div className="text-right min-w-[5rem]">
-                <span className="text-sm font-bold text-stone-900">
-                  {formatTRY(
-                    (item.unit_price ? item.unit_price * item.quantity : 0) ||
-                      item.total ||
-                      item.subtotal,
+          {items.map((item) => {
+            const thumbnail = resolveCartItemThumbnail(item);
+            return (
+              <div key={item.id} className="p-4 sm:p-6 flex gap-4 items-center">
+                {/* Product Thumbnail */}
+                <div className="w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0 border border-stone-200">
+                  {thumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={thumbnail}
+                      alt={item.product_title || item.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <PlaceholderImage title={item.title} className="w-full h-full text-[10px]" />
                   )}
-                </span>
-              </div>
+                </div>
 
-              {/* Delete Button */}
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => handleRemoveItem(item.id)}
-                className="p-2 text-stone-400 hover:text-red-600 transition"
-                aria-label="Ürünü Sil"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                {/* Title & Variant Details */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
+                  {item.variant_title && item.variant_title !== "Default Variant" && (
+                    <p className="text-xs text-stone-500 mt-0.5">Seçenek: {item.variant_title}</p>
+                  )}
+                  {issueByLineItemId.get(item.id) && (
+                    <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mt-1.5 inline-block">
+                      {getAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
+                    </p>
+                  )}
+                  <div className="text-sm font-semibold text-stone-900 mt-2">
+                    {formatTRY(item.unit_price)}
+                    <span className="text-[11px] font-normal text-stone-500 ml-1">KDV dahil</span>
+                  </div>
+                </div>
+
+                {/* Quantity Controls */}
+                {item.metadata?.is_cod_fee || item.variant?.sku === "SERVICE-COD-FEE" ? (
+                  <div className="px-2.5 py-1 text-xs font-medium text-stone-500 bg-stone-100 rounded">
+                    1 Adet
+                  </div>
+                ) : (
+                  <div className="flex items-center border border-stone-300 rounded-md bg-white">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                      className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
+                      aria-label="Adet Azalt"
+                    >
+                      -
+                    </button>
+                    <span className="px-3 py-1 text-xs font-semibold text-stone-900 select-none min-w-[2rem] text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={isPending || item.quantity >= 99}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                      className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
+                      aria-label="Adet Artır"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+
+                {/* Line Total */}
+                <div className="text-right min-w-[5rem]">
+                  <span className="text-sm font-bold text-stone-900">
+                    {formatTRY(
+                      (item.unit_price ? item.unit_price * item.quantity : 0) ||
+                        item.total ||
+                        item.subtotal,
+                    )}
+                  </span>
+                </div>
+
+                {/* Delete Button */}
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleRemoveItem(item.id)}
+                  className="p-2 text-stone-400 hover:text-red-600 transition"
+                  aria-label="Ürünü Sil"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 

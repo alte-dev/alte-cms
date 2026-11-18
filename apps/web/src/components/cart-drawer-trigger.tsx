@@ -1,0 +1,52 @@
+"use client";
+
+import React from "react";
+import { ShoppingBag } from "lucide-react";
+import { useOptionalCartDrawer } from "./cart-drawer-provider";
+
+interface CartDrawerTriggerProps {
+  initialCount: number;
+  variant?: "desktop" | "mobile";
+}
+
+export function CartDrawerTrigger({ initialCount, variant = "desktop" }: CartDrawerTriggerProps) {
+  const drawer = useOptionalCartDrawer();
+  const count = drawer?.itemCount ?? initialCount;
+
+  if (variant === "mobile") {
+    return (
+      <button
+        type="button"
+        onClick={() => drawer?.openDrawer()}
+        className="relative p-2 text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+        aria-label={`Sepet (${count} ürün)`}
+      >
+        <ShoppingBag className="w-5 h-5" />
+        {count > 0 && (
+          <span className="absolute top-0.5 right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 text-[10px] font-bold leading-none text-white bg-stone-900 rounded-full">
+            {count}
+          </span>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => drawer?.openDrawer()}
+      className="relative inline-flex h-9 items-center gap-2.5 px-3 text-sm font-medium text-stone-700 hover:text-stone-900 rounded-md hover:bg-stone-100 transition"
+      aria-label={`Sepet (${count} ürün)`}
+    >
+      <span className="relative inline-flex items-center">
+        <ShoppingBag className="w-4 h-4 text-stone-700" />
+        {count > 0 && (
+          <span className="absolute -top-2 -right-2 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 text-[10px] font-bold leading-none text-white bg-stone-900 rounded-full">
+            {count}
+          </span>
+        )}
+      </span>
+      <span>Sepet</span>
+    </button>
+  );
+}

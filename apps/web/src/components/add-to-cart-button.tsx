@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, ShoppingBag, AlertCircle } from "lucide-react";
 import { addToCartAction } from "../app/(store)/actions";
+import { useOptionalCartDrawer } from "./cart-drawer-provider";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreProduct, StoreProductVariant } from "../lib/medusa/types";
 import {
@@ -28,6 +29,7 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
+  const cartDrawer = useOptionalCartDrawer();
 
   // Find variant matching selected options
   const selectedVariant: StoreProductVariant | undefined =
@@ -76,6 +78,11 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
         setErrorMsg(result.error || "Sepete eklenirken bir hata oluştu.");
       } else {
         setAddedSuccess(true);
+        if (result.data) {
+          cartDrawer?.openWithCart(result.data);
+        } else {
+          cartDrawer?.openDrawer();
+        }
       }
     });
   };
