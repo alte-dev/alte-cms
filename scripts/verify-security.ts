@@ -101,6 +101,24 @@ function signAdminJwt(userId: string): string {
   return `${header}.${payload}.${sig}`;
 }
 
+function signCustomerJwt(customerId: string): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({
+      actor_id: customerId,
+      actor_type: "customer",
+      iat: now,
+      exp: now + 300,
+    }),
+  ).toString("base64url");
+  const sig = crypto
+    .createHmac("sha256", JWT_SECRET)
+    .update(`${header}.${payload}`)
+    .digest("base64url");
+  return `${header}.${payload}.${sig}`;
+}
+
 async function run() {
   const { recordStep, results } = createStepRecorder({ format: "adim" });
 
@@ -491,6 +509,84 @@ async function run() {
     "Checkout Status (400/404) & Search Rate Limits (60 OK -> 61st 429)",
     step8Pass,
     `checkout-status: bad=${csBad.status}, missing=${csMissing.status}; suggestions[60]=${sugStatuses[60]}; store/search[60]=${medusaSearchStatuses[60]}`,
+  );
+
+  // 9. Open Redirect Guard on /hesap/giris?redirect= (authenticated session)
+  let redirectGuardPass = false;
+  let redirectGuardDetail = "";
+  if (DATABASE_URL && JWT_SECRET) {
+    const pool = new pg.Pool({ connectionString: DATABASE_URL });
+    const custId = `cust_sec_redir_${Date.now()}`;
+    const custEmail = `redir-${Date.now()}@example.test`;
+    try {
+      await pool.query(
+        `INSERT INTO "customer" (id, email, first_name, last_name, has_account, created_at, updated_at)
+         VALUES ($1, $2, 'Sec', 'Test', true, NOW(), NOW())`,
+        [custId, custEmail],
+      );
+      const custToken = signCustomerJwt(custId);
+      const webOrigin = new URL(WEB_URL).origin;
+      const maliciousPayloads = [
+        "/\t/evil.example",
+        "/\t\\evil.example",
+        "/%09/evil.example",
+        "/ /evil",
+        "/\u2028/evil",
+        "/\u00a0/evil",
+        "//evil",
+        "/\\evil",
+        "https://evil",
+        "javascript:alert(1)",
+        `/odeme?q=${"a".repeat(2050)}`,
+      ];
+
+      const failures: string[] = [];
+      for (const payload of maliciousPayloads) {
+        const res = await fetch(`${WEB_URL}/hesap/giris?redirect=${encodeURIComponent(payload)}`, {
+          headers: { Cookie: `alte_customer_session=${custToken}` },
+          redirect: "manual",
+        });
+        const location = res.headers.get("location") || "";
+        const resolvedOrigin = location ? new URL(location, WEB_URL).origin : "";
+        if (
+          res.status !== 307 ||
+          resolvedOrigin !== webOrigin ||
+          location !== "/hesap" ||
+          /[\t\r\n\\]/.test(location)
+        ) {
+          failures.push(`${JSON.stringify(payload)}=>${res.status}:${JSON.stringify(location)}`);
+        }
+      }
+
+      const validCases = ["/odeme", "/hesap/siparisler?page=2"];
+      for (const valid of validCases) {
+        const res = await fetch(`${WEB_URL}/hesap/giris?redirect=${encodeURIComponent(valid)}`, {
+          headers: { Cookie: `alte_customer_session=${custToken}` },
+          redirect: "manual",
+        });
+        const location = res.headers.get("location") || "";
+        if (res.status !== 307 || location !== valid) {
+          failures.push(`valid ${valid}=>${res.status}:${JSON.stringify(location)}`);
+        }
+      }
+
+      redirectGuardPass = failures.length === 0;
+      redirectGuardDetail =
+        failures.length === 0
+          ? `${maliciousPayloads.length} malicious -> /hesap (307), ${validCases.length} valid preserved`
+          : `failures: ${failures.join("; ")}`;
+    } finally {
+      await pool.query(`DELETE FROM "customer" WHERE id = $1`, [custId]).catch(() => {});
+      await pool.end();
+    }
+  } else {
+    redirectGuardDetail = "DATABASE_URL or JWT_SECRET missing";
+  }
+  recordStep(
+    9,
+    "Open Redirect Guard on /hesap/giris (TAB/Whitespace/Protocol-Relative Blocked, Valid Preserved)",
+    redirectGuardPass,
+    redirectGuardDetail,
   );
 
   const failed = results.filter((r) => !r.passed);

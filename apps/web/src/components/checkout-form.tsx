@@ -7,6 +7,7 @@ import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
 import { PaymentOptionsResult } from "../lib/medusa/cart";
 import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
+import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
 import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
 import {
   getDefaultShippingOptionId,
@@ -162,26 +163,18 @@ export function CheckoutForm({
   }, [cart.items, recommendedProducts]);
 
   const handleAddRecommended = async (product: StoreProduct) => {
-    const variants = (product.variants || []).filter((v) => !isVariantOutOfStock(v));
-    const chosenVariantId = selectedVariantByProduct[product.id] || variants[0]?.id;
-    if (!chosenVariantId) return;
-
     setUpsellError(null);
     setAddingProductId(product.id);
     try {
-      const res = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add", variantId: chosenVariantId, quantity: 1 }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.cart) {
-        setUpsellError(data.error || "Ürün sepete eklenemedi.");
+      const result = await addRecommendedProductToCart(
+        product,
+        selectedVariantByProduct[product.id],
+      );
+      if (!result.ok || !result.cart) {
+        setUpsellError(result.error || "Ürün sepete eklenemedi.");
         return;
       }
-      setCart(data.cart);
-    } catch {
-      setUpsellError("Ürün sepete eklenirken bir hata oluştu.");
+      setCart(result.cart);
     } finally {
       setAddingProductId(null);
     }

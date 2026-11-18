@@ -2,6 +2,7 @@
 
 import React from "react";
 import { OtpVerificationCard } from "./OtpVerificationCard";
+import { sanitizeRedirectPath } from "../../lib/medusa/safe-redirect";
 
 export function VerifyEmailClient({
   email = "",
@@ -10,5 +11,6 @@ export function VerifyEmailClient({
   email?: string;
   redirectTo?: string;
 }) {
-  return <OtpVerificationCard initialEmail={email} redirectTo={redirectTo} />;
+  const safeRedirectTo = sanitizeRedirectPath(redirectTo, "/hesap");
+  return <OtpVerificationCard initialEmail={email} redirectTo={safeRedirectTo} />;
 }

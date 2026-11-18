@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { sanitizeRedirectPath } from "../../lib/medusa/safe-redirect";
 
 export function LoginForm({ redirectTo = "/hesap" }: { redirectTo?: string }) {
   const router = useRouter();
+  const safeRedirectTo = sanitizeRedirectPath(redirectTo, "/hesap");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +30,7 @@ export function LoginForm({ redirectTo = "/hesap" }: { redirectTo?: string }) {
         setError(data.error || "E-posta veya parola hatalı.");
         return;
       }
-      router.push(redirectTo);
+      router.push(safeRedirectTo);
       router.refresh();
     } catch {
       setError("Giriş sırasında bir bağlantı hatası oluştu.");
@@ -140,8 +142,8 @@ export function LoginForm({ redirectTo = "/hesap" }: { redirectTo?: string }) {
         </Link>
         <Link
           href={
-            redirectTo !== "/hesap"
-              ? `/hesap/kayit?redirect=${encodeURIComponent(redirectTo)}`
+            safeRedirectTo !== "/hesap"
+              ? `/hesap/kayit?redirect=${encodeURIComponent(safeRedirectTo)}`
               : "/hesap/kayit"
           }
           className="text-stone-700 underline hover:text-stone-900"

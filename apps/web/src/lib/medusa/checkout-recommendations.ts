@@ -1,4 +1,4 @@
-import type { StoreProduct } from "./types";
+import type { StoreCart, StoreProduct } from "./types";
 import { isVariantOutOfStock } from "./variant-stock";
 
 export interface CheckoutRecommendationOptions {
@@ -44,4 +44,40 @@ export function selectCheckoutRecommendations({
   }
 
   return eligible.slice(0, safeLimit);
+}
+
+export interface AddRecommendedResult {
+  ok: boolean;
+  cart: StoreCart | null;
+  error: string | null;
+}
+
+export async function addRecommendedProductToCart(
+  product: StoreProduct,
+  selectedVariantId?: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<AddRecommendedResult> {
+  const availableVariants = (product.variants || []).filter((v) => !isVariantOutOfStock(v));
+  const chosenVariant =
+    (selectedVariantId && availableVariants.find((v) => v.id === selectedVariantId)) ||
+    availableVariants[0];
+
+  if (!chosenVariant?.id) {
+    return { ok: false, cart: null, error: "Bu ürün şu anda stokta yok." };
+  }
+
+  try {
+    const res = await fetchImpl("/api/cart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add", variantId: chosenVariant.id, quantity: 1 }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { cart?: StoreCart; error?: string };
+    if (!res.ok || !data.cart) {
+      return { ok: false, cart: null, error: data.error || "Ürün sepete eklenemedi." };
+    }
+    return { ok: true, cart: data.cart, error: null };
+  } catch {
+    return { ok: false, cart: null, error: "Ürün sepete eklenirken bir hata oluştu." };
+  }
 }

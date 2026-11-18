@@ -236,7 +236,7 @@ export const SiteSettings: GlobalConfig = {
           defaultValue: "bestsellers",
           label: "Ürün Kaynağı",
           options: [
-            { label: "Otomatik (En Çok Satılan / Vitrin Ürünleri)", value: "bestsellers" },
+            { label: "Katalogdan ilk ürünler", value: "bestsellers" },
             { label: "Seçili Ürünler (Handle Listesi)", value: "manual" },
           ],
           admin: {
