@@ -1,4 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
+  revalidatePath: vi.fn(),
+}));
+
+import { revalidateTag, revalidatePath } from "next/cache";
 import {
   DEFAULT_THEME_SETTINGS,
   buildThemeCssVariables,
@@ -65,6 +72,17 @@ describe("ThemeSettings & Storefront CSS Variables (TDD)", () => {
         expect(labels).toContain("Butonlar & Köşeler");
         expect(labels).toContain("Ödeme & Sepet");
       }
+    });
+
+    it("revalidates storefront cache tags and root layout in afterChange hook", async () => {
+      vi.clearAllMocks();
+      const hooks = ThemeSettings.hooks?.afterChange;
+      expect(Array.isArray(hooks) && hooks.length > 0).toBe(true);
+      const doc = { id: 1 };
+      const result = await hooks![0]({ doc } as any);
+      expect(result).toBe(doc);
+      expect(revalidateTag).toHaveBeenCalledWith("site-settings");
+      expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
     });
   });
 });

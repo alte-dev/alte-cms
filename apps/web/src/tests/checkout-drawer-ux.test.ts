@@ -7,7 +7,10 @@ vi.mock("next/link", () => ({
     React.createElement("a", { href, ...rest }, children),
 }));
 
-import { CheckoutOrderSummaryItem } from "../components/checkout-order-summary-item";
+import {
+  CheckoutOrderSummaryItem,
+  resolveCartItemThumbnail,
+} from "../components/checkout-order-summary-item";
 import { CartDrawerPanel } from "../components/cart-drawer-provider";
 import { CartView } from "../components/cart-view";
 import type { StoreCart, StoreCartLineItem } from "../lib/medusa/types";
@@ -123,6 +126,87 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
 
       expect(html).toContain("Sepetiniz Boş");
       expect(html).toContain('href="/urunler"');
+    });
+
+    it("disables increment button when quantity reaches 99", () => {
+      const maxQtyCart: StoreCart = {
+        ...sampleCart,
+        items: [{ ...sampleItemWithThumb, quantity: 99 }],
+      };
+      const html = renderToStaticMarkup(
+        React.createElement(CartDrawerPanel, {
+          isOpen: true,
+          cart: maxQtyCart,
+          freeShippingProgress: null,
+          isPending: false,
+          errorMsg: null,
+          onClose: () => {},
+          onUpdateQuantity: () => {},
+          onRemoveItem: () => {},
+        }),
+      );
+
+      expect(html).toMatch(
+        /aria-label="Miktarı artır"[^>]*disabled=""|disabled=""[^>]*aria-label="Miktarı artır"/,
+      );
+    });
+
+    it("blocks checkout link and displays warning when availabilityIssues are present", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CartDrawerPanel, {
+          isOpen: true,
+          cart: sampleCart,
+          freeShippingProgress: null,
+          availabilityIssues: [
+            {
+              lineItemId: "item_1",
+              reason: "unpublished",
+              requestedQuantity: 2,
+              availableQuantity: 0,
+            },
+          ],
+          isPending: false,
+          errorMsg: null,
+          onClose: () => {},
+          onUpdateQuantity: () => {},
+          onRemoveItem: () => {},
+        }),
+      );
+
+      expect(html).toContain("yayında değil");
+      expect(html).not.toContain('href="/odeme"');
+    });
+  });
+
+  describe("resolveCartItemThumbnail security", () => {
+    it("rejects javascript:, protocol-relative, and localhost http URLs in production", () => {
+      const origEnv = process.env.NODE_ENV;
+      try {
+        (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+        expect(
+          resolveCartItemThumbnail({ ...sampleItemWithThumb, thumbnail: "javascript:alert(1)" }),
+        ).toBeNull();
+        expect(
+          resolveCartItemThumbnail({
+            ...sampleItemWithThumb,
+            thumbnail: "//evil.example.test/x.png",
+          }),
+        ).toBeNull();
+        expect(
+          resolveCartItemThumbnail({
+            ...sampleItemWithThumb,
+            thumbnail: "http://localhost:9000/static/img.jpg",
+          }),
+        ).toBeNull();
+        expect(
+          resolveCartItemThumbnail({
+            ...sampleItemWithThumb,
+            thumbnail: "https://cdn.example.test/berjer.jpg",
+          }),
+        ).toBe("https://cdn.example.test/berjer.jpg");
+      } finally {
+        (process.env as Record<string, string | undefined>).NODE_ENV = origEnv;
+      }
     });
   });
 

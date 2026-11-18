@@ -5,11 +5,12 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   useTransition,
 } from "react";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2, Truck, X } from "lucide-react";
+import { AlertTriangle, Minus, Plus, ShoppingBag, Trash2, Truck, X } from "lucide-react";
 import { removeCartItemAction, updateCartItemAction } from "../app/(store)/actions";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { formatTRY, type FreeShippingProgress } from "../lib/medusa/format";
@@ -53,10 +54,31 @@ function countProductItems(cart: StoreCart | null): number {
     .reduce((acc, item) => acc + (item.quantity || 0), 0);
 }
 
+export interface CartDrawerAvailabilityIssue {
+  lineItemId: string;
+  reason: "deleted" | "unpublished" | "insufficient_stock";
+  requestedQuantity: number;
+  availableQuantity: number;
+}
+
+function getDrawerAvailabilityIssueText(issue: CartDrawerAvailabilityIssue): string {
+  if (issue.reason === "deleted") {
+    return "Bu ürün satıştan kaldırıldı.";
+  }
+  if (issue.reason === "unpublished") {
+    return "Bu ürün şu anda yayında değil.";
+  }
+  if (issue.availableQuantity <= 0) {
+    return "Bu ürünün stoğu tükendi.";
+  }
+  return `Stokta yalnızca ${issue.availableQuantity} adet kaldı.`;
+}
+
 interface CartDrawerPanelProps {
   isOpen: boolean;
   cart: StoreCart | null;
   freeShippingProgress: FreeShippingProgress | null;
+  availabilityIssues?: CartDrawerAvailabilityIssue[];
   isPending: boolean;
   isLoading?: boolean;
   errorMsg: string | null;
@@ -69,6 +91,7 @@ export function CartDrawerPanel({
   isOpen,
   cart,
   freeShippingProgress,
+  availabilityIssues = [],
   isPending,
   isLoading = false,
   errorMsg,
@@ -81,6 +104,8 @@ export function CartDrawerPanel({
   const items = (cart?.items || []).filter((item) => !isServiceFeeItem(item));
   const totals = cart ? calculateCheckoutTotals(cart, null, 0, "card") : null;
   const totalAmount = totals?.total ?? 0;
+  const issueByLineItemId = new Map(availabilityIssues.map((issue) => [issue.lineItemId, issue]));
+  const hasAvailabilityIssues = availabilityIssues.length > 0;
 
   return (
     <div
@@ -113,6 +138,19 @@ export function CartDrawerPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {hasAvailabilityIssues && (
+            <div
+              role="alert"
+              className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-900 flex items-start gap-2"
+            >
+              <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <span>
+                Sepetinizde güncellenmesi gereken ürünler var. Devam etmek için sorunlu ürünleri
+                çıkarın veya adedini azaltın.
+              </span>
+            </div>
+          )}
+
           {errorMsg && (
             <div
               role="alert"
@@ -180,6 +218,11 @@ export function CartDrawerPanel({
                           {variantLabel && (
                             <p className="text-xs text-stone-500 mt-0.5 truncate">{variantLabel}</p>
                           )}
+                          {issueByLineItemId.get(item.id) && (
+                            <p className="text-[11px] font-medium text-red-700 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 mt-1 inline-block">
+                              {getDrawerAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
+                            </p>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -209,7 +252,7 @@ export function CartDrawerPanel({
                           <button
                             type="button"
                             onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                            disabled={isPending}
+                            disabled={isPending || item.quantity >= 99}
                             aria-label="Miktarı artır"
                             className="w-6 h-6 flex items-center justify-center rounded-full text-stone-700 hover:bg-stone-200/70 transition disabled:opacity-50"
                           >
@@ -267,13 +310,23 @@ export function CartDrawerPanel({
               >
                 Sepete Git
               </Link>
-              <Link
-                href="/odeme"
-                onClick={onClose}
-                className="w-full py-2.5 px-4 text-center text-sm theme-btn-primary"
-              >
-                Ödemeye Geç
-              </Link>
+              {hasAvailabilityIssues ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-2.5 px-4 text-center text-sm font-medium rounded-md bg-stone-300 text-stone-600 cursor-not-allowed"
+                >
+                  Ödemeye Geç
+                </button>
+              ) : (
+                <Link
+                  href="/odeme"
+                  onClick={onClose}
+                  className="w-full py-2.5 px-4 text-center text-sm theme-btn-primary"
+                >
+                  Ödemeye Geç
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -288,22 +341,34 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
   const [freeShippingProgress, setFreeShippingProgress] = useState<FreeShippingProgress | null>(
     null,
   );
+  const [availabilityIssues, setAvailabilityIssues] = useState<CartDrawerAvailabilityIssue[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const fetchSeqRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchCartState = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const seq = ++fetchSeqRef.current;
+
     setIsLoading(true);
     try {
-      const res = await fetch("/api/cart", { cache: "no-store" });
-      if (!res.ok) return;
+      const res = await fetch("/api/cart", { cache: "no-store", signal: controller.signal });
+      if (!res.ok || seq !== fetchSeqRef.current) return;
       const data = await res.json();
+      if (seq !== fetchSeqRef.current) return;
       setCart(data.cart ?? null);
       setFreeShippingProgress(data.freeShippingProgress ?? null);
+      setAvailabilityIssues(Array.isArray(data.availabilityIssues) ? data.availabilityIssues : []);
     } catch {
-      // ignore transient network errors on drawer open
+      // ignore aborted or transient network errors on drawer open
     } finally {
-      setIsLoading(false);
+      if (seq === fetchSeqRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -388,6 +453,7 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
         isOpen={isOpen}
         cart={cart}
         freeShippingProgress={freeShippingProgress}
+        availabilityIssues={availabilityIssues}
         isPending={isPending}
         isLoading={isLoading}
         errorMsg={errorMsg}

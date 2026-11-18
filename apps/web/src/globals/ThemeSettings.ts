@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import type { Field, GlobalConfig } from "payload";
 import { canManageGlobals, isAdminRole } from "../access/content";
+import { CACHE_TAGS, revalidateContentTag } from "../lib/cache-tags";
 import { DEFAULT_THEME_SETTINGS, isValidHexColor } from "../lib/theme/css-vars";
 
 function colorField(
@@ -42,6 +44,22 @@ export const ThemeSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: canManageGlobals,
+  },
+  hooks: {
+    afterChange: [
+      ({ doc }) => {
+        revalidateContentTag(CACHE_TAGS.settings);
+        try {
+          revalidatePath("/", "layout");
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "";
+          if (!msg.includes("static generation store missing")) {
+            throw err;
+          }
+        }
+        return doc;
+      },
+    ],
   },
   fields: [
     {

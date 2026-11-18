@@ -14,7 +14,12 @@ export function resolveCartItemThumbnail(item: StoreCartLineItem): string | null
   if (typeof raw !== "string" || !raw.trim()) return null;
   const trimmed = raw.trim();
   if (isSafeHref(trimmed)) return trimmed;
-  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(trimmed)) return trimmed;
+  if (
+    process.env.NODE_ENV !== "production" &&
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(trimmed)
+  ) {
+    return trimmed;
+  }
   return null;
 }
 
