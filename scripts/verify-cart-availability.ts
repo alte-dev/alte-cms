@@ -349,9 +349,49 @@ async function run() {
     );
 
     // Direct Medusa completeCartWorkflow check (must be rejected by validate hook even if /api/checkout is bypassed)
+    // Prepare cart with email, shipping method, and payment session so Medusa reaches completeCartWorkflow.hooks.validate
+    const storeHeaders = { "x-publishable-api-key": pubKey, "Content-Type": "application/json" };
+    await fetch(`${MEDUSA_URL}/store/carts/${cartId}`, {
+      method: "POST",
+      headers: storeHeaders,
+      body: JSON.stringify({
+        email: "test@example.test",
+        shipping_address: {
+          first_name: "Test",
+          last_name: "Kullanıcı",
+          address_1: "Moda Cad. No: 1",
+          city: "İstanbul",
+          postal_code: "34710",
+          country_code: "tr",
+        },
+      }),
+    });
+    await fetch(`${MEDUSA_URL}/store/carts/${cartId}/shipping-methods`, {
+      method: "POST",
+      headers: storeHeaders,
+      body: JSON.stringify({ option_id: shippingOptionId }),
+    });
+    const pcRes = await fetch(`${MEDUSA_URL}/store/payment-collections`, {
+      method: "POST",
+      headers: storeHeaders,
+      body: JSON.stringify({ cart_id: cartId }),
+    });
+    const pcJson = (await pcRes.json()) as { payment_collection?: { id?: string } };
+    const paymentCollectionId = pcJson.payment_collection?.id;
+    if (paymentCollectionId) {
+      await fetch(
+        `${MEDUSA_URL}/store/payment-collections/${paymentCollectionId}/payment-sessions`,
+        {
+          method: "POST",
+          headers: storeHeaders,
+          body: JSON.stringify({ provider_id: "pp_system_default" }),
+        },
+      );
+    }
+
     const directCompleteRes = await fetch(`${MEDUSA_URL}/store/carts/${cartId}/complete`, {
       method: "POST",
-      headers: { "x-publishable-api-key": pubKey, "Content-Type": "application/json" },
+      headers: storeHeaders,
     });
     const directCompleteText = await directCompleteRes.text();
     const directCompleteRejected =
@@ -360,7 +400,7 @@ async function run() {
     recordStep(
       "Medusa Doğrudan completeCartWorkflow Hook Engeli (draft)",
       directCompleteRejected,
-      `status=${directCompleteRes.status}`,
+      `status=${directCompleteRes.status}, body=${directCompleteText.slice(0, 200)}`,
     );
 
     // 7. Scenario C: Delete product
