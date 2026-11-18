@@ -525,6 +525,12 @@ async function run() {
         [custId, custEmail],
       );
       const custToken = signCustomerJwt(custId);
+      const tokenHash = crypto.createHash("sha256").update(custToken).digest("hex");
+      await pool.query(
+        `INSERT INTO "customer_session" (id, customer_id, token_hash, last_seen_at, expires_at, revoked_at, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '1 hour', NULL, NOW(), NOW())`,
+        [`csess_sec_${Date.now()}`, custId, tokenHash],
+      );
       const webOrigin = new URL(WEB_URL).origin;
       const maliciousPayloads = [
         "/\t/evil.example",
@@ -576,6 +582,9 @@ async function run() {
           ? `${maliciousPayloads.length} malicious -> /hesap (307), ${validCases.length} valid preserved`
           : `failures: ${failures.join("; ")}`;
     } finally {
+      await pool
+        .query(`DELETE FROM "customer_session" WHERE customer_id = $1`, [custId])
+        .catch(() => {});
       await pool.query(`DELETE FROM "customer" WHERE id = $1`, [custId]).catch(() => {});
       await pool.end();
     }
