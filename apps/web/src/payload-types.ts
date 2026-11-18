@@ -733,6 +733,19 @@ export interface SiteSetting {
      */
     mapQuery?: string | null;
   };
+  checkout?: {
+    /**
+     * Açıldığında ödeme sayfasının sağ sütununda, toplam tutarın altında sepette olmayan ürünler tek tıkla eklenebilir şekilde gösterilir.
+     */
+    showRecommendedProducts?: boolean | null;
+    recommendedTitle?: string | null;
+    recommendedSource?: ('bestsellers' | 'manual') | null;
+    /**
+     * Örn: ipek-sal, kadife-canta
+     */
+    recommendedHandles?: string | null;
+    recommendedLimit?: number | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -821,6 +834,15 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         workingHours?: T;
         showMap?: T;
         mapQuery?: T;
+      };
+  checkout?:
+    | T
+    | {
+        showRecommendedProducts?: T;
+        recommendedTitle?: T;
+        recommendedSource?: T;
+        recommendedHandles?: T;
+        recommendedLimit?: T;
       };
   updatedAt?: T;
   createdAt?: T;

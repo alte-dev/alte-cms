@@ -3,11 +3,13 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { OtpVerificationCard } from "./OtpVerificationCard";
+import { sanitizeRedirectPath } from "../../lib/medusa/safe-redirect";
 
 const MARKETING_TEXT =
   "Kampanya, indirim ve yeni ürün duyurularını e-posta ile almak istiyorum (isteğe bağlı).";
 
-export function RegisterForm() {
+export function RegisterForm({ redirectTo = "/hesap" }: { redirectTo?: string }) {
+  const safeRedirectTo = sanitizeRedirectPath(redirectTo, "/hesap");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -67,6 +69,7 @@ export function RegisterForm() {
       <OtpVerificationCard
         initialEmail={registeredEmail}
         initialMessage={successMsg || undefined}
+        redirectTo={safeRedirectTo}
       />
     );
   }
@@ -216,7 +219,14 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-stone-600">
         Zaten hesabınız var mı?{" "}
-        <Link href="/hesap/giris" className="font-medium text-stone-900 underline">
+        <Link
+          href={
+            safeRedirectTo !== "/hesap"
+              ? `/hesap/giris?redirect=${encodeURIComponent(safeRedirectTo)}`
+              : "/hesap/giris"
+          }
+          className="font-medium text-stone-900 underline"
+        >
           Giriş Yapın
         </Link>
       </p>

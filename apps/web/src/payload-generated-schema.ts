@@ -50,6 +50,10 @@ export const enum_site_settings_catalog_listing_mode = pgEnum(
   "enum_site_settings_catalog_listing_mode",
   ["pagination", "infinite"],
 );
+export const enum_site_settings_checkout_recommended_source = pgEnum(
+  "enum_site_settings_checkout_recommended_source",
+  ["bestsellers", "manual"],
+);
 
 export const users_sessions = pgTable(
   "users_sessions",
@@ -705,6 +709,15 @@ export const site_settings = pgTable(
     ),
     contactForm_showMap: boolean("contact_form_show_map").default(true),
     contactForm_mapQuery: varchar("contact_form_map_query"),
+    checkout_showRecommendedProducts: boolean("checkout_show_recommended_products").default(false),
+    checkout_recommendedTitle: varchar("checkout_recommended_title").default(
+      "Bunları da ekleyebilirsiniz",
+    ),
+    checkout_recommendedSource: enum_site_settings_checkout_recommended_source(
+      "checkout_recommended_source",
+    ).default("bestsellers"),
+    checkout_recommendedHandles: varchar("checkout_recommended_handles"),
+    checkout_recommendedLimit: numeric("checkout_recommended_limit", { mode: "number" }).default(3),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
   },
@@ -1076,6 +1089,7 @@ type DatabaseSchema = {
   enum_redirects_type: typeof enum_redirects_type;
   enum_contact_messages_status: typeof enum_contact_messages_status;
   enum_site_settings_catalog_listing_mode: typeof enum_site_settings_catalog_listing_mode;
+  enum_site_settings_checkout_recommended_source: typeof enum_site_settings_checkout_recommended_source;
   users_sessions: typeof users_sessions;
   users: typeof users;
   media: typeof media;

@@ -113,3 +113,12 @@ Tarayıcılar ile Node.js sunucusunun loopback çözümleme farklılıklarından
 | **Production**    | _Gelecek Planı (Faz 0B)_ | `https://www.example.com`     | `https://api.example.com`         | Doğrudan Linux Servisleri (systemd) |
 
 > **Önemli:** Canlı site, DNS kayıtları ve mevcut sunucu ortamına Faz 0'da hiçbir şekilde müdahale edilmez. Tüm alan adı değerleri ortam değişkenleri üzerinden yönetilir; kod içinde sabit alan adı bulunmaz.
+
+## Ödeme Sayfası Ürün Önerileri (`SiteSettings.checkout`)
+
+- `recommendedSource === "bestsellers"` (Admin panelinde etiketi **"Katalogdan ilk ürünler"**) seçeneği, Medusa katalog sorgusundan dönen ilk 12 üründen sepette olmayan ve stokta bulunan ilk `recommendedLimit` (1–4) ürünü seçer; satış adedine göre sıralama yapmaz. Enum değeri (`bestsellers`) veritabanı migration uyumluluğu için korunmuştur.
+- `recommendedSource === "manual"` seçeneği, `recommendedHandles` alanındaki handle sırasına göre öneri üretir.
+
+## Giriş/Kayıt Yönlendirme İzin Listesi (`sanitizeRedirectPath`)
+
+- `apps/web/src/lib/medusa/safe-redirect.ts` yalnızca şu yerel storefront yollarına yönlendirmeye izin verir: `/`, `/odeme` (ve alt yolları), `/sepet` (ve alt yolları), `/hesap` (ve alt yolları), `/urunler` (ve alt yolları), `/urun/<slug>`. Kontrol karakterleri, boşluk, `//`, `\` ve izin listesi dışındaki yollar `/hesap` (veya verilen `fallback`) yoluna düşürülür.

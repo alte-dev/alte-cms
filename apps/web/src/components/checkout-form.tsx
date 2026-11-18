@@ -4,14 +4,17 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
-import { StoreCart, StoreShippingOption } from "../lib/medusa/types";
+import { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
 import { PaymentOptionsResult } from "../lib/medusa/cart";
+import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
+import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
 import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
 import {
   getDefaultShippingOptionId,
   sortShippingOptions,
   calculateCheckoutTotals,
   shouldShowCodFeeBadge,
+  resolveCheckoutPaymentOutcome,
 } from "../lib/medusa/checkout-pricing";
 import {
   Tag,
@@ -23,6 +26,7 @@ import {
   CreditCard,
   Banknote,
   ShieldAlert,
+  Plus,
 } from "lucide-react";
 import { applyCouponAction, removeCouponAction } from "../app/(store)/actions";
 
@@ -32,6 +36,8 @@ interface CheckoutFormProps {
   paymentOptions?: PaymentOptionsResult;
   initialCustomer?: CustomerProfile | null;
   savedAddresses?: CustomerAddress[];
+  recommendedProducts?: StoreProduct[];
+  recommendedTitle?: string;
 }
 
 export function CheckoutForm({
@@ -40,6 +46,8 @@ export function CheckoutForm({
   paymentOptions,
   initialCustomer = null,
   savedAddresses = [],
+  recommendedProducts = [],
+  recommendedTitle = "Bunları da ekleyebilirsiniz",
 }: CheckoutFormProps) {
   const defaultSavedAddress = useMemo(
     () => savedAddresses.find((a) => a.is_default_shipping) || savedAddresses[0] || null,
@@ -153,6 +161,38 @@ export function CheckoutForm({
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isCouponPending, setIsCouponPending] = useState(false);
+
+  // Recommended Products State
+  const [addingProductId, setAddingProductId] = useState<string | null>(null);
+  const [selectedVariantByProduct, setSelectedVariantByProduct] = useState<Record<string, string>>(
+    {},
+  );
+  const [upsellError, setUpsellError] = useState<string | null>(null);
+
+  const visibleRecommendations = useMemo(() => {
+    const cartProductIds = new Set(
+      cart.items.map((item) => item.product_id).filter((id): id is string => Boolean(id)),
+    );
+    return recommendedProducts.filter((p) => !cartProductIds.has(p.id));
+  }, [cart.items, recommendedProducts]);
+
+  const handleAddRecommended = async (product: StoreProduct) => {
+    setUpsellError(null);
+    setAddingProductId(product.id);
+    try {
+      const result = await addRecommendedProductToCart(
+        product,
+        selectedVariantByProduct[product.id],
+      );
+      if (!result.ok || !result.cart) {
+        setUpsellError(result.error || "Ürün sepete eklenemedi.");
+        return;
+      }
+      setCart(result.cart);
+    } finally {
+      setAddingProductId(null);
+    }
+  };
 
   const selectedOption = sortedShippingOptions.find((o) => o.id === selectedShippingOptionId);
   const totals = calculateCheckoutTotals(
@@ -283,24 +323,15 @@ export function CheckoutForm({
         return;
       }
 
-      if (data.paymentMethod === "iyzico" && data.paymentPageUrl) {
-        if (data.displayMode === "embedded") {
-          setIyzicoIframeUrl(data.paymentPageUrl);
-          setIsSubmitting(false);
-          return;
-        }
-        window.location.href = data.paymentPageUrl;
+      const outcome = resolveCheckoutPaymentOutcome(data);
+      if (outcome.kind === "iyzico_iframe") {
+        setIyzicoIframeUrl(outcome.url);
+        setIsSubmitting(false);
         return;
       }
 
-      if (data.paymentMethod === "paytr" && data.iframeUrl) {
-        if (data.displayMode === "redirect") {
-          window.location.href = data.iframeUrl;
-          return;
-        }
-
-        // iFrame mode
-        setPaytrIframeUrl(data.iframeUrl);
+      if (outcome.kind === "paytr_iframe") {
+        setPaytrIframeUrl(outcome.url);
         setIsSubmitting(false);
 
         const existingScript = document.getElementById("paytr-resizer-script");
@@ -322,8 +353,8 @@ export function CheckoutForm({
         return;
       }
 
-      // Success: redirect to confirmation page
-      window.location.href = data.redirectUrl || "/siparis-onay";
+      // Redirect (iyzico redirect, PayTR redirect, or COD/dev confirmation)
+      window.location.href = outcome.url;
     } catch {
       setErrorMsg("Bağlantı hatası oluştu. Lütfen tekrar deneyiniz.");
       setIsSubmitting(false);
@@ -423,11 +454,25 @@ export function CheckoutForm({
 
         {/* Step 1: Contact Information */}
         <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center font-bold">
-              1
-            </span>
-            <h2 className="text-base font-bold text-stone-900">İletişim Bilgileri</h2>
+          <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center font-bold">
+                1
+              </span>
+              <h2 className="text-base font-bold text-stone-900">İletişim Bilgileri</h2>
+            </div>
+            {initialCustomer ? (
+              <span className="text-xs text-stone-500 truncate max-w-[220px]">
+                Hesap: <strong className="text-stone-800">{initialCustomer.email}</strong>
+              </span>
+            ) : (
+              <Link
+                href="/hesap/giris?redirect=/odeme"
+                className="text-xs font-semibold text-stone-900 underline underline-offset-2 hover:text-stone-700"
+              >
+                Giriş yap
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1105,12 +1150,12 @@ export function CheckoutForm({
           </div>
         </section>
 
-        {/* Submit Button on Mobile */}
-        <div className="block lg:hidden">
+        {/* Submit Button (Left Column Bottom) */}
+        <div>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-stone-900 text-white font-semibold rounded-md hover:bg-stone-800 disabled:opacity-50 transition"
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
           >
             {isSubmitting ? (
               <>
@@ -1248,38 +1293,95 @@ export function CheckoutForm({
           </div>
         </div>
 
-        {/* Desktop Submit Button with Double-Click Protection */}
-        <div className="hidden lg:block pt-2">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Siparişiniz Tamamlanıyor...</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>
-                  {paymentMethod === "iyzico"
-                    ? "iyzico Güvenli Ödemeye Geç"
-                    : paymentMethod === "paytr"
-                      ? "PayTR Güvenli Ödemeye Geç"
-                      : "Siparişi Onayla ve Tamamla"}
-                </span>
-              </>
-            )}
-          </button>
-        </div>
-
         <p className="text-[11px] text-stone-400 text-center flex items-center justify-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-stone-500" />
           <span>256-Bit SSL ile güvenli sipariş</span>
         </p>
+
+        {/* Optional Recommended Products (configured in Payload SiteSettings) */}
+        {visibleRecommendations.length > 0 && (
+          <div className="pt-4 border-t border-stone-200 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">
+              {recommendedTitle}
+            </h4>
+            {upsellError && (
+              <p role="alert" className="text-[11px] text-red-600">
+                {upsellError}
+              </p>
+            )}
+            <div className="space-y-2.5">
+              {visibleRecommendations.map((product) => {
+                const availableVariants = (product.variants || []).filter(
+                  (v) => !isVariantOutOfStock(v),
+                );
+                const selectedVarId =
+                  selectedVariantByProduct[product.id] || availableVariants[0]?.id || "";
+                const selectedVar =
+                  availableVariants.find((v) => v.id === selectedVarId) || availableVariants[0];
+                const price =
+                  selectedVar?.calculated_price?.calculated_amount ??
+                  selectedVar?.prices?.[0]?.amount ??
+                  0;
+                const isAdding = addingProductId === product.id;
+
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-3 p-2.5 rounded-md border border-stone-200 bg-stone-50/50"
+                  >
+                    {product.thumbnail ? (
+                      <img
+                        src={product.thumbnail}
+                        alt={product.title}
+                        className="w-12 h-12 rounded object-cover border border-stone-200 flex-shrink-0 bg-white"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded border border-stone-200 bg-stone-100 flex-shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-xs font-semibold text-stone-900 truncate">
+                        {product.title}
+                      </p>
+                      <p className="text-xs font-bold text-stone-700">{formatTRY(price)}</p>
+                      {availableVariants.length > 1 && (
+                        <select
+                          aria-label={`${product.title} seçenek`}
+                          value={selectedVarId}
+                          onChange={(e) =>
+                            setSelectedVariantByProduct((prev) => ({
+                              ...prev,
+                              [product.id]: e.target.value,
+                            }))
+                          }
+                          className="w-full px-2 py-1 text-[11px] border border-stone-300 rounded bg-white text-stone-800"
+                        >
+                          {availableVariants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.title}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isAdding || !selectedVarId}
+                      onClick={() => handleAddRecommended(product)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded border border-stone-300 bg-white text-stone-900 hover:bg-stone-100 disabled:opacity-50 flex-shrink-0 cursor-pointer"
+                    >
+                      {isAdding ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5" />
+                      )}
+                      <span>Ekle</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </aside>
     </div>
   );

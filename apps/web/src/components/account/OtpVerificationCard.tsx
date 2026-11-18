@@ -3,15 +3,19 @@
 import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { sanitizeRedirectPath } from "../../lib/medusa/safe-redirect";
 
 export function OtpVerificationCard({
   initialEmail = "",
   initialMessage,
+  redirectTo = "/hesap",
 }: {
   initialEmail?: string;
   initialMessage?: string;
+  redirectTo?: string;
 }) {
   const router = useRouter();
+  const safeRedirectTo = sanitizeRedirectPath(redirectTo, "/hesap");
   const [email, setEmail] = useState(initialEmail);
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -93,7 +97,7 @@ export function OtpVerificationCard({
       setStatus("success");
       setMessage(data.message || "E-posta adresiniz başarıyla doğrulandı.");
       if (data.authenticated) {
-        router.push("/hesap");
+        router.push(safeRedirectTo);
         router.refresh();
       }
     } catch {

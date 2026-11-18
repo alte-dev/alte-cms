@@ -144,3 +144,36 @@ export function calculateCheckoutTotals(
 export function shouldShowCodFeeBadge(codEnabled?: boolean, configuredCodFee: number = 0): boolean {
   return Boolean(codEnabled) && configuredCodFee > 0;
 }
+
+export type CheckoutPaymentOutcome =
+  | { kind: "redirect"; url: string }
+  | { kind: "iyzico_iframe"; url: string }
+  | { kind: "paytr_iframe"; url: string };
+
+/**
+ * Resolves the post-submit UI action for each of the 3 payment methods
+ * (iyzico, PayTR, COD) from the `/api/checkout` response payload.
+ */
+export function resolveCheckoutPaymentOutcome(data: {
+  paymentMethod?: string;
+  paymentPageUrl?: string;
+  iframeUrl?: string;
+  displayMode?: string;
+  redirectUrl?: string;
+}): CheckoutPaymentOutcome {
+  if (data.paymentMethod === "iyzico" && data.paymentPageUrl) {
+    if (data.displayMode === "embedded") {
+      return { kind: "iyzico_iframe", url: data.paymentPageUrl };
+    }
+    return { kind: "redirect", url: data.paymentPageUrl };
+  }
+
+  if (data.paymentMethod === "paytr" && data.iframeUrl) {
+    if (data.displayMode === "redirect") {
+      return { kind: "redirect", url: data.iframeUrl };
+    }
+    return { kind: "paytr_iframe", url: data.iframeUrl };
+  }
+
+  return { kind: "redirect", url: data.redirectUrl || "/siparis-onay" };
+}

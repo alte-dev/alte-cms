@@ -206,5 +206,66 @@ export const SiteSettings: GlobalConfig = {
         },
       ],
     },
+    {
+      name: "checkout",
+      type: "group",
+      label: "Ödeme Sayfası (Checkout) Ayarları",
+      fields: [
+        {
+          name: "showRecommendedProducts",
+          type: "checkbox",
+          defaultValue: false,
+          label: "Sağ Altta Ürün Önerilerini Göster",
+          admin: {
+            description:
+              "Açıldığında ödeme sayfasının sağ sütununda, toplam tutarın altında sepette olmayan ürünler tek tıkla eklenebilir şekilde gösterilir.",
+          },
+        },
+        {
+          name: "recommendedTitle",
+          type: "text",
+          defaultValue: "Bunları da ekleyebilirsiniz",
+          label: "Önerilen Ürünler Başlığı",
+          admin: {
+            condition: (_, siblingData) => Boolean(siblingData?.showRecommendedProducts),
+          },
+        },
+        {
+          name: "recommendedSource",
+          type: "select",
+          defaultValue: "bestsellers",
+          label: "Ürün Kaynağı",
+          options: [
+            { label: "Katalogdan ilk ürünler", value: "bestsellers" },
+            { label: "Seçili Ürünler (Handle Listesi)", value: "manual" },
+          ],
+          admin: {
+            condition: (_, siblingData) => Boolean(siblingData?.showRecommendedProducts),
+          },
+        },
+        {
+          name: "recommendedHandles",
+          type: "textarea",
+          label: "Seçili Ürün Handle'ları (virgül veya yeni satır ile)",
+          admin: {
+            condition: (_, siblingData) =>
+              Boolean(siblingData?.showRecommendedProducts) &&
+              siblingData?.recommendedSource === "manual",
+            description: "Örn: ipek-sal, kadife-canta",
+          },
+        },
+        {
+          name: "recommendedLimit",
+          type: "number",
+          defaultValue: 3,
+          min: 1,
+          max: 4,
+          label: "Gösterilecek Maksimum Ürün Sayısı",
+          admin: {
+            condition: (_, siblingData) => Boolean(siblingData?.showRecommendedProducts),
+          },
+        },
+      ],
+    },
   ],
 };
