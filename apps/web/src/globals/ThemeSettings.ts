@@ -23,6 +23,9 @@ function colorField(
         ? `${description} (Varsayılan: ${defaultValue})`
         : `Varsayılan: ${defaultValue}`,
       placeholder: defaultValue,
+      components: {
+        Field: "@/components/admin/ColorField#ColorField",
+      },
     },
   };
 }
