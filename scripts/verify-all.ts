@@ -316,6 +316,7 @@ async function main() {
     { name: "verify:store", script: "scripts/verify-store.ts" },
     { name: "verify:storefront", script: "scripts/verify-storefront.ts" },
     { name: "verify:checkout", script: "scripts/verify-checkout.ts", needsDevServer: true },
+    { name: "verify:cart-availability", script: "scripts/verify-cart-availability.ts" },
     { name: "verify:payments", script: "scripts/verify-payments.ts" },
     { name: "verify:content", script: "scripts/verify-content.ts" },
     { name: "verify:search", script: "scripts/verify-search.ts" },

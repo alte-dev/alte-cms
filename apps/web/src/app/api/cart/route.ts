@@ -3,6 +3,7 @@ import {
   addItemToCart,
   applyPromotionCode,
   getCart,
+  getCartAvailabilityIssues,
   getOrCreateCart,
   getShippingRules,
   removeCartItem,
@@ -28,8 +29,11 @@ export async function GET() {
       });
     }
 
-    const cart = await getCart(cartId);
-    const shippingRules = await getShippingRules();
+    const [cart, shippingRules, availabilityIssues] = await Promise.all([
+      getCart(cartId),
+      getShippingRules(),
+      getCartAvailabilityIssues(cartId),
+    ]);
     const productSubtotal = (cart?.items || [])
       .filter((i) => !i.metadata?.is_cod_fee && i.variant?.sku !== "SERVICE-COD-FEE")
       .reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
@@ -42,6 +46,7 @@ export async function GET() {
       cart,
       shippingRules,
       freeShippingProgress,
+      availabilityIssues,
     });
   } catch (err: any) {
     return NextResponse.json({ error: mapMedusaError(err) }, { status: 500 });

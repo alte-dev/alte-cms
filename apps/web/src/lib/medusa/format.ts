@@ -78,6 +78,16 @@ export function mapMedusaError(error: any): string {
   const lowerMsg = message.toLowerCase();
 
   if (
+    message.includes("[PRODUCT_UNPUBLISHED]") ||
+    message.includes("[PRODUCT_UNAVAILABLE]") ||
+    message.includes("[INSUFFICIENT_STOCK]")
+  ) {
+    return message
+      .replace(/\[(PRODUCT_UNPUBLISHED|PRODUCT_UNAVAILABLE|INSUFFICIENT_STOCK)\]\s*/g, "")
+      .trim();
+  }
+
+  if (
     code === "insufficient_inventory" ||
     type === "insufficient_inventory" ||
     lowerMsg.includes("insufficient_inventory") ||

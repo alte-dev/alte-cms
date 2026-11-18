@@ -380,4 +380,45 @@ describe("processIyzicoCallback", () => {
     );
     expect(hFake.orphanRows).toHaveLength(0);
   });
+
+  it("marks needs_manual_refund and returns 200 when cart completion fails due to unpublished or deleted product", async () => {
+    const h = makeHarness();
+    const sig = calculateIyzicoHmacSha256(
+      ["SUCCESS", "iyz_pay_1", "TRY", "cart_1", "conv_1", "150", "150", "valid-iyz-token-123"],
+      "sandbox-secret-test",
+    );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "success",
+          paymentStatus: "SUCCESS",
+          paymentId: "iyz_pay_1",
+          currency: "TRY",
+          basketId: "cart_1",
+          conversationId: "conv_1",
+          paidPrice: "150.00",
+          price: "150.00",
+          token: "valid-iyz-token-123",
+          signature: sig,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const res = await processIyzicoCallback(
+      { token: "valid-iyz-token-123" },
+      {
+        ...h,
+        fetchImpl: fetchMock as any,
+        completeOrder: async () => {
+          throw new Error('[PRODUCT_UNPUBLISHED] "Koltuk" ürünü şu anda yayında değil.');
+        },
+      },
+    );
+
+    expect(res.httpStatus).toBe(200);
+    expect(res.status).toBe("failed");
+    expect(h.session.data.needs_manual_refund).toBe(true);
+    expect(String(h.session.data.manual_refund_reason)).toContain("PRODUCT_UNPUBLISHED");
+  });
 });

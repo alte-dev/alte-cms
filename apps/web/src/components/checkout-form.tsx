@@ -5,7 +5,7 @@ import Link from "next/link";
 import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
-import { PaymentOptionsResult } from "../lib/medusa/cart";
+import type { CartItemAvailabilityIssue, PaymentOptionsResult } from "../lib/medusa/cart";
 import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
 import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
 import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
@@ -38,6 +38,7 @@ interface CheckoutFormProps {
   savedAddresses?: CustomerAddress[];
   recommendedProducts?: StoreProduct[];
   recommendedTitle?: string;
+  initialAvailabilityIssues?: CartItemAvailabilityIssue[];
 }
 
 export function CheckoutForm({
@@ -48,6 +49,7 @@ export function CheckoutForm({
   savedAddresses = [],
   recommendedProducts = [],
   recommendedTitle = "Bunları da ekleyebilirsiniz",
+  initialAvailabilityIssues = [],
 }: CheckoutFormProps) {
   const defaultSavedAddress = useMemo(
     () => savedAddresses.find((a) => a.is_default_shipping) || savedAddresses[0] || null,
@@ -55,6 +57,8 @@ export function CheckoutForm({
   );
   const [selectedAddressId, setSelectedAddressId] = useState<string>(defaultSavedAddress?.id || "");
   const [cart, setCart] = useState<StoreCart>(initialCart);
+  const [availabilityIssues, setAvailabilityIssues] =
+    useState<CartItemAvailabilityIssue[]>(initialAvailabilityIssues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -312,6 +316,18 @@ export function CheckoutForm({
 
       const data = await res.json();
 
+      if (res.status === 409 && data.code === "CART_ITEM_UNAVAILABLE") {
+        if (Array.isArray(data.issues)) {
+          setAvailabilityIssues(data.issues);
+        }
+        setErrorMsg(
+          data.error ||
+            "Sepetinizde satıştan kaldırılmış veya stoğu yetersiz ürün bulunuyor. Lütfen sepetinizi güncelleyin.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       if (res.status === 409 && data.redirectUrl) {
         window.location.href = data.redirectUrl;
         return;
@@ -437,6 +453,31 @@ export function CheckoutForm({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Checkout Form (Col 8) */}
       <form onSubmit={handleSubmit} className="lg:col-span-8 space-y-8">
+        {/* Availability Issues Notice */}
+        {availabilityIssues.length > 0 && (
+          <div
+            role="alert"
+            className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between gap-3 text-sm text-red-900"
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Sepetinizdeki bazı ürünler artık satın alınamıyor</p>
+                <p className="text-xs text-red-700 mt-0.5">
+                  Siparişi tamamlamadan önce sepetinize dönüp sorunlu ürünleri çıkarın veya adedini
+                  güncelleyin.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/sepet"
+              className="px-3 py-1.5 bg-red-700 text-white text-xs font-semibold rounded-md hover:bg-red-800 whitespace-nowrap"
+            >
+              Sepete Dön
+            </Link>
+          </div>
+        )}
+
         {/* Global Error Notice */}
         {errorMsg && (
           <div
@@ -1154,7 +1195,7 @@ export function CheckoutForm({
         <div>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || availabilityIssues.length > 0}
             className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
           >
             {isSubmitting ? (

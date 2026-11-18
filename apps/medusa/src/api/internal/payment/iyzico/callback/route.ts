@@ -11,6 +11,7 @@ import {
   verifyIyzicoRetrieveSignature,
 } from "../../../../../modules/payment-iyzico/client";
 import { executeWithLock } from "../../../../hooks/payment/pp_paytr_paytr/route";
+import { isUnrecoverableCartCompletionError } from "../../../../../utils/cart-availability";
 
 const callbackInputSchema = z.object({
   token: z
@@ -484,7 +485,7 @@ export async function processIyzicoCallback(
         };
       }
 
-      const isUnrecoverable = /inventory|stock|insufficient/i.test(errMsg);
+      const isUnrecoverable = isUnrecoverableCartCompletionError(errMsg);
       if (isUnrecoverable) {
         console.error(
           `[CRITICAL ALERT] Ödeme iyzico tarafından tahsil edildi fakat Medusa siparişi kurtarılamaz bir nedenle oluşturulamadı! (needs_manual_refund) Sepet ID: ${cartId}, ref=${tokenHash}, Hata: ${errMsg}`,
