@@ -10,6 +10,7 @@ import React, {
   useTransition,
 } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, Minus, Plus, ShoppingBag, Trash2, Truck, X } from "lucide-react";
 import { removeCartItemAction, updateCartItemAction } from "../app/(store)/actions";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
@@ -41,6 +42,14 @@ export function useCartDrawer(): CartDrawerContextValue {
 
 export function useOptionalCartDrawer(): CartDrawerContextValue | null {
   return useContext(CartDrawerContext);
+}
+
+/**
+ * Returns false on /sepet routes so the slide-over drawer does not open on top of the cart page.
+ */
+export function shouldOpenCartDrawerForPath(pathname: string | null | undefined): boolean {
+  if (!pathname) return true;
+  return pathname !== "/sepet" && !pathname.startsWith("/sepet/");
 }
 
 function isServiceFeeItem(item: StoreCart["items"][number]): boolean {
@@ -103,7 +112,13 @@ export function CartDrawerPanel({
 
   const items = (cart?.items || []).filter((item) => !isServiceFeeItem(item));
   const totals = cart ? calculateCheckoutTotals(cart, null, 0, "card") : null;
-  const totalAmount = totals?.total ?? 0;
+  const productsGross = items.reduce(
+    (sum, item) =>
+      sum +
+      ((item.unit_price ? item.unit_price * item.quantity : 0) || item.total || item.subtotal || 0),
+    0,
+  );
+  const subtotalAmount = Math.max(0, productsGross - (totals?.discountTotal ?? 0));
   const issueByLineItemId = new Map(availabilityIssues.map((issue) => [issue.lineItemId, issue]));
   const hasAvailabilityIssues = availabilityIssues.length > 0;
 
@@ -292,13 +307,13 @@ export function CartDrawerPanel({
 
             <div className="flex items-baseline justify-between">
               <div>
-                <p className="text-sm font-semibold text-stone-900">Toplam</p>
+                <p className="text-sm font-semibold text-stone-900">Ara Toplam</p>
                 <p className="text-[11px] text-stone-500">
                   Vergi dahil, kargo ücreti ödeme sırasında hesaplanır
                 </p>
               </div>
               <span className="text-base font-bold text-stone-900 tabular-nums">
-                {formatTRY(totalAmount)}
+                {formatTRY(subtotalAmount)}
               </span>
             </div>
 
@@ -336,6 +351,8 @@ export function CartDrawerPanel({
 }
 
 export function CartDrawerProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const drawerAllowed = shouldOpenCartDrawerForPath(pathname);
   const [isOpen, setIsOpen] = useState(false);
   const [cart, setCart] = useState<StoreCart | null>(null);
   const [freeShippingProgress, setFreeShippingProgress] = useState<FreeShippingProgress | null>(
@@ -373,24 +390,32 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const openDrawer = useCallback(() => {
+    if (!drawerAllowed) return;
     setErrorMsg(null);
     setIsOpen(true);
     void fetchCartState();
-  }, [fetchCartState]);
+  }, [drawerAllowed, fetchCartState]);
 
   const openWithCart = useCallback(
     (nextCart: StoreCart) => {
       setErrorMsg(null);
       setCart(nextCart);
+      if (!drawerAllowed) return;
       setIsOpen(true);
       void fetchCartState();
     },
-    [fetchCartState],
+    [drawerAllowed, fetchCartState],
   );
 
   const closeDrawer = useCallback(() => {
     setIsOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (!drawerAllowed && isOpen) {
+      setIsOpen(false);
+    }
+  }, [drawerAllowed, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;

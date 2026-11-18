@@ -11,7 +11,7 @@ import {
   CheckoutOrderSummaryItem,
   resolveCartItemThumbnail,
 } from "../components/checkout-order-summary-item";
-import { CartDrawerPanel } from "../components/cart-drawer-provider";
+import { CartDrawerPanel, shouldOpenCartDrawerForPath } from "../components/cart-drawer-provider";
 import { CartView } from "../components/cart-view";
 import type { StoreCart, StoreCartLineItem } from "../lib/medusa/types";
 
@@ -175,6 +175,50 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
 
       expect(html).toContain("yayında değil");
       expect(html).not.toContain('href="/odeme"');
+    });
+
+    it("displays product subtotal excluding shipping_total even if cart already has a shipping method", () => {
+      const cartWithShipping: StoreCart = {
+        ...sampleCart,
+        items: [
+          {
+            ...sampleItemWithoutThumb,
+            id: "item_ship_test",
+            title: "Test Ürün",
+            quantity: 4,
+            unit_price: 150,
+            subtotal: 600,
+            total: 600,
+          },
+        ],
+        subtotal: 600,
+        shipping_total: 89.9,
+        total: 689.9,
+      };
+      const html = renderToStaticMarkup(
+        React.createElement(CartDrawerPanel, {
+          isOpen: true,
+          cart: cartWithShipping,
+          freeShippingProgress: null,
+          isPending: false,
+          errorMsg: null,
+          onClose: () => {},
+          onUpdateQuantity: () => {},
+          onRemoveItem: () => {},
+        }),
+      );
+
+      expect(html).toContain("Ara Toplam");
+      expect(html).toContain("600,00");
+      expect(html).not.toContain("689,90");
+    });
+
+    it("disables cart drawer on /sepet routes while keeping it enabled on storefront pages", () => {
+      expect(shouldOpenCartDrawerForPath("/sepet")).toBe(false);
+      expect(shouldOpenCartDrawerForPath("/sepet/detay")).toBe(false);
+      expect(shouldOpenCartDrawerForPath("/")).toBe(true);
+      expect(shouldOpenCartDrawerForPath("/urun/test-urun")).toBe(true);
+      expect(shouldOpenCartDrawerForPath(null)).toBe(true);
     });
   });
 
