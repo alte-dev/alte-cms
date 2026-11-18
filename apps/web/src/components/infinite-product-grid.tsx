@@ -89,19 +89,20 @@ export function InfiniteProductGrid({
     ]);
 
     if (res.success && res.products.length > 0) {
-      setProducts((prev) => {
-        // Prevent duplicate products by ID
-        const existingIds = new Set(prev.map((p) => p.id));
-        const newUnique = res.products.filter((p) => !existingIds.has(p.id));
-        if (newUnique.length > 0) {
-          setNewlyLoadedIds((prevIds) => {
-            const updated = new Set(prevIds);
-            for (const item of newUnique) updated.add(item.id);
-            return updated;
-          });
-        }
-        return [...prev, ...newUnique];
-      });
+      const existingIds = new Set(products.map((p) => p.id));
+      const newUnique = res.products.filter((p) => !existingIds.has(p.id));
+      if (newUnique.length > 0) {
+        setProducts((prev) => {
+          const prevIds = new Set(prev.map((p) => p.id));
+          const deduped = newUnique.filter((p) => !prevIds.has(p.id));
+          return deduped.length > 0 ? [...prev, ...deduped] : prev;
+        });
+        setNewlyLoadedIds((prevIds) => {
+          const updated = new Set(prevIds);
+          for (const item of newUnique) updated.add(item.id);
+          return updated;
+        });
+      }
       setPage(res.currentPage);
       setHasMore(res.hasMore);
     } else {
@@ -113,7 +114,7 @@ export function InfiniteProductGrid({
     }
 
     setIsLoading(false);
-  }, [isLoading, hasMore, page, limit, category, sort]);
+  }, [isLoading, hasMore, page, limit, category, sort, products]);
 
   // Anti-exhaustion guard: pause auto-scroll once page reaches the threshold
   const isPausedForManual = hasMore && page >= autoLoadLimit;

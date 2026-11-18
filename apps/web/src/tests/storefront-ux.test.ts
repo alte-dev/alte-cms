@@ -14,6 +14,7 @@ import {
 } from "../lib/puck/server-blocks";
 import { shouldStartNavigationProgress } from "../components/navigation-progress";
 import { MIN_INFINITE_SCROLL_DELAY_MS, waitMinDelay } from "../components/infinite-product-grid";
+import { createPopStateTracker } from "../components/scroll-to-top";
 
 describe("Storefront UX: Clickable Puck Blocks, Navigation Progress & Infinite Scroll Delay", () => {
   beforeEach(() => {
@@ -214,6 +215,22 @@ describe("Storefront UX: Clickable Puck Blocks, Navigation Progress & Infinite S
       await promise;
       expect(resolved).toBe(true);
       vi.useRealTimers();
+    });
+  });
+
+  describe("ScrollToTop PopState Preservation", () => {
+    it("scrolls to top on forward navigation but skips scroll on popstate (back/forward)", () => {
+      const tracker = createPopStateTracker();
+
+      // Forward navigation (link click) -> should scroll to top
+      expect(tracker.consumeShouldScrollToTop()).toBe(true);
+
+      // Browser back/forward (popstate) -> should NOT scroll to top
+      tracker.markPopState();
+      expect(tracker.consumeShouldScrollToTop()).toBe(false);
+
+      // Subsequent forward navigation -> flag was reset, should scroll to top again
+      expect(tracker.consumeShouldScrollToTop()).toBe(true);
     });
   });
 });

@@ -37,11 +37,6 @@ export function MobileMenu({ items }: MobileMenuProps) {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    const handleNavigate = () => {
-      document.body.style.overflow = "";
-      setIsOpen(false);
-    };
-
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
@@ -52,10 +47,6 @@ export function MobileMenu({ items }: MobileMenuProps) {
     } else {
       document.body.style.overflow = "";
     }
-    const handleNavigate = () => {
-      document.body.style.overflow = "";
-      setIsOpen(false);
-    };
 
     return () => {
       document.body.style.overflow = "";
