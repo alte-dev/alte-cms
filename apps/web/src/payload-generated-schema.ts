@@ -54,6 +54,46 @@ export const enum_site_settings_checkout_recommended_source = pgEnum(
   "enum_site_settings_checkout_recommended_source",
   ["bestsellers", "manual"],
 );
+export const enum_theme_settings_typography_font_family = pgEnum(
+  "enum_theme_settings_typography_font_family",
+  ["inter", "system", "serif", "mono"],
+);
+export const enum_theme_settings_typography_heading_font_family = pgEnum(
+  "enum_theme_settings_typography_heading_font_family",
+  ["inherit", "inter", "serif", "system"],
+);
+export const enum_theme_settings_typography_base_font_size = pgEnum(
+  "enum_theme_settings_typography_base_font_size",
+  ["14px", "15px", "16px", "17px"],
+);
+export const enum_theme_settings_typography_heading_weight = pgEnum(
+  "enum_theme_settings_typography_heading_weight",
+  ["600", "700", "800"],
+);
+export const enum_theme_settings_typography_heading_letter_spacing = pgEnum(
+  "enum_theme_settings_typography_heading_letter_spacing",
+  ["tight", "normal", "wide"],
+);
+export const enum_theme_settings_typography_line_height = pgEnum(
+  "enum_theme_settings_typography_line_height",
+  ["compact", "normal", "relaxed"],
+);
+export const enum_theme_settings_buttons_button_radius = pgEnum(
+  "enum_theme_settings_buttons_button_radius",
+  ["none", "sm", "md", "lg", "full"],
+);
+export const enum_theme_settings_buttons_border_radius = pgEnum(
+  "enum_theme_settings_buttons_border_radius",
+  ["none", "sm", "md", "lg", "full"],
+);
+export const enum_theme_settings_buttons_button_text_transform = pgEnum(
+  "enum_theme_settings_buttons_button_text_transform",
+  ["none", "uppercase"],
+);
+export const enum_theme_settings_buttons_button_font_weight = pgEnum(
+  "enum_theme_settings_buttons_button_font_weight",
+  ["500", "600", "700"],
+);
 
 export const users_sessions = pgTable(
   "users_sessions",
@@ -815,6 +855,62 @@ export const navigation = pgTable("navigation", {
   createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
 });
 
+export const theme_settings = pgTable("theme_settings", {
+  id: serial("id").primaryKey(),
+  colors_primaryColor: varchar("colors_primary_color").default("#3A4A5B"),
+  colors_primaryHoverColor: varchar("colors_primary_hover_color").default("#2E3B49"),
+  colors_primaryTextColor: varchar("colors_primary_text_color").default("#FFFFFF"),
+  colors_accentColor: varchar("colors_accent_color").default("#92A3B6"),
+  colors_backgroundColor: varchar("colors_background_color").default("#FAFAF9"),
+  colors_surfaceColor: varchar("colors_surface_color").default("#FFFFFF"),
+  colors_surfaceSubduedColor: varchar("colors_surface_subdued_color").default("#F5F5F5"),
+  colors_borderColor: varchar("colors_border_color").default("#DEDEDE"),
+  colors_textColor: varchar("colors_text_color").default("#1C1917"),
+  colors_textMutedColor: varchar("colors_text_muted_color").default("#666666"),
+  colors_announcementBgColor: varchar("colors_announcement_bg_color").default("#3A4A5B"),
+  colors_announcementTextColor: varchar("colors_announcement_text_color").default("#FFFFFF"),
+  colors_headerBgColor: varchar("colors_header_bg_color").default("#FFFFFF"),
+  colors_footerBgColor: varchar("colors_footer_bg_color").default("#1C1917"),
+  colors_footerTextColor: varchar("colors_footer_text_color").default("#E7E5E4"),
+  typography_fontFamily:
+    enum_theme_settings_typography_font_family("typography_font_family").default("inter"),
+  typography_headingFontFamily: enum_theme_settings_typography_heading_font_family(
+    "typography_heading_font_family",
+  ).default("inherit"),
+  typography_baseFontSize: enum_theme_settings_typography_base_font_size(
+    "typography_base_font_size",
+  ).default("16px"),
+  typography_headingWeight: enum_theme_settings_typography_heading_weight(
+    "typography_heading_weight",
+  ).default("700"),
+  typography_headingLetterSpacing: enum_theme_settings_typography_heading_letter_spacing(
+    "typography_heading_letter_spacing",
+  ).default("tight"),
+  typography_lineHeight:
+    enum_theme_settings_typography_line_height("typography_line_height").default("normal"),
+  buttons_buttonRadius:
+    enum_theme_settings_buttons_button_radius("buttons_button_radius").default("md"),
+  buttons_borderRadius:
+    enum_theme_settings_buttons_border_radius("buttons_border_radius").default("md"),
+  buttons_buttonTextTransform: enum_theme_settings_buttons_button_text_transform(
+    "buttons_button_text_transform",
+  ).default("none"),
+  buttons_buttonFontWeight: enum_theme_settings_buttons_button_font_weight(
+    "buttons_button_font_weight",
+  ).default("600"),
+  checkoutTheme_checkoutLeftBgColor: varchar("checkout_theme_checkout_left_bg_color").default(
+    "#FFFFFF",
+  ),
+  checkoutTheme_checkoutSummaryBgColor: varchar("checkout_theme_checkout_summary_bg_color").default(
+    "#F5F5F5",
+  ),
+  checkoutTheme_checkoutBadgeBgColor: varchar("checkout_theme_checkout_badge_bg_color").default(
+    "#666666",
+  ),
+  updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+  createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
+});
+
 export const relations_users_sessions = relations(users_sessions, ({ one }) => ({
   _parentID: one(users, {
     fields: [users_sessions._parentID],
@@ -1079,6 +1175,7 @@ export const relations_navigation = relations(navigation, ({ many }) => ({
     relationName: "footerMenu",
   }),
 }));
+export const relations_theme_settings = relations(theme_settings, () => ({}));
 
 type DatabaseSchema = {
   enum_users_role: typeof enum_users_role;
@@ -1090,6 +1187,16 @@ type DatabaseSchema = {
   enum_contact_messages_status: typeof enum_contact_messages_status;
   enum_site_settings_catalog_listing_mode: typeof enum_site_settings_catalog_listing_mode;
   enum_site_settings_checkout_recommended_source: typeof enum_site_settings_checkout_recommended_source;
+  enum_theme_settings_typography_font_family: typeof enum_theme_settings_typography_font_family;
+  enum_theme_settings_typography_heading_font_family: typeof enum_theme_settings_typography_heading_font_family;
+  enum_theme_settings_typography_base_font_size: typeof enum_theme_settings_typography_base_font_size;
+  enum_theme_settings_typography_heading_weight: typeof enum_theme_settings_typography_heading_weight;
+  enum_theme_settings_typography_heading_letter_spacing: typeof enum_theme_settings_typography_heading_letter_spacing;
+  enum_theme_settings_typography_line_height: typeof enum_theme_settings_typography_line_height;
+  enum_theme_settings_buttons_button_radius: typeof enum_theme_settings_buttons_button_radius;
+  enum_theme_settings_buttons_border_radius: typeof enum_theme_settings_buttons_border_radius;
+  enum_theme_settings_buttons_button_text_transform: typeof enum_theme_settings_buttons_button_text_transform;
+  enum_theme_settings_buttons_button_font_weight: typeof enum_theme_settings_buttons_button_font_weight;
   users_sessions: typeof users_sessions;
   users: typeof users;
   media: typeof media;
@@ -1115,6 +1222,7 @@ type DatabaseSchema = {
   navigation_footer_menu_items: typeof navigation_footer_menu_items;
   navigation_footer_menu: typeof navigation_footer_menu;
   navigation: typeof navigation;
+  theme_settings: typeof theme_settings;
   relations_users_sessions: typeof relations_users_sessions;
   relations_users: typeof relations_users;
   relations_media: typeof relations_media;
@@ -1140,6 +1248,7 @@ type DatabaseSchema = {
   relations_navigation_footer_menu_items: typeof relations_navigation_footer_menu_items;
   relations_navigation_footer_menu: typeof relations_navigation_footer_menu;
   relations_navigation: typeof relations_navigation;
+  relations_theme_settings: typeof relations_theme_settings;
 };
 
 declare module "@payloadcms/db-postgres" {

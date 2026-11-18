@@ -136,7 +136,7 @@ export function CartView({
         </p>
         <Link
           href="/urunler"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
+          className="inline-flex items-center gap-2 px-6 py-3 theme-btn-primary"
         >
           Alışverişe Başla →
         </Link>
@@ -316,7 +316,7 @@ export function CartView({
             <button
               type="submit"
               disabled={isPending || !couponCode.trim()}
-              className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 transition flex items-center gap-1.5"
+              className="px-4 py-2 theme-btn-primary text-sm disabled:opacity-50 flex items-center gap-1.5"
             >
               <Tag className="w-3.5 h-3.5" />
               <span>Uygula</span>
@@ -406,7 +406,7 @@ export function CartView({
         ) : (
           <Link
             href="/odeme"
-            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
+            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 theme-btn-primary"
           >
             <span>Ödemeye Geç</span>
             <ArrowRight className="w-4 h-4" />

@@ -72,7 +72,7 @@ export default async function CheckoutPage() {
   }
 
   return (
-    <div className="w-full min-h-[calc(100vh-73px)] lg:bg-[linear-gradient(to_right,#ffffff_50%,#f5f5f5_50%)]">
+    <div className="w-full min-h-[calc(100vh-73px)] lg:bg-[linear-gradient(to_right,var(--theme-checkout-left-bg,#ffffff)_50%,var(--theme-checkout-summary-bg,#f5f5f5)_50%)]">
       <div className="max-w-[1060px] mx-auto">
         <CheckoutForm
           initialCart={cart}

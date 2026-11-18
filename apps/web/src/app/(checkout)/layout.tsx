@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
 import { ShoppingBag } from "lucide-react";
-import { getSiteSettings } from "@/lib/payload/content";
+import { getSiteSettings, getThemeSettings } from "@/lib/payload/content";
 import { safeHref } from "@/lib/safe-href";
+import { buildThemeCssVariables, resolveThemeSettings } from "@/lib/theme/css-vars";
 import "../(store)/globals.css";
 
 const inter = localFont({
@@ -35,15 +36,19 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutLayout({ children }: { children: React.ReactNode }) {
-  const settingsGlobal = await getSiteSettings().catch(() => null);
+  const [settingsGlobal, themeRaw] = await Promise.all([
+    getSiteSettings().catch(() => null),
+    getThemeSettings().catch(() => null),
+  ]);
+  const themeVars = buildThemeCssVariables(resolveThemeSettings(themeRaw)) as React.CSSProperties;
   const storeName = settingsGlobal?.storeName || "Mağaza";
   const logoObj = settingsGlobal?.logo as { url?: string; alt?: string } | null | undefined;
   const logoUrl = logoObj?.url ? safeHref(logoObj.url, "") : "";
 
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning style={themeVars}>
       <body
-        className={`${inter.className} min-h-screen flex flex-col bg-white text-stone-900 antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
+        className={`${inter.className} min-h-screen flex flex-col bg-[var(--theme-checkout-left-bg,#FFFFFF)] text-[var(--theme-text,#1C1917)] antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
       >
         <header className="w-full bg-white border-b border-[#DEDEDE]">
           <div className="max-w-[1060px] mx-auto px-4 sm:px-6 h-[72px] grid grid-cols-3 items-center">

@@ -17,6 +17,18 @@ export async function getSiteSettings() {
   }
 }
 
+export async function getThemeSettings() {
+  try {
+    const payload = await getPayloadClient();
+    const theme = await payload.findGlobal({
+      slug: "theme-settings",
+    });
+    return theme;
+  } catch {
+    return null;
+  }
+}
+
 export async function getNavigation() {
   try {
     const payload = await getPayloadClient();

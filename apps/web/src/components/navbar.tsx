@@ -67,9 +67,9 @@ export async function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-stone-200">
+    <header className="sticky top-0 z-40 bg-[var(--theme-header-bg,#FFFFFF)]/95 backdrop-blur-sm border-b border-[var(--theme-border,#E7E5E4)]">
       {/* Top Banner */}
-      <div className="bg-stone-900 text-stone-100 text-xs py-2 px-4 text-center font-medium">
+      <div className="bg-[var(--theme-announcement-bg,#3A4A5B)] text-[var(--theme-announcement-text,#FFFFFF)] text-xs py-2 px-4 text-center font-medium">
         <span>
           Türkiye İçi Ücretsiz Kargo Fırsatı • Fiyatlarımıza KDV Dahildir • Güvenli Alışveriş
         </span>

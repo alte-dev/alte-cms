@@ -3,8 +3,35 @@
 @tailwind utilities;
 
 body {
-  color: #1e293b;
-  background-color: #f8fafc;
+  color: var(--theme-text, #1c1917);
+  background-color: var(--theme-bg, #fafaf9);
+  font-family: var(--theme-font-body, inherit);
+  font-size: var(--theme-font-size, 16px);
+  line-height: var(--theme-line-height, 1.5);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--theme-font-heading, inherit);
+  font-weight: var(--theme-heading-weight, 700);
+  letter-spacing: var(--theme-heading-tracking, -0.025em);
+}
+
+@layer components {
+  .theme-btn-primary {
+    background-color: var(--theme-primary, #3a4a5b);
+    color: var(--theme-primary-text, #ffffff);
+    border-radius: var(--theme-button-radius, 0.375rem);
+    text-transform: var(--theme-button-transform, none);
+    font-weight: var(--theme-button-weight, 600);
+    transition: background-color 150ms ease, opacity 150ms ease;
+  }
+
+  .theme-btn-primary:hover:not(:disabled) {
+    background-color: var(--theme-primary-hover, #2e3b49);
+  }
 }
 
 @keyframes fadeInUp {

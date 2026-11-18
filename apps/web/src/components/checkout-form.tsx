@@ -452,10 +452,10 @@ export function CheckoutForm({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[580px_480px] items-start">
-      {/* Checkout Form (Left Column - #FFFFFF) */}
+      {/* Checkout Form (Left Column) */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white px-4 sm:px-6 lg:px-0 lg:pr-11 py-8 space-y-6"
+        className="bg-[var(--theme-checkout-left-bg,#FFFFFF)] px-4 sm:px-6 lg:px-0 lg:pr-11 py-8 space-y-6"
       >
         {/* Availability Issues Notice */}
         {availabilityIssues.length > 0 && (
@@ -1199,7 +1199,7 @@ export function CheckoutForm({
           <button
             type="submit"
             disabled={isSubmitting || availabilityIssues.length > 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#3A4A5B] text-white text-sm font-semibold rounded-md hover:bg-[#2E3B49] disabled:opacity-50 transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 theme-btn-primary text-sm disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <>
@@ -1223,8 +1223,8 @@ export function CheckoutForm({
         </div>
       </form>
 
-      {/* Order Summary & Coupon Sidebar (Right Column - Normod/Shopify #F5F5F5) */}
-      <aside className="bg-[#F5F5F5] px-4 sm:px-6 lg:pl-11 lg:pr-0 py-8 lg:border-l lg:border-[#DEDEDE] space-y-5 lg:sticky lg:top-0 lg:min-h-[calc(100vh-73px)]">
+      {/* Order Summary & Coupon Sidebar (Right Column - Normod/Shopify) */}
+      <aside className="bg-[var(--theme-checkout-summary-bg,#F5F5F5)] px-4 sm:px-6 lg:pl-11 lg:pr-0 py-8 lg:border-l lg:border-[#DEDEDE] space-y-5 lg:sticky lg:top-0 lg:min-h-[calc(100vh-73px)]">
         <h3 className="text-base font-semibold text-stone-900 pb-3 border-b border-[#DEDEDE]">
           Sipariş Özeti (
           {
@@ -1258,7 +1258,7 @@ export function CheckoutForm({
             <button
               type="submit"
               disabled={isCouponPending || !couponCode.trim()}
-              className="px-4 py-2 bg-[#3A4A5B] text-white text-xs font-medium rounded-md hover:bg-[#2E3B49] disabled:opacity-50 transition flex items-center gap-1.5 flex-shrink-0"
+              className="px-4 py-2 theme-btn-primary text-xs disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
             >
               {isCouponPending ? (
                 <Loader2 className="w-3 h-3 animate-spin" />

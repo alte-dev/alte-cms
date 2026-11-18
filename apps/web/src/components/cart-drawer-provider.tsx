@@ -138,7 +138,7 @@ export function CartDrawerPanel({
               <Link
                 href="/urunler"
                 onClick={onClose}
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-md bg-[#3A4A5B] hover:bg-[#2E3B49] text-white text-sm font-medium transition"
+                className="inline-flex items-center justify-center px-5 py-2.5 theme-btn-primary text-sm"
               >
                 Alışverişe Başla
               </Link>
@@ -270,7 +270,7 @@ export function CartDrawerPanel({
               <Link
                 href="/odeme"
                 onClick={onClose}
-                className="w-full py-2.5 px-4 text-center text-sm font-semibold rounded-md bg-[#3A4A5B] hover:bg-[#2E3B49] text-white transition"
+                className="w-full py-2.5 px-4 text-center text-sm theme-btn-primary"
               >
                 Ödemeye Geç
               </Link>

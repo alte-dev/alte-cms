@@ -189,7 +189,7 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
           type="button"
           disabled={isPending || isOutOfStock}
           onClick={handleAddToCart}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 disabled:bg-stone-300 disabled:cursor-not-allowed transition"
+          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 theme-btn-primary disabled:bg-stone-300 disabled:cursor-not-allowed"
         >
           <ShoppingBag className="w-5 h-5" />
           {isPending ? "Ekleniyor..." : isOutOfStock ? "Stokta Yok" : "Sepete Ekle"}

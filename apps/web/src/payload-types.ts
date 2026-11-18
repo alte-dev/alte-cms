@@ -100,10 +100,12 @@ export interface Config {
   globals: {
     'site-settings': SiteSetting;
     navigation: Navigation;
+    'theme-settings': ThemeSetting;
   };
   globalsSelect: {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
     navigation: NavigationSelect<false> | NavigationSelect<true>;
+    'theme-settings': ThemeSettingsSelect<false> | ThemeSettingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -792,6 +794,107 @@ export interface Navigation {
   createdAt?: string | null;
 }
 /**
+ * Mağaza renk paleti, yazı tipi, buton şekilleri ve ödeme ekranı görünümünü buradan özelleştirebilirsiniz.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "theme-settings".
+ */
+export interface ThemeSetting {
+  id: number;
+  colors?: {
+    /**
+     * Sepete Ekle, Ödemeye Geç ve tüm ana aksiyon butonlarının rengi. (Varsayılan: #3A4A5B)
+     */
+    primaryColor?: string | null;
+    /**
+     * Butonların üzerine gelindiğindeki koyu/soft ton. (Varsayılan: #2E3B49)
+     */
+    primaryHoverColor?: string | null;
+    /**
+     * Ana butonların üzerindeki metin rengi. (Varsayılan: #FFFFFF)
+     */
+    primaryTextColor?: string | null;
+    /**
+     * Vurgu ve ikincil etkileşim alanları. (Varsayılan: #92A3B6)
+     */
+    accentColor?: string | null;
+    /**
+     * Mağaza sayfalarının genel arka plan rengi. (Varsayılan: #FAFAF9)
+     */
+    backgroundColor?: string | null;
+    /**
+     * Ürün kartları, sepet ve form kutularının arka planı. (Varsayılan: #FFFFFF)
+     */
+    surfaceColor?: string | null;
+    /**
+     * İkincil kutular ve vurgu zeminleri. (Varsayılan: #F5F5F5)
+     */
+    surfaceSubduedColor?: string | null;
+    /**
+     * Kart, input ve bölüm çizgileri. (Varsayılan: #DEDEDE)
+     */
+    borderColor?: string | null;
+    /**
+     * Başlık ve gövde yazılarının rengi. (Varsayılan: #1C1917)
+     */
+    textColor?: string | null;
+    /**
+     * Alt başlıklar, açıklamalar ve yardımcı metinler. (Varsayılan: #666666)
+     */
+    textMutedColor?: string | null;
+    /**
+     * Varsayılan: #3A4A5B
+     */
+    announcementBgColor?: string | null;
+    /**
+     * Varsayılan: #FFFFFF
+     */
+    announcementTextColor?: string | null;
+    /**
+     * Varsayılan: #FFFFFF
+     */
+    headerBgColor?: string | null;
+    /**
+     * Varsayılan: #1C1917
+     */
+    footerBgColor?: string | null;
+    /**
+     * Varsayılan: #E7E5E4
+     */
+    footerTextColor?: string | null;
+  };
+  typography?: {
+    fontFamily?: ('inter' | 'system' | 'serif' | 'mono') | null;
+    headingFontFamily?: ('inherit' | 'inter' | 'serif' | 'system') | null;
+    baseFontSize?: ('14px' | '15px' | '16px' | '17px') | null;
+    headingWeight?: ('600' | '700' | '800') | null;
+    headingLetterSpacing?: ('tight' | 'normal' | 'wide') | null;
+    lineHeight?: ('compact' | 'normal' | 'relaxed') | null;
+  };
+  buttons?: {
+    buttonRadius?: ('none' | 'sm' | 'md' | 'lg' | 'full') | null;
+    borderRadius?: ('none' | 'sm' | 'md' | 'lg' | 'full') | null;
+    buttonTextTransform?: ('none' | 'uppercase') | null;
+    buttonFontWeight?: ('500' | '600' | '700') | null;
+  };
+  checkoutTheme?: {
+    /**
+     * Varsayılan: #FFFFFF
+     */
+    checkoutLeftBgColor?: string | null;
+    /**
+     * Varsayılan: #F5F5F5
+     */
+    checkoutSummaryBgColor?: string | null;
+    /**
+     * Varsayılan: #666666
+     */
+    checkoutBadgeBgColor?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-settings_select".
  */
@@ -882,6 +985,59 @@ export interface NavigationSelect<T extends boolean = true> {
               id?: T;
             };
         id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "theme-settings_select".
+ */
+export interface ThemeSettingsSelect<T extends boolean = true> {
+  colors?:
+    | T
+    | {
+        primaryColor?: T;
+        primaryHoverColor?: T;
+        primaryTextColor?: T;
+        accentColor?: T;
+        backgroundColor?: T;
+        surfaceColor?: T;
+        surfaceSubduedColor?: T;
+        borderColor?: T;
+        textColor?: T;
+        textMutedColor?: T;
+        announcementBgColor?: T;
+        announcementTextColor?: T;
+        headerBgColor?: T;
+        footerBgColor?: T;
+        footerTextColor?: T;
+      };
+  typography?:
+    | T
+    | {
+        fontFamily?: T;
+        headingFontFamily?: T;
+        baseFontSize?: T;
+        headingWeight?: T;
+        headingLetterSpacing?: T;
+        lineHeight?: T;
+      };
+  buttons?:
+    | T
+    | {
+        buttonRadius?: T;
+        borderRadius?: T;
+        buttonTextTransform?: T;
+        buttonFontWeight?: T;
+      };
+  checkoutTheme?:
+    | T
+    | {
+        checkoutLeftBgColor?: T;
+        checkoutSummaryBgColor?: T;
+        checkoutBadgeBgColor?: T;
       };
   updatedAt?: T;
   createdAt?: T;

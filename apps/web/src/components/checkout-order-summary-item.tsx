@@ -57,7 +57,7 @@ export function CheckoutOrderSummaryItem({ item }: { item: StoreCartLineItem }) 
         </div>
         <span
           aria-label={`Adet: ${item.quantity}`}
-          className="absolute -top-2 -right-2 min-w-[21px] h-[21px] px-1.5 rounded-full bg-[#666666] text-white text-[12px] font-semibold flex items-center justify-center leading-none shadow-sm"
+          className="absolute -top-2 -right-2 min-w-[21px] h-[21px] px-1.5 rounded-full bg-[var(--theme-checkout-badge-bg,#666666)] text-white text-[12px] font-semibold flex items-center justify-center leading-none shadow-sm"
         >
           {item.quantity}
         </span>
