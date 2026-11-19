@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
 import { ShoppingBag } from "lucide-react";
+import { CookieConsentProvider } from "@/components/cookie-consent/CookieConsentProvider";
 import { getSiteSettings, getThemeSettings } from "@/lib/payload/content";
+import { resolveCookieConsentConfig } from "@/lib/cookie-consent";
+import { getServerCookieConsent } from "@/lib/cookie-consent-server";
 import { safeHref } from "@/lib/safe-href";
 import { buildThemeCssVariables, resolveThemeSettings } from "@/lib/theme/css-vars";
 import "../(store)/globals.css";
@@ -36,11 +39,13 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutLayout({ children }: { children: React.ReactNode }) {
-  const [settingsGlobal, themeRaw] = await Promise.all([
+  const [settingsGlobal, themeRaw, initialConsent] = await Promise.all([
     getSiteSettings().catch(() => null),
     getThemeSettings().catch(() => null),
+    getServerCookieConsent().catch(() => null),
   ]);
   const themeVars = buildThemeCssVariables(resolveThemeSettings(themeRaw)) as React.CSSProperties;
+  const cookieConsentConfig = resolveCookieConsentConfig(settingsGlobal?.cookieConsent);
   const storeName = settingsGlobal?.storeName || "Mağaza";
   const logoObj = settingsGlobal?.logo as { url?: string; alt?: string } | null | undefined;
   const logoUrl = logoObj?.url ? safeHref(logoObj.url, "") : "";
@@ -94,9 +99,11 @@ export default async function CheckoutLayout({ children }: { children: React.Rea
           </div>
         </header>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none w-full">
-          {children}
-        </main>
+        <CookieConsentProvider initialConsent={initialConsent} config={cookieConsentConfig}>
+          <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none w-full">
+            {children}
+          </main>
+        </CookieConsentProvider>
       </body>
     </html>
   );

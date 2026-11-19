@@ -267,5 +267,51 @@ export const SiteSettings: GlobalConfig = {
         },
       ],
     },
+    {
+      name: "cookieConsent",
+      type: "group",
+      label: "Çerez Politikası ve Onay Bandı",
+      fields: [
+        {
+          name: "enabled",
+          type: "checkbox",
+          defaultValue: true,
+          label: "Çerez Onay Bandını Göster",
+        },
+        {
+          name: "policyVersion",
+          type: "number",
+          defaultValue: 1,
+          min: 1,
+          label: "Çerez Politikası Sürümü",
+          admin: {
+            description:
+              "Çerez politikası değiştiğinde bu sayıyı artırın; ziyaretçilere tercihleri yeniden sorulur.",
+          },
+        },
+        {
+          name: "bannerTitle",
+          type: "text",
+          defaultValue: "Çerez Tercihleriniz",
+          label: "Banner Başlığı",
+        },
+        {
+          name: "bannerDescription",
+          type: "textarea",
+          defaultValue:
+            "Sitemizin düzgün çalışması için zorunlu çerezler kullanıyoruz. İzninizle harita, analitik ve pazarlama çerezlerini de etkinleştirebilirsiniz.",
+          label: "Banner Açıklaması",
+        },
+        {
+          name: "policyUrl",
+          type: "text",
+          defaultValue: "/sayfa/cerez-politikasi",
+          label: "Çerez Politikası Sayfa Bağlantısı",
+          admin: {
+            description: "İç yol (/sayfa/cerez-politikasi) veya https:// bağlantısı.",
+          },
+        },
+      ],
+    },
   ],
 };

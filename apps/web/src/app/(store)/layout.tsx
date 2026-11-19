@@ -6,7 +6,10 @@ import { Footer } from "@/components/footer";
 import { CartDrawerProvider } from "@/components/cart-drawer-provider";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { NavigationProgress } from "@/components/navigation-progress";
-import { getThemeSettings } from "@/lib/payload/content";
+import { CookieConsentProvider } from "@/components/cookie-consent/CookieConsentProvider";
+import { getSiteSettings, getThemeSettings } from "@/lib/payload/content";
+import { resolveCookieConsentConfig } from "@/lib/cookie-consent";
+import { getServerCookieConsent } from "@/lib/cookie-consent-server";
 import { buildThemeCssVariables, resolveThemeSettings } from "@/lib/theme/css-vars";
 import "./globals.css";
 
@@ -39,8 +42,13 @@ export const metadata: Metadata = {
 };
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
-  const themeRaw = await getThemeSettings().catch(() => null);
+  const [themeRaw, settingsGlobal, initialConsent] = await Promise.all([
+    getThemeSettings().catch(() => null),
+    getSiteSettings().catch(() => null),
+    getServerCookieConsent().catch(() => null),
+  ]);
   const themeVars = buildThemeCssVariables(resolveThemeSettings(themeRaw)) as React.CSSProperties;
+  const cookieConsentConfig = resolveCookieConsentConfig(settingsGlobal?.cookieConsent);
 
   return (
     <html lang="tr" suppressHydrationWarning className={inter.variable} style={themeVars}>
@@ -57,17 +65,19 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         >
           İçeriğe geç
         </a>
-        <CartDrawerProvider>
-          <Navbar />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="flex-1 focus:outline-none w-full max-w-full overflow-x-clip"
-          >
-            {children}
-          </main>
-          <Footer />
-        </CartDrawerProvider>
+        <CookieConsentProvider initialConsent={initialConsent} config={cookieConsentConfig}>
+          <CartDrawerProvider>
+            <Navbar />
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="flex-1 focus:outline-none w-full max-w-full overflow-x-clip"
+            >
+              {children}
+            </main>
+            <Footer />
+          </CartDrawerProvider>
+        </CookieConsentProvider>
       </body>
     </html>
   );

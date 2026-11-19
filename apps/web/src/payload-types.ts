@@ -748,6 +748,19 @@ export interface SiteSetting {
     recommendedHandles?: string | null;
     recommendedLimit?: number | null;
   };
+  cookieConsent?: {
+    enabled?: boolean | null;
+    /**
+     * Çerez politikası değiştiğinde bu sayıyı artırın; ziyaretçilere tercihleri yeniden sorulur.
+     */
+    policyVersion?: number | null;
+    bannerTitle?: string | null;
+    bannerDescription?: string | null;
+    /**
+     * İç yol (/sayfa/cerez-politikasi) veya https:// bağlantısı.
+     */
+    policyUrl?: string | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -946,6 +959,15 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         recommendedSource?: T;
         recommendedHandles?: T;
         recommendedLimit?: T;
+      };
+  cookieConsent?:
+    | T
+    | {
+        enabled?: T;
+        policyVersion?: T;
+        bannerTitle?: T;
+        bannerDescription?: T;
+        policyUrl?: T;
       };
   updatedAt?: T;
   createdAt?: T;

@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getNavigation, getSiteSettings } from "../lib/payload/content";
 import { safeHref } from "../lib/safe-href";
+import { CookiePreferencesTrigger } from "./cookie-consent/CookiePreferencesTrigger";
 
 export async function Footer() {
   const [navigationGlobal, settingsGlobal] = await Promise.all([
@@ -125,6 +126,11 @@ export async function Footer() {
                     </Link>
                   </li>
                   <li>
+                    <Link href="/sayfa/cerez-politikasi" className="hover:text-white transition">
+                      Çerez Politikası
+                    </Link>
+                  </li>
+                  <li>
                     <Link href="/blog" className="hover:text-white transition">
                       Blog
                     </Link>
@@ -139,7 +145,13 @@ export async function Footer() {
           <p>
             © {new Date().getFullYear()} {storeName}. Tüm hakları saklıdır.
           </p>
-          <p>Alte CMS & Medusa v2 E-Ticaret Altyapısı</p>
+          <div className="flex items-center gap-4">
+            <CookiePreferencesTrigger />
+            <span aria-hidden="true" className="text-stone-600">
+              ·
+            </span>
+            <p>Alte CMS & Medusa v2 E-Ticaret Altyapısı</p>
+          </div>
         </div>
       </div>
     </footer>

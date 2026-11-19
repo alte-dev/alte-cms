@@ -82,18 +82,35 @@ async function ensureStaffUser(
 async function main() {
   console.log(`\n🚀 Başlatılıyor: verify:contact (${STORE_URL})\n`);
 
-  // 1. /iletisim page renders 200 with form, contact info and Google Maps
+  // 1. /iletisim page renders 200 with form, contact info, consent-gated Google Maps
   const pageRes = await fetch(`${STORE_URL}/iletisim`);
   const pageHtml = await pageRes.text();
+  const functionalConsentCookie = `alte_cookie_consent=${encodeURIComponent(
+    JSON.stringify({
+      v: 1,
+      necessary: true,
+      functional: true,
+      analytics: false,
+      marketing: false,
+      updatedAt: new Date().toISOString(),
+    }),
+  )}`;
+  const consentedPageRes = await fetch(`${STORE_URL}/iletisim`, {
+    headers: { Cookie: functionalConsentCookie },
+  });
+  const consentedPageHtml = await consentedPageRes.text();
   recordStep(
-    "1. /iletisim sayfası canlı HTTP 200 (form + harita + iletişim)",
+    "1. /iletisim sayfası canlı HTTP 200 (form + rızaya bağlı harita + iletişim)",
     pageRes.ok &&
       pageHtml.includes("contact-name") &&
       pageHtml.includes("contact-kvkk") &&
-      pageHtml.includes("maps.google.com/maps") &&
+      !pageHtml.includes("maps.google.com/maps") &&
+      pageHtml.includes("google-map-consent-placeholder") &&
       pageHtml.includes("tel:") &&
-      pageHtml.includes("mailto:"),
-    `status=${pageRes.status}`,
+      pageHtml.includes("mailto:") &&
+      consentedPageRes.ok &&
+      consentedPageHtml.includes("maps.google.com/maps"),
+    `status=${pageRes.status}, consentedStatus=${consentedPageRes.status}`,
   );
 
   // 2. Anonymous GET /admin/contact-messages on Medusa blocked
