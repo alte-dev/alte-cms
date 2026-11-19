@@ -566,6 +566,7 @@ export function CheckoutForm({
       {/* Checkout Form (Left Column) */}
       <form
         noValidate
+        suppressHydrationWarning
         onSubmit={handleSubmit}
         className="bg-[var(--theme-checkout-left-bg,#FFFFFF)] px-4 sm:px-6 lg:px-0 lg:pr-11 py-8 space-y-6"
       >
