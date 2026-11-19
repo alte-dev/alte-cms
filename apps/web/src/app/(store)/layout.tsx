@@ -43,7 +43,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   const themeVars = buildThemeCssVariables(resolveThemeSettings(themeRaw)) as React.CSSProperties;
 
   return (
-    <html lang="tr" suppressHydrationWarning style={themeVars}>
+    <html lang="tr" suppressHydrationWarning className={inter.variable} style={themeVars}>
       <body
         className={`${inter.className} min-h-screen flex flex-col bg-[var(--theme-bg,#FAFAF9)] text-[var(--theme-text,#1C1917)] antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
       >

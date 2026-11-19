@@ -33,7 +33,7 @@ function isLightColor(hex: string): boolean {
 }
 
 export function ColorField({ field, path }: TextFieldClientProps) {
-  const { value, setValue } = useField<string>({ path });
+  const { value, setValue, showError, errorMessage } = useField<string>({ path });
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +73,9 @@ export function ColorField({ field, path }: TextFieldClientProps) {
           alignItems: "center",
           marginTop: "6px",
           borderRadius: "6px",
-          border: "1px solid var(--theme-elevation-200)",
+          border: showError
+            ? "1px solid var(--theme-error-500, #dc2626)"
+            : "1px solid var(--theme-elevation-200)",
           backgroundColor: "var(--theme-elevation-0)",
           overflow: "hidden",
           maxWidth: "100%",
@@ -245,6 +247,20 @@ export function ColorField({ field, path }: TextFieldClientProps) {
             })}
           </div>
         </div>
+      )}
+
+      {showError && errorMessage && (
+        <p
+          role="alert"
+          style={{
+            marginTop: "4px",
+            fontSize: "12px",
+            color: "var(--theme-error-500, #dc2626)",
+            fontWeight: 500,
+          }}
+        >
+          {errorMessage}
+        </p>
       )}
 
       {field.admin?.description && typeof field.admin.description === "string" && (

@@ -46,7 +46,7 @@ export default async function CheckoutLayout({ children }: { children: React.Rea
   const logoUrl = logoObj?.url ? safeHref(logoObj.url, "") : "";
 
   return (
-    <html lang="tr" suppressHydrationWarning style={themeVars}>
+    <html lang="tr" suppressHydrationWarning className={inter.variable} style={themeVars}>
       <body
         className={`${inter.className} min-h-screen flex flex-col bg-[var(--theme-checkout-left-bg,#FFFFFF)] text-[var(--theme-text,#1C1917)] antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
       >

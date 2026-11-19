@@ -296,4 +296,25 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
       ).toBeNull();
     });
   });
+
+  describe("CartDrawerPanel error state", () => {
+    it("displays error alert without misleading empty-cart message when loading fails", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CartDrawerPanel, {
+          isOpen: true,
+          cart: null,
+          freeShippingProgress: null,
+          isPending: false,
+          isLoading: false,
+          errorMsg: "Sepet bilgileri yüklenemedi. Lütfen tekrar deneyin.",
+          onClose: () => {},
+          onUpdateQuantity: () => {},
+          onRemoveItem: () => {},
+        }),
+      );
+
+      expect(html).toContain("Sepet bilgileri yüklenemedi. Lütfen tekrar deneyin.");
+      expect(html).not.toContain("Sepetiniz Boş");
+    });
+  });
 });

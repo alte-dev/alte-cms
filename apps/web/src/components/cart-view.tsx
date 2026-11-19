@@ -14,6 +14,7 @@ import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
 import { resolveCartItemHref, resolveCartItemThumbnail } from "./checkout-order-summary-item";
+import { useOptionalCartDrawer } from "./cart-drawer-provider";
 import { PlaceholderImage } from "./placeholder-image";
 
 interface CartViewProps {
@@ -40,6 +41,7 @@ export function CartView({
   shippingProgress,
   initialAvailabilityIssues = [],
 }: CartViewProps) {
+  const drawer = useOptionalCartDrawer();
   const [cart, setCart] = useState<StoreCart | null>(initialCart);
   const [availabilityIssues, setAvailabilityIssues] =
     useState<CartItemAvailabilityIssue[]>(initialAvailabilityIssues);
@@ -76,6 +78,7 @@ export function CartView({
       });
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         await refreshAvailability();
       } else if (result.error) {
         setErrorMsg(result.error);
@@ -89,6 +92,7 @@ export function CartView({
       const result = await removeCartItemAction(lineItemId);
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         await refreshAvailability();
       } else if (result.error) {
         setErrorMsg(result.error);
@@ -104,6 +108,7 @@ export function CartView({
       const result = await applyCouponAction(couponCode.trim());
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         setCouponCode("");
       } else if (result.error) {
         setCouponError(result.error);
@@ -117,6 +122,7 @@ export function CartView({
       const result = await removeCouponAction(code);
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         await refreshAvailability();
       } else if (result.error) {
         setCouponError(result.error);

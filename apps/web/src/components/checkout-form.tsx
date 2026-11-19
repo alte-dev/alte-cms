@@ -409,6 +409,9 @@ export function CheckoutForm({
     const validation = validateCheckoutFormFields(payload);
     if (!validation.valid) {
       setFieldErrors(validation.errors);
+      if (Object.keys(validation.errors).length === 0) {
+        setErrorMsg(validation.firstErrorMessage || "Lütfen form alanlarını kontrol ediniz.");
+      }
       scrollToField(validation.firstErrorFieldId);
       return;
     }
@@ -1049,10 +1052,19 @@ export function CheckoutForm({
                   <input
                     id="billingFirstName"
                     type="text"
+                    aria-invalid={Boolean(fieldErrors.billingFirstName)}
                     value={billingFirstName}
-                    onChange={(e) => setBillingFirstName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingFirstName(e.target.value);
+                      clearFieldError("billingFirstName");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingFirstName")}`}
                   />
+                  {fieldErrors.billingFirstName && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingFirstName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -1064,10 +1076,19 @@ export function CheckoutForm({
                   <input
                     id="billingLastName"
                     type="text"
+                    aria-invalid={Boolean(fieldErrors.billingLastName)}
                     value={billingLastName}
-                    onChange={(e) => setBillingLastName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingLastName(e.target.value);
+                      clearFieldError("billingLastName");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingLastName")}`}
                   />
+                  {fieldErrors.billingLastName && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingLastName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -1078,9 +1099,13 @@ export function CheckoutForm({
                   </label>
                   <select
                     id="billingCity"
+                    aria-invalid={Boolean(fieldErrors.billingCity)}
                     value={billingCity}
-                    onChange={(e) => setBillingCity(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingCity(e.target.value);
+                      clearFieldError("billingCity");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingCity")}`}
                   >
                     {TURKISH_CITIES.map((c) => (
                       <option key={c} value={c}>
@@ -1088,6 +1113,11 @@ export function CheckoutForm({
                       </option>
                     ))}
                   </select>
+                  {fieldErrors.billingCity && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingCity}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -1099,10 +1129,19 @@ export function CheckoutForm({
                   <input
                     id="billingDistrict"
                     type="text"
+                    aria-invalid={Boolean(fieldErrors.billingDistrict)}
                     value={billingDistrict}
-                    onChange={(e) => setBillingDistrict(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingDistrict(e.target.value);
+                      clearFieldError("billingDistrict");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingDistrict")}`}
                   />
+                  {fieldErrors.billingDistrict && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingDistrict}
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label
@@ -1114,10 +1153,19 @@ export function CheckoutForm({
                   <textarea
                     id="billingAddressLine1"
                     rows={2}
+                    aria-invalid={Boolean(fieldErrors.billingAddressLine1)}
                     value={billingAddressLine1}
-                    onChange={(e) => setBillingAddressLine1(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingAddressLine1(e.target.value);
+                      clearFieldError("billingAddressLine1");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingAddressLine1")}`}
                   />
+                  {fieldErrors.billingAddressLine1 && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingAddressLine1}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1157,7 +1205,10 @@ export function CheckoutForm({
                     name="shippingOption"
                     value={opt.id}
                     checked={selectedShippingOptionId === opt.id}
-                    onChange={() => setSelectedShippingOptionId(opt.id)}
+                    onChange={() => {
+                      setSelectedShippingOptionId(opt.id);
+                      clearFieldError("shippingOptionSection");
+                    }}
                     className="w-4 h-4 text-stone-900 border-stone-300 focus:ring-stone-900"
                   />
                   <div>
@@ -1173,6 +1224,11 @@ export function CheckoutForm({
               </label>
             ))}
           </div>
+          {fieldErrors.shippingOptionSection && (
+            <p className="text-xs text-red-600" role="alert">
+              {fieldErrors.shippingOptionSection}
+            </p>
+          )}
         </section>
 
         {/* Step 5: Payment Method Selection */}

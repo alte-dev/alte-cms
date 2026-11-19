@@ -28,6 +28,7 @@ interface CartDrawerContextValue {
   itemCount: number | null;
   openDrawer: () => void;
   openWithCart: (nextCart: StoreCart) => void;
+  syncCart: (nextCart: StoreCart | null) => void;
   closeDrawer: () => void;
 }
 
@@ -210,7 +211,7 @@ export function CartDrawerPanel({
 
           {isLoading && !cart ? (
             <div className="py-12 text-center text-sm text-stone-500">Sepet yükleniyor...</div>
-          ) : items.length === 0 ? (
+          ) : items.length === 0 && errorMsg ? null : items.length === 0 ? (
             <div className="py-16 text-center space-y-4">
               <div className="w-14 h-14 mx-auto flex items-center justify-center rounded-full bg-stone-100 text-stone-400">
                 <ShoppingBag className="w-7 h-7" />
@@ -429,19 +430,37 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
     setIsLoading(true);
     try {
       const res = await fetch("/api/cart", { cache: "no-store", signal: controller.signal });
-      if (!res.ok || seq !== fetchSeqRef.current) return;
+      if (seq !== fetchSeqRef.current) return;
+      if (!res.ok) {
+        console.error("[CartDrawerProvider] /api/cart returned HTTP", res.status);
+        setErrorMsg("Sepet bilgileri yüklenemedi. Lütfen tekrar deneyin.");
+        return;
+      }
       const data = await res.json();
       if (seq !== fetchSeqRef.current) return;
       setCart(data.cart ?? null);
       setFreeShippingProgress(data.freeShippingProgress ?? null);
       setAvailabilityIssues(Array.isArray(data.availabilityIssues) ? data.availabilityIssues : []);
-    } catch {
-      // ignore aborted or transient network errors on drawer open
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+      if (seq === fetchSeqRef.current) {
+        console.error(
+          "[CartDrawerProvider] Sepet yüklenemedi:",
+          err instanceof Error ? err.message : err,
+        );
+        setErrorMsg("Sepet bilgileri yüklenemedi. Lütfen tekrar deneyin.");
+      }
     } finally {
       if (seq === fetchSeqRef.current) {
         setIsLoading(false);
       }
     }
+  }, []);
+
+  const syncCart = useCallback((nextCart: StoreCart | null) => {
+    setCart(nextCart);
   }, []);
 
   const openDrawer = useCallback(() => {
@@ -526,7 +545,7 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
 
   return (
     <CartDrawerContext.Provider
-      value={{ isOpen, itemCount, openDrawer, openWithCart, closeDrawer }}
+      value={{ isOpen, itemCount, openDrawer, openWithCart, syncCart, closeDrawer }}
     >
       {children}
       <CartDrawerPanel
