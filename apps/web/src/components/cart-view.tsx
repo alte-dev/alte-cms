@@ -2,13 +2,14 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { Trash2, ShoppingBag, ArrowRight, Truck, Tag, X } from "lucide-react";
+import { Trash2, ShoppingBag, ArrowRight, Truck, Tag, X, AlertTriangle } from "lucide-react";
 import {
   applyCouponAction,
   removeCartItemAction,
   removeCouponAction,
   updateCartItemAction,
 } from "../app/(store)/actions";
+import type { CartItemAvailabilityIssue } from "../lib/medusa/cart";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
@@ -17,10 +18,30 @@ import { PlaceholderImage } from "./placeholder-image";
 interface CartViewProps {
   initialCart: StoreCart | null;
   shippingProgress: FreeShippingProgress;
+  initialAvailabilityIssues?: CartItemAvailabilityIssue[];
 }
 
-export function CartView({ initialCart, shippingProgress }: CartViewProps) {
+function getAvailabilityIssueText(issue: CartItemAvailabilityIssue): string {
+  if (issue.reason === "deleted") {
+    return "Bu ürün satıştan kaldırıldı.";
+  }
+  if (issue.reason === "unpublished") {
+    return "Bu ürün şu anda yayında değil.";
+  }
+  if (issue.availableQuantity <= 0) {
+    return "Bu ürünün stoğu tükendi.";
+  }
+  return `Stokta yalnızca ${issue.availableQuantity} adet kaldı (sepetinizde ${issue.requestedQuantity} adet var).`;
+}
+
+export function CartView({
+  initialCart,
+  shippingProgress,
+  initialAvailabilityIssues = [],
+}: CartViewProps) {
   const [cart, setCart] = useState<StoreCart | null>(initialCart);
+  const [availabilityIssues, setAvailabilityIssues] =
+    useState<CartItemAvailabilityIssue[]>(initialAvailabilityIssues);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -28,6 +49,22 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
 
   const items = cart?.items || [];
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
+  const issueByLineItemId = new Map(availabilityIssues.map((issue) => [issue.lineItemId, issue]));
+  const hasAvailabilityIssues = availabilityIssues.length > 0;
+
+  const refreshAvailability = async () => {
+    try {
+      const res = await fetch("/api/cart", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.availabilityIssues)) {
+          setAvailabilityIssues(data.availabilityIssues);
+        }
+      }
+    } catch {
+      // ignore non-fatal UI refresh error
+    }
+  };
 
   const handleUpdateQuantity = (lineItemId: string, newQty: number) => {
     setErrorMsg(null);
@@ -38,6 +75,7 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
       });
       if (result.success && result.data) {
         setCart(result.data);
+        await refreshAvailability();
       } else if (result.error) {
         setErrorMsg(result.error);
       }
@@ -50,6 +88,7 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
       const result = await removeCartItemAction(lineItemId);
       if (result.success && result.data) {
         setCart(result.data);
+        await refreshAvailability();
       } else if (result.error) {
         setErrorMsg(result.error);
       }
@@ -77,6 +116,7 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
       const result = await removeCouponAction(code);
       if (result.success && result.data) {
         setCart(result.data);
+        await refreshAvailability();
       } else if (result.error) {
         setCouponError(result.error);
       }
@@ -134,6 +174,23 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
           </div>
         )}
 
+        {/* Availability Issues Alert */}
+        {hasAvailabilityIssues && (
+          <div
+            role="alert"
+            className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-900 flex items-start gap-3"
+          >
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Sepetinizde güncellenmesi gereken ürünler var</p>
+              <p className="text-xs text-red-700 mt-0.5">
+                Siparişe devam etmek için satıştan kaldırılan veya stoğu yetersiz olan ürünleri
+                sepetinizden çıkarın ya da adedini azaltın.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Error Alert */}
         {errorMsg && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
@@ -155,6 +212,11 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
                 <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
                 {item.variant_title && item.variant_title !== "Default Variant" && (
                   <p className="text-xs text-stone-500 mt-0.5">Seçenek: {item.variant_title}</p>
+                )}
+                {issueByLineItemId.get(item.id) && (
+                  <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mt-1.5 inline-block">
+                    {getAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
+                  </p>
                 )}
                 <div className="text-sm font-semibold text-stone-900 mt-2">
                   {formatTRY(item.unit_price)}
@@ -319,13 +381,24 @@ export function CartView({ initialCart, shippingProgress }: CartViewProps) {
         </div>
 
         {/* Checkout Link */}
-        <Link
-          href="/odeme"
-          className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
-        >
-          <span>Ödemeye Geç</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+        {hasAvailabilityIssues ? (
+          <button
+            type="button"
+            disabled
+            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-300 text-stone-600 font-medium rounded-md cursor-not-allowed"
+          >
+            <span>Ödemeye Geç</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        ) : (
+          <Link
+            href="/odeme"
+            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
+          >
+            <span>Ödemeye Geç</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        )}
       </div>
     </div>
   );

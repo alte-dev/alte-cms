@@ -448,6 +448,73 @@ export async function initiateIyzicoPayment(cartId: string, context?: IyzicoInit
   };
 }
 
+export interface CartItemAvailabilityIssue {
+  lineItemId: string;
+  variantId: string | null;
+  productId: string | null;
+  title: string;
+  reason: "deleted" | "unpublished" | "insufficient_stock";
+  requestedQuantity: number;
+  availableQuantity: number;
+}
+
+export interface CartAvailabilityCheckResult {
+  valid: boolean;
+  issues: CartItemAvailabilityIssue[];
+  message?: string;
+}
+
+const SAFE_CART_ID_PATTERN = /^cart_[A-Za-z0-9_-]{4,64}$/;
+
+/**
+ * Validates that all non-service items in the cart belong to published, non-deleted products
+ * and have sufficient stock. Fail-closed: throws if Medusa cannot be reached.
+ */
+export async function validateCartAvailability(
+  cartId: string,
+): Promise<CartAvailabilityCheckResult> {
+  const cleanCartId = typeof cartId === "string" ? cartId.trim() : "";
+  if (!cleanCartId) {
+    throw new Error("Sepet bulunamadı.");
+  }
+  if (!SAFE_CART_ID_PATTERN.test(cleanCartId)) {
+    throw new Error("Geçersiz sepet kimliği.");
+  }
+
+  const data = await medusaFetch<CartAvailabilityCheckResult>(
+    `/store/carts/${encodeURIComponent(cleanCartId)}/validate-availability`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  return {
+    valid: Boolean(data.valid),
+    issues: Array.isArray(data.issues) ? data.issues : [],
+    message: data.message,
+  };
+}
+
+/**
+ * Non-throwing helper for cart UI display: returns availability issues if any.
+ */
+export async function getCartAvailabilityIssues(
+  cartId: string,
+): Promise<CartItemAvailabilityIssue[]> {
+  if (!cartId) return [];
+  try {
+    const res = await validateCartAvailability(cartId);
+    return res.issues;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/\b404\b|bulunamadı/i.test(msg)) {
+      console.error("[getCartAvailabilityIssues] Sepet durumu doğrulanamadı:", msg);
+    }
+    return [];
+  }
+}
+
 /**
  * Completes a cart to create an order.
  * Strictly checks environment when using dev dummy provider.

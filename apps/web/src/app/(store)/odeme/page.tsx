@@ -1,7 +1,12 @@
 import React from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCart, getCartShippingOptions, getPaymentOptions } from "@/lib/medusa/cart";
+import {
+  getCart,
+  getCartAvailabilityIssues,
+  getCartShippingOptions,
+  getPaymentOptions,
+} from "@/lib/medusa/cart";
 import { getServerCustomer, getServerCustomerAddresses } from "@/lib/medusa/account";
 import { getProducts } from "@/lib/medusa/products";
 import { selectCheckoutRecommendations } from "@/lib/medusa/checkout-recommendations";
@@ -27,14 +32,21 @@ export default async function CheckoutPage() {
     redirect("/sepet");
   }
 
-  const [shippingOptions, paymentOptions, customer, savedAddresses, siteSettings] =
-    await Promise.all([
-      getCartShippingOptions(cart.id),
-      getPaymentOptions(),
-      getServerCustomer(),
-      getServerCustomerAddresses(),
-      getSiteSettings(),
-    ]);
+  const [
+    shippingOptions,
+    paymentOptions,
+    customer,
+    savedAddresses,
+    siteSettings,
+    availabilityIssues,
+  ] = await Promise.all([
+    getCartShippingOptions(cart.id),
+    getPaymentOptions(),
+    getServerCustomer(),
+    getServerCustomerAddresses(),
+    getSiteSettings(),
+    getCartAvailabilityIssues(cart.id),
+  ]);
 
   const checkoutSettings = (siteSettings as any)?.checkout;
   let recommendedProducts: StoreProduct[] = [];
@@ -75,6 +87,7 @@ export default async function CheckoutPage() {
         savedAddresses={savedAddresses}
         recommendedProducts={recommendedProducts}
         recommendedTitle={recommendedTitle}
+        initialAvailabilityIssues={availabilityIssues}
       />
     </div>
   );

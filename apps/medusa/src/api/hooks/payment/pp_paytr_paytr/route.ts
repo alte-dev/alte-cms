@@ -5,6 +5,7 @@ import PaymentSettingsService, {
   PaymentSettingsRegistry,
 } from "../../../../modules/payment-settings/service";
 import PaytrPaymentService from "../../../../modules/payment-paytr/service";
+import { isUnrecoverableCartCompletionError } from "../../../../utils/cart-availability";
 
 // In-process mutex queue fallback for callback serialization per merchant_oid
 const inMemoryLocks = new Map<string, Promise<any>>();
@@ -333,8 +334,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
           return res.status(200).send("OK");
         }
 
-        // Check if error is an unrecoverable business failure (e.g. inventory exhausted)
-        const isUnrecoverable = /inventory|stock|insufficient/i.test(errMsg);
+        // Check if error is an unrecoverable business failure (e.g. inventory exhausted, product deleted/unpublished)
+        const isUnrecoverable = isUnrecoverableCartCompletionError(errMsg);
 
         if (isUnrecoverable) {
           console.error(

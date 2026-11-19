@@ -12,6 +12,7 @@ import {
   removeCartItem,
   setCartShippingMethod,
   updateCart,
+  validateCartAvailability,
 } from "../../../lib/medusa/cart";
 import { getServerCustomer, saveCustomerAddressFromCheckout } from "../../../lib/medusa/account";
 import {
@@ -123,6 +124,22 @@ export async function POST(req: Request) {
           error: "Bu sepet için sipariş zaten oluşturuldu.",
           orderId: recordedOrderId,
           redirectUrl: recordedOrderId ? "/siparis-onay" : undefined,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Fail-closed pre-payment availability check (deleted, unpublished, or out-of-stock items)
+    const availability = await validateCartAvailability(cart.id);
+    if (!availability.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "CART_ITEM_UNAVAILABLE",
+          error: availability.message
+            ? mapMedusaError(new Error(availability.message))
+            : "Sepetinizdeki ürünlerden biri şu anda satın alınamıyor. Lütfen sepetinizi güncelleyin.",
+          issues: availability.issues,
         },
         { status: 409 },
       );
@@ -404,10 +421,13 @@ export async function POST(req: Request) {
             { status: 409 },
           );
         }
+        const mappedError = completionResult.error
+          ? mapMedusaError(new Error(completionResult.error))
+          : "";
         return NextResponse.json(
           {
             success: false,
-            error: "Kapıda ödeme siparişi oluşturulamadı.",
+            error: mappedError || "Kapıda ödeme siparişi oluşturulamadı.",
           },
           { status: 400 },
         );
@@ -454,10 +474,13 @@ export async function POST(req: Request) {
             { status: 409 },
           );
         }
+        const mappedError = completionResult.error
+          ? mapMedusaError(new Error(completionResult.error))
+          : "";
         return NextResponse.json(
           {
             success: false,
-            error: "Sipariş tamamlanırken bir hata oluştu.",
+            error: mappedError || "Sipariş tamamlanırken bir hata oluştu.",
           },
           { status: 400 },
         );

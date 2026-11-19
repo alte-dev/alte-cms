@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import { getCart, getShippingRules } from "@/lib/medusa/cart";
+import { getCart, getCartAvailabilityIssues, getShippingRules } from "@/lib/medusa/cart";
 import { getCartId } from "@/lib/medusa/cookies";
 import { calculateFreeShippingProgress } from "@/lib/medusa/format";
 import { CartView } from "@/components/cart-view";
@@ -14,9 +14,10 @@ export const dynamic = "force-dynamic";
 
 export default async function CartPage() {
   const cartId = await getCartId();
-  const [cart, rules] = await Promise.all([
+  const [cart, rules, availabilityIssues] = await Promise.all([
     cartId ? getCart(cartId) : Promise.resolve(null),
     getShippingRules(),
+    cartId ? getCartAvailabilityIssues(cartId) : Promise.resolve([]),
   ]);
 
   const productSubtotal = (cart?.items || [])
@@ -33,7 +34,11 @@ export default async function CartPage() {
         <p className="text-sm text-stone-500 mt-1">Sepetinizdeki ürünler ve sipariş özeti</p>
       </div>
 
-      <CartView initialCart={cart} shippingProgress={shippingProgress} />
+      <CartView
+        initialCart={cart}
+        shippingProgress={shippingProgress}
+        initialAvailabilityIssues={availabilityIssues}
+      />
     </div>
   );
 }
