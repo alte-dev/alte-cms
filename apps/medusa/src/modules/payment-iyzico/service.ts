@@ -191,8 +191,8 @@ export class IyzicoPaymentService extends AbstractPaymentProvider {
     const priceStr = (expectedKurus / 100).toFixed(2);
     const rawItems =
       Array.isArray(inputData.items) && inputData.items.length > 0
-        ? inputData.items
-        : (context as any)?.items || [];
+        ? inputData.items.slice(0, 100)
+        : ((context as any)?.items || []).slice(0, 100);
     const basketItems = buildIyzicoBasketItems(rawItems, expectedKurus);
 
     const webPublicUrl = (process.env.WEB_PUBLIC_URL || "http://localhost:3100").replace(

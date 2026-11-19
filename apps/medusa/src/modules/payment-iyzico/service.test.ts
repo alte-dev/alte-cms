@@ -305,4 +305,50 @@ describe("IyzicoPaymentService & payment-guard", () => {
     expect(capturedBody.buyer.email).not.toMatch(/\.test$/i);
     expect(capturedBody.buyer.email).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i);
   });
+
+  it("caps oversized input.data.items to 100 entries while preserving exact total", async () => {
+    setValidSettings();
+    let capturedBody: any = null;
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init: any) => {
+      capturedBody = JSON.parse(init.body);
+      const token = "iyz-cap-tok";
+      const signature = calculateIyzicoHmacSha256(
+        [capturedBody.conversationId, token],
+        "sandbox-secret-test",
+      );
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          token,
+          conversationId: capturedBody.conversationId,
+          paymentPageUrl: "https://sandbox-cpp.iyzipay.com?token=iyz-cap-tok&lang=tr",
+          signature,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const svc = new IyzicoPaymentService({}, { fetchImpl: fetchMock });
+    const oversizedItems = Array.from({ length: 150 }, (_, idx) => ({
+      id: `li_${idx + 1}`,
+      title: `Ürün ${idx + 1}`,
+      unit_price: 1,
+      quantity: 1,
+    }));
+
+    await svc.initiatePayment({
+      amount: 150,
+      currency_code: "try",
+      context: {},
+      data: { cart_id: "cart_cap", items: oversizedItems },
+    } as any);
+
+    // 100 capped product items + 1 remainder item (SHIPPING_OR_FEE) = 101 max
+    expect(capturedBody.basketItems.length).toBeLessThanOrEqual(101);
+    const sum = capturedBody.basketItems.reduce(
+      (acc: number, item: { price: string }) => acc + Math.round(Number(item.price) * 100),
+      0,
+    );
+    expect(sum).toBe(15000);
+  });
 });

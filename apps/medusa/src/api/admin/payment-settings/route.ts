@@ -29,8 +29,14 @@ export async function ensureEnabledProvidersLinkedToRegions(
               [Modules.PAYMENT]: { payment_provider_id: providerId },
             },
           ]);
-        } catch {
-          // Link already exists
+        } catch (linkErr: any) {
+          const msg = String(linkErr?.message || "");
+          if (!/already\s+exists|already\s+linked|duplicate|unique/i.test(msg)) {
+            console.warn(
+              `[Payment Settings] Bölge (${region.id}) sağlayıcı (${providerId}) bağlantısı oluşturulamadı:`,
+              msg || linkErr,
+            );
+          }
         }
       }
     }

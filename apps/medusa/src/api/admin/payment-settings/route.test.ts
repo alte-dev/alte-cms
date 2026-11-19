@@ -49,4 +49,30 @@ describe("ensureEnabledProvidersLinkedToRegions", () => {
     });
     expect(resolveMock).not.toHaveBeenCalled();
   });
+
+  it("warns on unexpected remoteLink errors while staying silent on duplicate link errors", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const createMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Cannot create multiple links (already exists)"))
+      .mockRejectedValueOnce(new Error("DB connection timeout"));
+    const listRegionsMock = vi.fn().mockResolvedValue([{ id: "reg_tr" }]);
+
+    const scope = {
+      resolve: vi.fn((key: string) => {
+        if (key === Modules.REGION) return { listRegions: listRegionsMock };
+        if (key === ContainerRegistrationKeys.REMOTE_LINK) return { create: createMock };
+        return undefined;
+      }),
+    } as any;
+
+    await ensureEnabledProvidersLinkedToRegions(scope, {
+      iyzico_enabled: true,
+      cod_enabled: true,
+    });
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(String(warnSpy.mock.calls[0][1])).toContain("DB connection timeout");
+    warnSpy.mockRestore();
+  });
 });
