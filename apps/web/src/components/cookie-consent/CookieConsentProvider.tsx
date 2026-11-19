@@ -45,12 +45,14 @@ function persistConsentCookie(state: CookieConsentState): void {
 export interface CookieConsentProviderProps {
   initialConsent: CookieConsentState | null;
   config?: CookieConsentConfig;
+  showBanner?: boolean;
   children: React.ReactNode;
 }
 
 export function CookieConsentProvider({
   initialConsent,
   config = DEFAULT_COOKIE_CONSENT_CONFIG,
+  showBanner = true,
   children,
 }: CookieConsentProviderProps) {
   const [consent, setConsent] = useState<CookieConsentState | null>(initialConsent);
@@ -116,7 +118,10 @@ export function CookieConsentProvider({
   );
 
   const isBannerVisible =
-    config.enabled && !isModalOpen && !isConsentCurrent(consent, config.policyVersion);
+    showBanner &&
+    config.enabled &&
+    !isModalOpen &&
+    !isConsentCurrent(consent, config.policyVersion);
 
   const value = useMemo<CookieConsentContextValue>(
     () => ({

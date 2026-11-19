@@ -99,7 +99,11 @@ export default async function CheckoutLayout({ children }: { children: React.Rea
           </div>
         </header>
 
-        <CookieConsentProvider initialConsent={initialConsent} config={cookieConsentConfig}>
+        <CookieConsentProvider
+          initialConsent={initialConsent}
+          config={cookieConsentConfig}
+          showBanner={false}
+        >
           <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none w-full">
             {children}
           </main>
