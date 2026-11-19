@@ -13,7 +13,7 @@ import type { CartItemAvailabilityIssue } from "../lib/medusa/cart";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
-import { resolveCartItemThumbnail } from "./checkout-order-summary-item";
+import { resolveCartItemHref, resolveCartItemThumbnail } from "./checkout-order-summary-item";
 import { PlaceholderImage } from "./placeholder-image";
 
 interface CartViewProps {
@@ -203,25 +203,48 @@ export function CartView({
         <div className="bg-white border border-stone-200 rounded-lg divide-y divide-stone-100 overflow-hidden">
           {items.map((item) => {
             const thumbnail = resolveCartItemThumbnail(item);
+            const productHref = resolveCartItemHref(item);
+            const itemTitle = item.product_title || item.title;
+            const thumbVisual = thumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumbnail}
+                alt={itemTitle}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <PlaceholderImage title={item.title} className="w-full h-full text-[10px]" />
+            );
+
             return (
               <div key={item.id} className="p-4 sm:p-6 flex gap-4 items-center">
                 {/* Product Thumbnail */}
-                <div className="w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0 border border-stone-200">
-                  {thumbnail ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={thumbnail}
-                      alt={item.product_title || item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <PlaceholderImage title={item.title} className="w-full h-full text-[10px]" />
-                  )}
-                </div>
+                {productHref ? (
+                  <Link
+                    href={productHref}
+                    aria-label={itemTitle}
+                    className="group w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0 border border-stone-200 block"
+                  >
+                    {thumbVisual}
+                  </Link>
+                ) : (
+                  <div className="w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0 border border-stone-200">
+                    {thumbVisual}
+                  </div>
+                )}
 
                 {/* Title & Variant Details */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
+                  {productHref ? (
+                    <Link
+                      href={productHref}
+                      className="text-sm font-semibold text-stone-900 hover:underline truncate block"
+                    >
+                      {item.title}
+                    </Link>
+                  ) : (
+                    <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
+                  )}
                   {item.variant_title && item.variant_title !== "Default Variant" && (
                     <p className="text-xs text-stone-500 mt-0.5">Seçenek: {item.variant_title}</p>
                   )}

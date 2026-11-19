@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, ShoppingBag, AlertCircle } from "lucide-react";
+import { Check, ShoppingBag, AlertCircle, Loader2 } from "lucide-react";
 import { addToCartAction } from "../app/(store)/actions";
 import { useOptionalCartDrawer } from "./cart-drawer-provider";
 import { formatTRY } from "../lib/medusa/format";
@@ -189,10 +189,20 @@ export function AddToCartForm({ product }: AddToCartButtonProps) {
           type="button"
           disabled={isPending || isOutOfStock}
           onClick={handleAddToCart}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 theme-btn-primary disabled:bg-stone-300 disabled:cursor-not-allowed"
+          aria-busy={isPending}
+          className="relative flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 theme-btn-primary disabled:bg-stone-300 disabled:cursor-not-allowed"
         >
-          <ShoppingBag className="w-5 h-5" />
-          {isPending ? "Ekleniyor..." : isOutOfStock ? "Stokta Yok" : "Sepete Ekle"}
+          {isPending ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+              <span className="sr-only">Sepete ekleniyor...</span>
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="w-5 h-5" />
+              <span>{isOutOfStock ? "Stokta Yok" : "Sepete Ekle"}</span>
+            </>
+          )}
         </button>
       </div>
 

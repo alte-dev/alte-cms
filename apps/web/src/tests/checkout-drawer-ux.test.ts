@@ -9,6 +9,7 @@ vi.mock("next/link", () => ({
 
 import {
   CheckoutOrderSummaryItem,
+  resolveCartItemHref,
   resolveCartItemThumbnail,
 } from "../components/checkout-order-summary-item";
 import { CartDrawerPanel, shouldOpenCartDrawerForPath } from "../components/cart-drawer-provider";
@@ -19,6 +20,7 @@ const sampleItemWithThumb: StoreCartLineItem = {
   id: "item_1",
   title: "Meşe Berjer",
   product_title: "Meşe Berjer",
+  product_handle: "mese-berjer",
   variant_title: "Kadife / Gece Mavisi",
   thumbnail: "https://cdn.example.test/berjer.jpg",
   quantity: 2,
@@ -106,6 +108,8 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
       expect(html).toContain('aria-label="Miktarı artır"');
       expect(html).toContain('href="/odeme"');
       expect(html).toContain('href="/sepet"');
+      expect(html).toContain('href="/urun/mese-berjer"');
+      expect(html).toContain("transition-transform");
       expect(html).toContain("Ödemeye Geç");
       expect(html).toContain("Sepete Git");
     });
@@ -271,7 +275,25 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
       );
 
       expect(html).toContain('src="https://cdn.example.test/berjer.jpg"');
+      expect(html).toContain('href="/urun/mese-berjer"');
       expect(html).toContain("Keten Yastık");
+    });
+  });
+
+  describe("resolveCartItemHref", () => {
+    it("resolves /urun/<handle> safely and rejects path traversal handles", () => {
+      expect(resolveCartItemHref(sampleItemWithThumb)).toBe("/urun/mese-berjer");
+      expect(
+        resolveCartItemHref({
+          ...sampleItemWithoutThumb,
+          product_handle: undefined,
+          variant: { product: { handle: "keten-yastik" } } as any,
+        }),
+      ).toBe("/urun/keten-yastik");
+      expect(resolveCartItemHref(sampleItemWithoutThumb)).toBeNull();
+      expect(
+        resolveCartItemHref({ ...sampleItemWithThumb, product_handle: "../admin" }),
+      ).toBeNull();
     });
   });
 });

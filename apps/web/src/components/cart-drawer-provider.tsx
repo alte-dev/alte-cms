@@ -17,6 +17,7 @@ import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { formatTRY, type FreeShippingProgress } from "../lib/medusa/format";
 import type { StoreCart } from "../lib/medusa/types";
 import {
+  resolveCartItemHref,
   resolveCartItemThumbnail,
   resolveCartItemVariantLabel,
 } from "./checkout-order-summary-item";
@@ -108,8 +109,34 @@ export function CartDrawerPanel({
   onUpdateQuantity,
   onRemoveItem,
 }: CartDrawerPanelProps) {
-  if (!isOpen) return null;
+  const [rendered, setRendered] = useState(isOpen);
+  const [entered, setEntered] = useState(isOpen);
 
+  useEffect(() => {
+    if (isOpen) {
+      setRendered(true);
+      let raf2 = 0;
+      const raf1 = window.requestAnimationFrame(() => {
+        raf2 = window.requestAnimationFrame(() => {
+          setEntered(true);
+        });
+      });
+      return () => {
+        window.cancelAnimationFrame(raf1);
+        if (raf2) window.cancelAnimationFrame(raf2);
+      };
+    }
+
+    setEntered(false);
+    const timer = window.setTimeout(() => {
+      setRendered(false);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  if (!rendered && !isOpen) return null;
+
+  const isActive = isOpen && entered;
   const items = (cart?.items || []).filter((item) => !isServiceFeeItem(item));
   const totals = cart ? calculateCheckoutTotals(cart, null, 0, "card") : null;
   const productsGross = items.reduce(
@@ -124,20 +151,26 @@ export function CartDrawerPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end"
+      className={`fixed inset-0 z-50 flex justify-end ${isActive ? "" : "pointer-events-none"}`}
       role="dialog"
       aria-modal="true"
       aria-label="Sepet"
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[1px] transition-opacity"
+        className={`fixed inset-0 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300 ease-out ${
+          isActive ? "opacity-100" : "opacity-0"
+        }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Slide-over panel */}
-      <div className="relative z-10 w-full max-w-[440px] bg-white h-full shadow-2xl flex flex-col">
+      {/* Slide-over panel (Shopify-style smooth slide on desktop & mobile) */}
+      <div
+        className={`relative z-10 w-full max-w-[440px] bg-white h-[100dvh] shadow-2xl flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${
+          isActive ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
           <h2 className="text-lg font-semibold text-stone-900">Sepet</h2>
@@ -200,36 +233,58 @@ export function CartDrawerPanel({
             <div className="divide-y divide-stone-100">
               {items.map((item) => {
                 const thumbnail = resolveCartItemThumbnail(item);
+                const productHref = resolveCartItemHref(item);
                 const variantLabel = resolveCartItemVariantLabel(item);
+                const itemTitle = item.product_title || item.title;
                 const lineTotal =
                   (item.unit_price ? item.unit_price * item.quantity : 0) ||
                   item.total ||
                   item.subtotal;
 
+                const thumbnailVisual = thumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={thumbnail}
+                    alt={itemTitle}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <PlaceholderImage title={itemTitle} className="w-full h-full text-[9px]" />
+                );
+
                 return (
                   <div key={item.id} className="py-4 first:pt-0 flex gap-4">
-                    <div className="w-20 h-20 rounded-lg border border-stone-200 bg-stone-50 overflow-hidden flex-shrink-0">
-                      {thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={thumbnail}
-                          alt={item.product_title || item.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <PlaceholderImage
-                          title={item.product_title || item.title}
-                          className="w-full h-full text-[9px]"
-                        />
-                      )}
-                    </div>
+                    {productHref ? (
+                      <Link
+                        href={productHref}
+                        onClick={onClose}
+                        aria-label={itemTitle}
+                        className="group w-20 h-20 rounded-lg border border-stone-200 bg-stone-50 overflow-hidden flex-shrink-0 block"
+                      >
+                        {thumbnailVisual}
+                      </Link>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border border-stone-200 bg-stone-50 overflow-hidden flex-shrink-0">
+                        {thumbnailVisual}
+                      </div>
+                    )}
 
                     <div className="min-w-0 flex-1 flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-stone-900 leading-snug line-clamp-2">
-                            {item.product_title || item.title}
-                          </p>
+                          {productHref ? (
+                            <Link
+                              href={productHref}
+                              onClick={onClose}
+                              className="text-sm font-medium text-stone-900 hover:underline leading-snug line-clamp-2 block"
+                            >
+                              {itemTitle}
+                            </Link>
+                          ) : (
+                            <p className="text-sm font-medium text-stone-900 leading-snug line-clamp-2">
+                              {itemTitle}
+                            </p>
+                          )}
                           {variantLabel && (
                             <p className="text-xs text-stone-500 mt-0.5 truncate">{variantLabel}</p>
                           )}

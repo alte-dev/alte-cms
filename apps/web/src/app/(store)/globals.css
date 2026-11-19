@@ -26,11 +26,18 @@ h4 {
     border-radius: var(--theme-button-radius, 0.375rem);
     text-transform: var(--theme-button-transform, none);
     font-weight: var(--theme-button-weight, 600);
-    transition: background-color 150ms ease, opacity 150ms ease;
+    transition:
+      background-color 150ms ease,
+      opacity 150ms ease,
+      transform 120ms ease;
   }
 
   .theme-btn-primary:hover:not(:disabled) {
     background-color: var(--theme-primary-hover, #2e3b49);
+  }
+
+  .theme-btn-primary:active:not(:disabled) {
+    transform: scale(0.985);
   }
 }
 
@@ -47,4 +54,69 @@ h4 {
 
 .animate-fade-in-up {
   animation: fadeInUp 0.35s ease-out both;
+}
+
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerSlideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0.75);
+  }
+  65% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-drawer-right {
+  animation: drawerSlideInRight 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.animate-drawer-left {
+  animation: drawerSlideInLeft 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 0.25s ease-out both;
+}
+
+.animate-badge-pop {
+  animation: badgePop 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-drawer-right,
+  .animate-drawer-left,
+  .animate-backdrop-in,
+  .animate-badge-pop {
+    animation: none !important;
+  }
 }

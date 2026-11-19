@@ -24,6 +24,21 @@ export function resolveCartItemThumbnail(item: StoreCartLineItem): string | null
 }
 
 /**
+ * Resolves a safe storefront product URL (/urun/<handle>) for a cart line item.
+ */
+export function resolveCartItemHref(item: StoreCartLineItem): string | null {
+  const variantProduct = (item.variant as { product?: { handle?: string | null } } | undefined)
+    ?.product;
+  const raw = item.product_handle || variantProduct?.handle;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.includes("/") || trimmed.includes("\\") || trimmed.includes("..")) {
+    return null;
+  }
+  return `/urun/${encodeURIComponent(trimmed)}`;
+}
+
+/**
  * Resolves a clean variant label for display, hiding Medusa's default placeholder title.
  */
 export function resolveCartItemVariantLabel(item: StoreCartLineItem): string | null {
