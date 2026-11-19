@@ -172,4 +172,26 @@ describe("CheckoutForm 3-Method Single-Button & Outcome Dispatch", () => {
     expect(html).toContain("Önerilen Şal");
     expect(html).toContain("Ekle");
   });
+
+  it("hides disabled payment methods completely instead of showing greyed-out options", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CheckoutForm, {
+        initialCart: baseCart,
+        shippingOptions,
+        paymentOptions: {
+          ...paymentOptions,
+          paytr: { ...paymentOptions.paytr, enabled: false },
+          cod: { ...paymentOptions.cod, enabled: false },
+        },
+        initialCustomer: null,
+        recommendedProducts: [],
+      }),
+    );
+
+    expect(html).toContain('value="iyzico"');
+    expect(html).not.toContain('value="paytr"');
+    expect(html).not.toContain("PayTR");
+    expect(html).not.toContain('value="cod"');
+    expect(html).not.toContain("Şu anda kullanılamıyor");
+  });
 });

@@ -990,120 +990,110 @@ export function CheckoutForm({
             )}
 
             {/* iyzico Option */}
-            <label
-              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
-                paymentMethod === "iyzico"
-                  ? "border-stone-900 bg-stone-50"
-                  : "border-stone-200 hover:border-stone-300 bg-white"
-              } ${!paymentOptions?.iyzico?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="iyzico"
-                  disabled={!paymentOptions?.iyzico?.enabled}
-                  checked={paymentMethod === "iyzico"}
-                  onChange={() => setPaymentMethod("iyzico")}
-                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-stone-700" />
-                    <span className="text-sm font-semibold text-stone-900">
-                      Kredi / Banka Kartı (iyzico)
-                    </span>
-                    {!paymentOptions?.iyzico?.enabled && (
-                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
-                        Şu anda kullanılamıyor
+            {paymentOptions?.iyzico?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "iyzico"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="iyzico"
+                    checked={paymentMethod === "iyzico"}
+                    onChange={() => setPaymentMethod("iyzico")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-stone-700" />
+                      <span className="text-sm font-semibold text-stone-900">
+                        Kredi / Banka Kartı (iyzico)
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      iyzico güvencesiyle tek çekim veya taksitli 3D Secure kart ödemesi.
+                    </p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    iyzico güvencesiyle tek çekim veya taksitli 3D Secure kart ödemesi.
-                  </p>
                 </div>
-              </div>
-            </label>
+              </label>
+            )}
 
             {/* PayTR Option */}
-            <label
-              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
-                paymentMethod === "paytr"
-                  ? "border-stone-900 bg-stone-50"
-                  : "border-stone-200 hover:border-stone-300 bg-white"
-              } ${!paymentOptions?.paytr?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="paytr"
-                  disabled={!paymentOptions?.paytr?.enabled}
-                  checked={paymentMethod === "paytr"}
-                  onChange={() => setPaymentMethod("paytr")}
-                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-stone-700" />
-                    <span className="text-sm font-semibold text-stone-900">
-                      Kredi / Banka Kartı (PayTR)
-                    </span>
-                    {!paymentOptions?.paytr?.enabled && (
-                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
-                        Şu anda kullanılamıyor
+            {paymentOptions?.paytr?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "paytr"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="paytr"
+                    checked={paymentMethod === "paytr"}
+                    onChange={() => setPaymentMethod("paytr")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-stone-700" />
+                      <span className="text-sm font-semibold text-stone-900">
+                        Kredi / Banka Kartı (PayTR)
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      Tüm kredi ve banka kartları ile tek çekim veya taksitli 3D Secure güvenli
+                      ödeme.
+                    </p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Tüm kredi ve banka kartları ile tek çekim veya taksitli 3D Secure güvenli ödeme.
-                  </p>
                 </div>
-              </div>
-            </label>
+              </label>
+            )}
 
             {/* COD Option */}
-            <label
-              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
-                paymentMethod === "cod"
-                  ? "border-stone-900 bg-stone-50"
-                  : "border-stone-200 hover:border-stone-300 bg-white"
-              } ${!paymentOptions?.cod?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cod"
-                  disabled={!paymentOptions?.cod?.enabled}
-                  checked={paymentMethod === "cod"}
-                  onChange={() => setPaymentMethod("cod")}
-                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-stone-700" />
-                    <span className="text-sm font-semibold text-stone-900">
-                      Kapıda Ödeme (Nakit veya Kart)
-                    </span>
-                    {!paymentOptions?.cod?.enabled && (
-                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
-                        Şu anda kullanılamıyor
+            {paymentOptions?.cod?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "cod"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    checked={paymentMethod === "cod"}
+                    onChange={() => setPaymentMethod("cod")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Banknote className="w-4 h-4 text-stone-700" />
+                      <span className="text-sm font-semibold text-stone-900">
+                        Kapıda Ödeme (Nakit veya Kart)
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      Siparişinizi teslim alırken kargo görevlisine nakit veya kartla
+                      ödeyebilirsiniz.
+                    </p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Siparişinizi teslim alırken kargo görevlisine nakit veya kartla ödeyebilirsiniz.
-                  </p>
                 </div>
-              </div>
-              {shouldShowCodFeeBadge(paymentOptions?.cod?.enabled, configuredCodFee) && (
-                <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
-                  +{formatTRY(configuredCodFee)} Hizmet Bedeli
-                </span>
-              )}
-            </label>
+                {shouldShowCodFeeBadge(paymentOptions?.cod?.enabled, configuredCodFee) && (
+                  <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
+                    +{formatTRY(configuredCodFee)} Hizmet Bedeli
+                  </span>
+                )}
+              </label>
+            )}
 
             {/* Dev Dummy Option */}
             {paymentOptions?.dev?.enabled && (
