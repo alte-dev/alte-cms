@@ -151,9 +151,12 @@ export function CartView({
   }
 
   // Accurate pricing breakdown complying with Turkish tax-inclusive pricing
-  const totals = calculateCheckoutTotals(cart, null, 0, "card");
+  const freeShippingOverride = shippingProgress.isEligible
+    ? { id: "free", name: "Ücretsiz Kargo", price_type: "flat" as const, amount: 0 }
+    : null;
+  const totals = calculateCheckoutTotals(cart, freeShippingOverride, 0, "card");
   const { subtotalNet, taxTotal, discountTotal, total } = totals;
-  const shippingTotal = cart.shipping_total ?? 0;
+  const shippingTotal = shippingProgress.isEligible ? 0 : (cart.shipping_total ?? 0);
   const promotions = cart.promotions || [];
 
   return (
