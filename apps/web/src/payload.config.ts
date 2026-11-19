@@ -13,6 +13,7 @@ import { Redirects } from "./collections/Redirects";
 import { ContactMessages } from "./collections/ContactMessages";
 import { SiteSettings } from "./globals/SiteSettings";
 import { Navigation } from "./globals/Navigation";
+import { ThemeSettings } from "./globals/ThemeSettings";
 import { validateWebEnv } from "./env";
 import { migrations } from "./migrations";
 
@@ -33,7 +34,7 @@ export default buildConfig({
     },
   },
   collections: [Users, Media, Pages, Posts, PostCategories, Redirects, ContactMessages],
-  globals: [SiteSettings, Navigation],
+  globals: [SiteSettings, Navigation, ThemeSettings],
   editor: lexicalEditor(),
   sharp,
   secret: env.PAYLOAD_SECRET,

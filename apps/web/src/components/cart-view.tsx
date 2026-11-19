@@ -13,6 +13,8 @@ import type { CartItemAvailabilityIssue } from "../lib/medusa/cart";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
+import { resolveCartItemHref, resolveCartItemThumbnail } from "./checkout-order-summary-item";
+import { useOptionalCartDrawer } from "./cart-drawer-provider";
 import { PlaceholderImage } from "./placeholder-image";
 
 interface CartViewProps {
@@ -39,6 +41,7 @@ export function CartView({
   shippingProgress,
   initialAvailabilityIssues = [],
 }: CartViewProps) {
+  const drawer = useOptionalCartDrawer();
   const [cart, setCart] = useState<StoreCart | null>(initialCart);
   const [availabilityIssues, setAvailabilityIssues] =
     useState<CartItemAvailabilityIssue[]>(initialAvailabilityIssues);
@@ -75,6 +78,7 @@ export function CartView({
       });
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         await refreshAvailability();
       } else if (result.error) {
         setErrorMsg(result.error);
@@ -88,6 +92,7 @@ export function CartView({
       const result = await removeCartItemAction(lineItemId);
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         await refreshAvailability();
       } else if (result.error) {
         setErrorMsg(result.error);
@@ -103,6 +108,7 @@ export function CartView({
       const result = await applyCouponAction(couponCode.trim());
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         setCouponCode("");
       } else if (result.error) {
         setCouponError(result.error);
@@ -116,6 +122,7 @@ export function CartView({
       const result = await removeCouponAction(code);
       if (result.success && result.data) {
         setCart(result.data);
+        drawer?.syncCart(result.data);
         await refreshAvailability();
       } else if (result.error) {
         setCouponError(result.error);
@@ -135,7 +142,7 @@ export function CartView({
         </p>
         <Link
           href="/urunler"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
+          className="inline-flex items-center gap-2 px-6 py-3 theme-btn-primary"
         >
           Alışverişe Başla →
         </Link>
@@ -200,84 +207,119 @@ export function CartView({
 
         {/* Items Container */}
         <div className="bg-white border border-stone-200 rounded-lg divide-y divide-stone-100 overflow-hidden">
-          {items.map((item) => (
-            <div key={item.id} className="p-4 sm:p-6 flex gap-4 items-center">
-              {/* Product Thumbnail */}
-              <div className="w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0">
-                <PlaceholderImage title={item.title} className="w-full h-full text-[10px]" />
-              </div>
+          {items.map((item) => {
+            const thumbnail = resolveCartItemThumbnail(item);
+            const productHref = resolveCartItemHref(item);
+            const itemTitle = item.product_title || item.title;
+            const thumbVisual = thumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumbnail}
+                alt={itemTitle}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <PlaceholderImage title={item.title} className="w-full h-full text-[10px]" />
+            );
 
-              {/* Title & Variant Details */}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
-                {item.variant_title && item.variant_title !== "Default Variant" && (
-                  <p className="text-xs text-stone-500 mt-0.5">Seçenek: {item.variant_title}</p>
-                )}
-                {issueByLineItemId.get(item.id) && (
-                  <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mt-1.5 inline-block">
-                    {getAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
-                  </p>
-                )}
-                <div className="text-sm font-semibold text-stone-900 mt-2">
-                  {formatTRY(item.unit_price)}
-                  <span className="text-[11px] font-normal text-stone-500 ml-1">KDV dahil</span>
-                </div>
-              </div>
-
-              {/* Quantity Controls */}
-              {item.metadata?.is_cod_fee || item.variant?.sku === "SERVICE-COD-FEE" ? (
-                <div className="px-2.5 py-1 text-xs font-medium text-stone-500 bg-stone-100 rounded">
-                  1 Adet
-                </div>
-              ) : (
-                <div className="flex items-center border border-stone-300 rounded-md bg-white">
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                    className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
-                    aria-label="Adet Azalt"
+            return (
+              <div key={item.id} className="p-4 sm:p-6 flex gap-4 items-center">
+                {/* Product Thumbnail */}
+                {productHref ? (
+                  <Link
+                    href={productHref}
+                    aria-label={itemTitle}
+                    className="group w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0 border border-stone-200 block"
                   >
-                    -
-                  </button>
-                  <span className="px-3 py-1 text-xs font-semibold text-stone-900 select-none min-w-[2rem] text-center">
-                    {item.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={isPending || item.quantity >= 99}
-                    onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                    className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
-                    aria-label="Adet Artır"
-                  >
-                    +
-                  </button>
-                </div>
-              )}
+                    {thumbVisual}
+                  </Link>
+                ) : (
+                  <div className="w-20 h-20 bg-stone-100 rounded-md overflow-hidden flex-shrink-0 border border-stone-200">
+                    {thumbVisual}
+                  </div>
+                )}
 
-              {/* Line Total */}
-              <div className="text-right min-w-[5rem]">
-                <span className="text-sm font-bold text-stone-900">
-                  {formatTRY(
-                    (item.unit_price ? item.unit_price * item.quantity : 0) ||
-                      item.total ||
-                      item.subtotal,
+                {/* Title & Variant Details */}
+                <div className="flex-1 min-w-0">
+                  {productHref ? (
+                    <Link
+                      href={productHref}
+                      className="text-sm font-semibold text-stone-900 hover:underline truncate block"
+                    >
+                      {item.title}
+                    </Link>
+                  ) : (
+                    <h4 className="text-sm font-semibold text-stone-900 truncate">{item.title}</h4>
                   )}
-                </span>
-              </div>
+                  {item.variant_title && item.variant_title !== "Default Variant" && (
+                    <p className="text-xs text-stone-500 mt-0.5">Seçenek: {item.variant_title}</p>
+                  )}
+                  {issueByLineItemId.get(item.id) && (
+                    <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mt-1.5 inline-block">
+                      {getAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
+                    </p>
+                  )}
+                  <div className="text-sm font-semibold text-stone-900 mt-2">
+                    {formatTRY(item.unit_price)}
+                    <span className="text-[11px] font-normal text-stone-500 ml-1">KDV dahil</span>
+                  </div>
+                </div>
 
-              {/* Delete Button */}
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => handleRemoveItem(item.id)}
-                className="p-2 text-stone-400 hover:text-red-600 transition"
-                aria-label="Ürünü Sil"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                {/* Quantity Controls */}
+                {item.metadata?.is_cod_fee || item.variant?.sku === "SERVICE-COD-FEE" ? (
+                  <div className="px-2.5 py-1 text-xs font-medium text-stone-500 bg-stone-100 rounded">
+                    1 Adet
+                  </div>
+                ) : (
+                  <div className="flex items-center border border-stone-300 rounded-md bg-white">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                      className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
+                      aria-label="Adet Azalt"
+                    >
+                      -
+                    </button>
+                    <span className="px-3 py-1 text-xs font-semibold text-stone-900 select-none min-w-[2rem] text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={isPending || item.quantity >= 99}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                      className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition"
+                      aria-label="Adet Artır"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+
+                {/* Line Total */}
+                <div className="text-right min-w-[5rem]">
+                  <span className="text-sm font-bold text-stone-900">
+                    {formatTRY(
+                      (item.unit_price ? item.unit_price * item.quantity : 0) ||
+                        item.total ||
+                        item.subtotal,
+                    )}
+                  </span>
+                </div>
+
+                {/* Delete Button */}
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleRemoveItem(item.id)}
+                  className="p-2 text-stone-400 hover:text-red-600 transition"
+                  aria-label="Ürünü Sil"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -303,7 +345,7 @@ export function CartView({
             <button
               type="submit"
               disabled={isPending || !couponCode.trim()}
-              className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 transition flex items-center gap-1.5"
+              className="px-4 py-2 theme-btn-primary text-sm disabled:opacity-50 flex items-center gap-1.5"
             >
               <Tag className="w-3.5 h-3.5" />
               <span>Uygula</span>
@@ -393,7 +435,7 @@ export function CartView({
         ) : (
           <Link
             href="/odeme"
-            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 transition"
+            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3.5 theme-btn-primary"
           >
             <span>Ödemeye Geç</span>
             <ArrowRight className="w-4 h-4" />

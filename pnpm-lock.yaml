@@ -145,6 +145,9 @@ importers:
       '@payloadcms/richtext-lexical':
         specifier: 3.93.0
         version: 3.93.0(@faceless-ui/modal@3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@faceless-ui/scroll-info@2.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@payloadcms/next@3.93.0(@types/react@19.0.10)(graphql@16.10.0)(monaco-editor@0.57.0)(next@15.5.29(@opentelemetry/api@1.10.0)(@types/node@22.10.7)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(payload@3.93.0(graphql@16.10.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(@types/react@19.0.10)(monaco-editor@0.57.0)(next@15.5.29(@opentelemetry/api@1.10.0)(@types/node@22.10.7)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(payload@3.93.0(graphql@16.10.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)(yjs@13.6.33)
+      '@payloadcms/ui':
+        specifier: 3.93.0
+        version: 3.93.0(@types/react@19.0.10)(monaco-editor@0.57.0)(next@15.5.29(@opentelemetry/api@1.10.0)(@types/node@22.10.7)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(payload@3.93.0(graphql@16.10.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
       '@puckeditor/core':
         specifier: 0.23.0
         version: 0.23.0(@floating-ui/dom@1.8.0)(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.7.0(react@19.0.0))
@@ -8551,7 +8554,7 @@ snapshots:
 
   '@babel/parser@8.0.10':
     dependencies:
-      '@babel/types': 8.0.10
+      '@babel/types': 8.1.0
 
   '@babel/parser@8.1.0':
     dependencies:
@@ -8581,7 +8584,7 @@ snapshots:
     dependencies:
       '@babel/code-frame': 8.0.6
       '@babel/parser': 8.0.10
-      '@babel/types': 8.0.10
+      '@babel/types': 8.1.0
 
   '@babel/traverse@7.29.13':
     dependencies:
@@ -8602,7 +8605,7 @@ snapshots:
       '@babel/helper-globals': 8.0.6
       '@babel/parser': 8.0.10
       '@babel/template': 8.0.0
-      '@babel/types': 8.0.10
+      '@babel/types': 8.1.0
       obug: 3.0.0
 
   '@babel/types@7.29.11':

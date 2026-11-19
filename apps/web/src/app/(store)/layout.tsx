@@ -3,8 +3,11 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { CartDrawerProvider } from "@/components/cart-drawer-provider";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { getThemeSettings } from "@/lib/payload/content";
+import { buildThemeCssVariables, resolveThemeSettings } from "@/lib/theme/css-vars";
 import "./globals.css";
 
 const inter = localFont({
@@ -35,11 +38,14 @@ export const metadata: Metadata = {
   ),
 };
 
-export default function StoreLayout({ children }: { children: React.ReactNode }) {
+export default async function StoreLayout({ children }: { children: React.ReactNode }) {
+  const themeRaw = await getThemeSettings().catch(() => null);
+  const themeVars = buildThemeCssVariables(resolveThemeSettings(themeRaw)) as React.CSSProperties;
+
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning className={inter.variable} style={themeVars}>
       <body
-        className={`${inter.className} min-h-screen flex flex-col bg-stone-50 text-stone-900 antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
+        className={`${inter.className} min-h-screen flex flex-col bg-[var(--theme-bg,#FAFAF9)] text-[var(--theme-text,#1C1917)] antialiased selection:bg-stone-200 overflow-x-clip max-w-full w-full`}
       >
         <Suspense fallback={null}>
           <NavigationProgress />
@@ -51,15 +57,17 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         >
           İçeriğe geç
         </a>
-        <Navbar />
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="flex-1 focus:outline-none w-full max-w-full overflow-x-clip"
-        >
-          {children}
-        </main>
-        <Footer />
+        <CartDrawerProvider>
+          <Navbar />
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 focus:outline-none w-full max-w-full overflow-x-clip"
+          >
+            {children}
+          </main>
+          <Footer />
+        </CartDrawerProvider>
       </body>
     </html>
   );

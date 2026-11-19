@@ -84,13 +84,13 @@ export function MobileMenu({ items }: MobileMenuProps) {
           >
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-backdrop-in"
               onClick={() => setIsOpen(false)}
               aria-hidden="true"
             />
 
             {/* Drawer Panel */}
-            <div className="relative w-4/5 max-w-sm bg-white h-[100dvh] shadow-2xl p-6 flex flex-col z-10 overflow-y-auto">
+            <div className="relative w-4/5 max-w-sm bg-white h-[100dvh] shadow-2xl p-6 flex flex-col z-10 overflow-y-auto animate-drawer-left">
               <div className="flex items-center justify-between pb-6 border-b border-stone-200">
                 <span className="font-bold text-lg text-stone-900 tracking-tight">Menü</span>
                 <button

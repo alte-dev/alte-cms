@@ -6,7 +6,9 @@ import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
 import type { CartItemAvailabilityIssue, PaymentOptionsResult } from "../lib/medusa/cart";
+import { CheckoutFormSchema } from "../lib/medusa/validation";
 import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
+import { CheckoutOrderSummaryItem } from "./checkout-order-summary-item";
 import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
 import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
 import {
@@ -29,6 +31,92 @@ import {
   Plus,
 } from "lucide-react";
 import { applyCouponAction, removeCouponAction } from "../app/(store)/actions";
+
+const CHECKOUT_FIELD_ORDER = [
+  "email",
+  "phone",
+  "firstName",
+  "lastName",
+  "city",
+  "district",
+  "addressLine1",
+  "postalCode",
+  "companyName",
+  "taxOffice",
+  "taxNumber",
+  "billingFirstName",
+  "billingLastName",
+  "billingCity",
+  "billingDistrict",
+  "billingAddressLine1",
+  "shippingOptionSection",
+  "distanceSalesContract",
+  "kvkkConsent",
+] as const;
+
+function mapZodPathToFieldId(path: ReadonlyArray<PropertyKey>): string | null {
+  const joined = path.map(String).join(".");
+  if (joined === "deliveryAddress.firstName") return "firstName";
+  if (joined === "deliveryAddress.lastName") return "lastName";
+  if (joined === "deliveryAddress.city") return "city";
+  if (joined === "deliveryAddress.district") return "district";
+  if (joined === "deliveryAddress.addressLine1") return "addressLine1";
+  if (joined === "deliveryAddress.postalCode") return "postalCode";
+  if (joined === "billingAddress.firstName") return "billingFirstName";
+  if (joined === "billingAddress.lastName") return "billingLastName";
+  if (joined === "billingAddress.city") return "billingCity";
+  if (joined === "billingAddress.district") return "billingDistrict";
+  if (joined === "billingAddress.addressLine1") return "billingAddressLine1";
+  if (joined === "shippingOptionId") return "shippingOptionSection";
+  if (
+    joined === "email" ||
+    joined === "phone" ||
+    joined === "companyName" ||
+    joined === "taxOffice" ||
+    joined === "taxNumber" ||
+    joined === "distanceSalesContract" ||
+    joined === "kvkkConsent"
+  ) {
+    return joined;
+  }
+  return null;
+}
+
+export function validateCheckoutFormFields(payload: Record<string, unknown>):
+  | { valid: true }
+  | {
+      valid: false;
+      errors: Record<string, string>;
+      firstErrorFieldId: string | null;
+      firstErrorMessage: string;
+    } {
+  const parsed = CheckoutFormSchema.safeParse(payload);
+  if (parsed.success) {
+    return { valid: true };
+  }
+
+  const errors: Record<string, string> = {};
+  for (const issue of parsed.error.issues) {
+    const fieldId = mapZodPathToFieldId(issue.path);
+    if (fieldId && !errors[fieldId]) {
+      errors[fieldId] = issue.message;
+    }
+  }
+
+  const firstErrorFieldId =
+    CHECKOUT_FIELD_ORDER.find((id) => Boolean(errors[id])) ?? Object.keys(errors)[0] ?? null;
+  const firstErrorMessage =
+    (firstErrorFieldId ? errors[firstErrorFieldId] : undefined) ||
+    parsed.error.issues[0]?.message ||
+    "Lütfen formdaki eksik veya hatalı alanları kontrol ediniz.";
+
+  return {
+    valid: false,
+    errors,
+    firstErrorFieldId,
+    firstErrorMessage,
+  };
+}
 
 interface CheckoutFormProps {
   initialCart: StoreCart;
@@ -61,6 +149,33 @@ export function CheckoutForm({
     useState<CartItemAvailabilityIssue[]>(initialAvailabilityIssues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (fieldId: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[fieldId]) return prev;
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+  };
+
+  const scrollToField = (fieldId: string | null) => {
+    if (!fieldId || typeof document === "undefined") return;
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (typeof (el as HTMLElement).focus === "function") {
+      window.setTimeout(() => {
+        (el as HTMLElement).focus({ preventScroll: true });
+      }, 220);
+    }
+  };
+
+  const getInputBorderClass = (fieldId: string) =>
+    fieldErrors[fieldId]
+      ? "border-red-600 ring-1 ring-red-600/20 focus:border-red-600 focus:ring-red-600"
+      : "border-stone-300 focus:ring-stone-900";
 
   // Payment Method Selection
   const resolveInitialMethod = (): "iyzico" | "paytr" | "cod" | "dev" => {
@@ -249,65 +364,62 @@ export function CheckoutForm({
 
     setErrorMsg(null);
 
-    // Basic client checks before submitting
-    if (!distanceSalesContract) {
-      setErrorMsg("Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu onaylamalısınız.");
-      return;
-    }
-    if (!kvkkConsent) {
-      setErrorMsg("KVKK Aydınlatma Metnini onaylamalısınız.");
-      return;
-    }
-    if (!selectedShippingOptionId) {
-      setErrorMsg("Lütfen geçerli bir kargo seçeneği belirleyiniz.");
+    const payload = {
+      email,
+      phone,
+      deliveryAddress: {
+        firstName,
+        lastName,
+        city,
+        district,
+        addressLine1,
+        addressLine2,
+        postalCode: postalCode || undefined,
+        countryCode: "tr" as const,
+      },
+      sameAsDelivery,
+      ...(sameAsDelivery
+        ? {}
+        : {
+            billingAddress: {
+              firstName: billingFirstName || firstName,
+              lastName: billingLastName || lastName,
+              city: billingCity,
+              district: billingDistrict,
+              addressLine1: billingAddressLine1,
+              addressLine2: billingAddressLine2,
+              postalCode: billingPostalCode || undefined,
+              countryCode: "tr" as const,
+            },
+          }),
+      invoiceType,
+      ...(invoiceType === "corporate"
+        ? {
+            companyName,
+            taxOffice,
+            taxNumber,
+          }
+        : {}),
+      shippingOptionId: selectedShippingOptionId,
+      paymentMethod,
+      distanceSalesContract,
+      kvkkConsent,
+    };
+
+    const validation = validateCheckoutFormFields(payload);
+    if (!validation.valid) {
+      setFieldErrors(validation.errors);
+      if (Object.keys(validation.errors).length === 0) {
+        setErrorMsg(validation.firstErrorMessage || "Lütfen form alanlarını kontrol ediniz.");
+      }
+      scrollToField(validation.firstErrorFieldId);
       return;
     }
 
+    setFieldErrors({});
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        email,
-        phone,
-        deliveryAddress: {
-          firstName,
-          lastName,
-          city,
-          district,
-          addressLine1,
-          addressLine2,
-          postalCode: postalCode || undefined,
-          countryCode: "tr",
-        },
-        sameAsDelivery,
-        ...(sameAsDelivery
-          ? {}
-          : {
-              billingAddress: {
-                firstName: billingFirstName || firstName,
-                lastName: billingLastName || lastName,
-                city: billingCity,
-                district: billingDistrict,
-                addressLine1: billingAddressLine1,
-                addressLine2: billingAddressLine2,
-                postalCode: billingPostalCode || undefined,
-                countryCode: "tr",
-              },
-            }),
-        invoiceType,
-        ...(invoiceType === "corporate"
-          ? {
-              companyName,
-              taxOffice,
-              taxNumber,
-            }
-          : {}),
-        shippingOptionId: selectedShippingOptionId,
-        paymentMethod,
-        distanceSalesContract: true,
-        kvkkConsent: true,
-      };
-
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -450,9 +562,13 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Checkout Form (Col 8) */}
-      <form onSubmit={handleSubmit} className="lg:col-span-8 space-y-8">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[580px_480px] items-start">
+      {/* Checkout Form (Left Column) */}
+      <form
+        noValidate
+        onSubmit={handleSubmit}
+        className="bg-[var(--theme-checkout-left-bg,#FFFFFF)] px-4 sm:px-6 lg:px-0 lg:pr-11 py-8 space-y-6"
+      >
         {/* Availability Issues Notice */}
         {availabilityIssues.length > 0 && (
           <div
@@ -477,22 +593,6 @@ export function CheckoutForm({
             </Link>
           </div>
         )}
-
-        {/* Global Error Notice */}
-        {errorMsg && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800"
-          >
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Lütfen formu kontrol ediniz:</p>
-              <p className="mt-0.5">{errorMsg}</p>
-            </div>
-          </div>
-        )}
-
         {/* Step 1: Contact Information */}
         <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
           <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-3">
@@ -525,16 +625,25 @@ export function CheckoutForm({
                 id="email"
                 type="email"
                 required
+                aria-invalid={Boolean(fieldErrors.email)}
                 readOnly={Boolean(initialCustomer)}
                 value={email}
                 onChange={(e) => {
-                  if (!initialCustomer) setEmail(e.target.value);
+                  if (!initialCustomer) {
+                    setEmail(e.target.value);
+                    clearFieldError("email");
+                  }
                 }}
                 placeholder="ornek@alanadi.com"
-                className={`w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 ${
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("email")} ${
                   initialCustomer ? "bg-stone-50 text-stone-600" : ""
                 }`}
               />
+              {fieldErrors.email && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.email}
+                </p>
+              )}
               {savedAddresses.length > 0 && (
                 <div className="mt-2">
                   <label
@@ -584,14 +693,24 @@ export function CheckoutForm({
                 id="phone"
                 type="tel"
                 required
+                aria-invalid={Boolean(fieldErrors.phone)}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  clearFieldError("phone");
+                }}
                 placeholder="05XX XXX XX XX"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("phone")}`}
               />
-              <p className="text-[11px] text-stone-500 mt-1">
-                Kargo teslimat bildirimleri için gereklidir.
-              </p>
+              {fieldErrors.phone ? (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.phone}
+                </p>
+              ) : (
+                <p className="text-[11px] text-stone-500 mt-1">
+                  Kargo teslimat bildirimleri için gereklidir.
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -617,10 +736,19 @@ export function CheckoutForm({
                 id="firstName"
                 type="text"
                 required
+                aria-invalid={Boolean(fieldErrors.firstName)}
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  clearFieldError("firstName");
+                }}
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("firstName")}`}
               />
+              {fieldErrors.firstName && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.firstName}
+                </p>
+              )}
             </div>
 
             <div>
@@ -631,10 +759,19 @@ export function CheckoutForm({
                 id="lastName"
                 type="text"
                 required
+                aria-invalid={Boolean(fieldErrors.lastName)}
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  clearFieldError("lastName");
+                }}
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("lastName")}`}
               />
+              {fieldErrors.lastName && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.lastName}
+                </p>
+              )}
             </div>
 
             <div>
@@ -643,9 +780,13 @@ export function CheckoutForm({
               </label>
               <select
                 id="city"
+                aria-invalid={Boolean(fieldErrors.city)}
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  clearFieldError("city");
+                }}
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("city")}`}
               >
                 {TURKISH_CITIES.map((c) => (
                   <option key={c} value={c}>
@@ -653,6 +794,11 @@ export function CheckoutForm({
                   </option>
                 ))}
               </select>
+              {fieldErrors.city && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.city}
+                </p>
+              )}
             </div>
 
             <div>
@@ -663,11 +809,20 @@ export function CheckoutForm({
                 id="district"
                 type="text"
                 required
+                aria-invalid={Boolean(fieldErrors.district)}
                 value={district}
-                onChange={(e) => setDistrict(e.target.value)}
+                onChange={(e) => {
+                  setDistrict(e.target.value);
+                  clearFieldError("district");
+                }}
                 placeholder="Örn: Kadıköy"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("district")}`}
               />
+              {fieldErrors.district && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.district}
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">
@@ -680,12 +835,21 @@ export function CheckoutForm({
               <textarea
                 id="addressLine1"
                 required
+                aria-invalid={Boolean(fieldErrors.addressLine1)}
                 rows={2}
                 value={addressLine1}
-                onChange={(e) => setAddressLine1(e.target.value)}
+                onChange={(e) => {
+                  setAddressLine1(e.target.value);
+                  clearFieldError("addressLine1");
+                }}
                 placeholder="Mahalle, Cadde, Sokak, Bina No, Daire No"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("addressLine1")}`}
               />
+              {fieldErrors.addressLine1 && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.addressLine1}
+                </p>
+              )}
             </div>
 
             <div>
@@ -716,11 +880,20 @@ export function CheckoutForm({
                 id="postalCode"
                 type="text"
                 maxLength={5}
+                aria-invalid={Boolean(fieldErrors.postalCode)}
                 value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
+                onChange={(e) => {
+                  setPostalCode(e.target.value);
+                  clearFieldError("postalCode");
+                }}
                 placeholder="34710"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("postalCode")}`}
               />
+              {fieldErrors.postalCode && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.postalCode}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -779,11 +952,20 @@ export function CheckoutForm({
                     id="companyName"
                     type="text"
                     required
+                    aria-invalid={Boolean(fieldErrors.companyName)}
                     value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                    onChange={(e) => {
+                      setCompanyName(e.target.value);
+                      clearFieldError("companyName");
+                    }}
                     placeholder="Örn: Alte Teknoloji A.Ş."
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("companyName")}`}
                   />
+                  {fieldErrors.companyName && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.companyName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -796,11 +978,20 @@ export function CheckoutForm({
                     id="taxOffice"
                     type="text"
                     required
+                    aria-invalid={Boolean(fieldErrors.taxOffice)}
                     value={taxOffice}
-                    onChange={(e) => setTaxOffice(e.target.value)}
+                    onChange={(e) => {
+                      setTaxOffice(e.target.value);
+                      clearFieldError("taxOffice");
+                    }}
                     placeholder="Kadıköy VD"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("taxOffice")}`}
                   />
+                  {fieldErrors.taxOffice && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.taxOffice}
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label
@@ -813,12 +1004,21 @@ export function CheckoutForm({
                     id="taxNumber"
                     type="text"
                     required
+                    aria-invalid={Boolean(fieldErrors.taxNumber)}
                     maxLength={10}
                     value={taxNumber}
-                    onChange={(e) => setTaxNumber(e.target.value)}
+                    onChange={(e) => {
+                      setTaxNumber(e.target.value);
+                      clearFieldError("taxNumber");
+                    }}
                     placeholder="1234567890"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("taxNumber")}`}
                   />
+                  {fieldErrors.taxNumber && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.taxNumber}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -852,10 +1052,19 @@ export function CheckoutForm({
                   <input
                     id="billingFirstName"
                     type="text"
+                    aria-invalid={Boolean(fieldErrors.billingFirstName)}
                     value={billingFirstName}
-                    onChange={(e) => setBillingFirstName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingFirstName(e.target.value);
+                      clearFieldError("billingFirstName");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingFirstName")}`}
                   />
+                  {fieldErrors.billingFirstName && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingFirstName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -867,10 +1076,19 @@ export function CheckoutForm({
                   <input
                     id="billingLastName"
                     type="text"
+                    aria-invalid={Boolean(fieldErrors.billingLastName)}
                     value={billingLastName}
-                    onChange={(e) => setBillingLastName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingLastName(e.target.value);
+                      clearFieldError("billingLastName");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingLastName")}`}
                   />
+                  {fieldErrors.billingLastName && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingLastName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -881,9 +1099,13 @@ export function CheckoutForm({
                   </label>
                   <select
                     id="billingCity"
+                    aria-invalid={Boolean(fieldErrors.billingCity)}
                     value={billingCity}
-                    onChange={(e) => setBillingCity(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingCity(e.target.value);
+                      clearFieldError("billingCity");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingCity")}`}
                   >
                     {TURKISH_CITIES.map((c) => (
                       <option key={c} value={c}>
@@ -891,6 +1113,11 @@ export function CheckoutForm({
                       </option>
                     ))}
                   </select>
+                  {fieldErrors.billingCity && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingCity}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -902,10 +1129,19 @@ export function CheckoutForm({
                   <input
                     id="billingDistrict"
                     type="text"
+                    aria-invalid={Boolean(fieldErrors.billingDistrict)}
                     value={billingDistrict}
-                    onChange={(e) => setBillingDistrict(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingDistrict(e.target.value);
+                      clearFieldError("billingDistrict");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingDistrict")}`}
                   />
+                  {fieldErrors.billingDistrict && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingDistrict}
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label
@@ -917,10 +1153,19 @@ export function CheckoutForm({
                   <textarea
                     id="billingAddressLine1"
                     rows={2}
+                    aria-invalid={Boolean(fieldErrors.billingAddressLine1)}
                     value={billingAddressLine1}
-                    onChange={(e) => setBillingAddressLine1(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md bg-white"
+                    onChange={(e) => {
+                      setBillingAddressLine1(e.target.value);
+                      clearFieldError("billingAddressLine1");
+                    }}
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("billingAddressLine1")}`}
                   />
+                  {fieldErrors.billingAddressLine1 && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.billingAddressLine1}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -928,7 +1173,15 @@ export function CheckoutForm({
         </section>
 
         {/* Step 4: Shipping Method Selection */}
-        <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
+        <section
+          id="shippingOptionSection"
+          tabIndex={-1}
+          className={`bg-white border rounded-lg p-6 space-y-4 ${
+            fieldErrors.shippingOptionSection
+              ? "border-red-600 ring-1 ring-red-600/20"
+              : "border-stone-200"
+          }`}
+        >
           <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
             <span className="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center font-bold">
               4
@@ -952,7 +1205,10 @@ export function CheckoutForm({
                     name="shippingOption"
                     value={opt.id}
                     checked={selectedShippingOptionId === opt.id}
-                    onChange={() => setSelectedShippingOptionId(opt.id)}
+                    onChange={() => {
+                      setSelectedShippingOptionId(opt.id);
+                      clearFieldError("shippingOptionSection");
+                    }}
                     className="w-4 h-4 text-stone-900 border-stone-300 focus:ring-stone-900"
                   />
                   <div>
@@ -968,6 +1224,11 @@ export function CheckoutForm({
               </label>
             ))}
           </div>
+          {fieldErrors.shippingOptionSection && (
+            <p className="text-xs text-red-600" role="alert">
+              {fieldErrors.shippingOptionSection}
+            </p>
+          )}
         </section>
 
         {/* Step 5: Payment Method Selection */}
@@ -987,120 +1248,110 @@ export function CheckoutForm({
             )}
 
             {/* iyzico Option */}
-            <label
-              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
-                paymentMethod === "iyzico"
-                  ? "border-stone-900 bg-stone-50"
-                  : "border-stone-200 hover:border-stone-300 bg-white"
-              } ${!paymentOptions?.iyzico?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="iyzico"
-                  disabled={!paymentOptions?.iyzico?.enabled}
-                  checked={paymentMethod === "iyzico"}
-                  onChange={() => setPaymentMethod("iyzico")}
-                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-stone-700" />
-                    <span className="text-sm font-semibold text-stone-900">
-                      Kredi / Banka Kartı (iyzico)
-                    </span>
-                    {!paymentOptions?.iyzico?.enabled && (
-                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
-                        Şu anda kullanılamıyor
+            {paymentOptions?.iyzico?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "iyzico"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="iyzico"
+                    checked={paymentMethod === "iyzico"}
+                    onChange={() => setPaymentMethod("iyzico")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-stone-700" />
+                      <span className="text-sm font-semibold text-stone-900">
+                        Kredi / Banka Kartı (iyzico)
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      iyzico güvencesiyle tek çekim veya taksitli 3D Secure kart ödemesi.
+                    </p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    iyzico güvencesiyle tek çekim veya taksitli 3D Secure kart ödemesi.
-                  </p>
                 </div>
-              </div>
-            </label>
+              </label>
+            )}
 
             {/* PayTR Option */}
-            <label
-              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
-                paymentMethod === "paytr"
-                  ? "border-stone-900 bg-stone-50"
-                  : "border-stone-200 hover:border-stone-300 bg-white"
-              } ${!paymentOptions?.paytr?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="paytr"
-                  disabled={!paymentOptions?.paytr?.enabled}
-                  checked={paymentMethod === "paytr"}
-                  onChange={() => setPaymentMethod("paytr")}
-                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-stone-700" />
-                    <span className="text-sm font-semibold text-stone-900">
-                      Kredi / Banka Kartı (PayTR)
-                    </span>
-                    {!paymentOptions?.paytr?.enabled && (
-                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
-                        Şu anda kullanılamıyor
+            {paymentOptions?.paytr?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "paytr"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="paytr"
+                    checked={paymentMethod === "paytr"}
+                    onChange={() => setPaymentMethod("paytr")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-stone-700" />
+                      <span className="text-sm font-semibold text-stone-900">
+                        Kredi / Banka Kartı (PayTR)
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      Tüm kredi ve banka kartları ile tek çekim veya taksitli 3D Secure güvenli
+                      ödeme.
+                    </p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Tüm kredi ve banka kartları ile tek çekim veya taksitli 3D Secure güvenli ödeme.
-                  </p>
                 </div>
-              </div>
-            </label>
+              </label>
+            )}
 
             {/* COD Option */}
-            <label
-              className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
-                paymentMethod === "cod"
-                  ? "border-stone-900 bg-stone-50"
-                  : "border-stone-200 hover:border-stone-300 bg-white"
-              } ${!paymentOptions?.cod?.enabled ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cod"
-                  disabled={!paymentOptions?.cod?.enabled}
-                  checked={paymentMethod === "cod"}
-                  onChange={() => setPaymentMethod("cod")}
-                  className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-stone-700" />
-                    <span className="text-sm font-semibold text-stone-900">
-                      Kapıda Ödeme (Nakit veya Kart)
-                    </span>
-                    {!paymentOptions?.cod?.enabled && (
-                      <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded">
-                        Şu anda kullanılamıyor
+            {paymentOptions?.cod?.enabled && (
+              <label
+                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                  paymentMethod === "cod"
+                    ? "border-stone-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300 bg-white"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    checked={paymentMethod === "cod"}
+                    onChange={() => setPaymentMethod("cod")}
+                    className="w-4 h-4 mt-0.5 text-stone-900 border-stone-300 focus:ring-stone-900"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Banknote className="w-4 h-4 text-stone-700" />
+                      <span className="text-sm font-semibold text-stone-900">
+                        Kapıda Ödeme (Nakit veya Kart)
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                      Siparişinizi teslim alırken kargo görevlisine nakit veya kartla
+                      ödeyebilirsiniz.
+                    </p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Siparişinizi teslim alırken kargo görevlisine nakit veya kartla ödeyebilirsiniz.
-                  </p>
                 </div>
-              </div>
-              {shouldShowCodFeeBadge(paymentOptions?.cod?.enabled, configuredCodFee) && (
-                <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
-                  +{formatTRY(configuredCodFee)} Hizmet Bedeli
-                </span>
-              )}
-            </label>
+                {shouldShowCodFeeBadge(paymentOptions?.cod?.enabled, configuredCodFee) && (
+                  <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2.5 py-1 rounded">
+                    +{formatTRY(configuredCodFee)} Hizmet Bedeli
+                  </span>
+                )}
+              </label>
+            )}
 
             {/* Dev Dummy Option */}
             {paymentOptions?.dev?.enabled && (
@@ -1147,56 +1398,102 @@ export function CheckoutForm({
           </div>
 
           <div className="space-y-3 pt-1">
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
-              <input
-                type="checkbox"
-                required
-                checked={distanceSalesContract}
-                onChange={(e) => setDistanceSalesContract(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900 flex-shrink-0"
-              />
-              <span>
-                <Link
-                  href="/sayfa/mesafeli-satis-sozlesmesi"
-                  target="_blank"
-                  className="font-semibold text-stone-900 underline hover:text-stone-700"
-                >
-                  Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu
-                </Link>{" "}
-                okudum, içeriğini kabul ediyor ve onaylıyorum.{" "}
-                <span className="text-red-500">*</span>
-              </span>
-            </label>
+            <div>
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
+                <input
+                  id="distanceSalesContract"
+                  type="checkbox"
+                  required
+                  aria-invalid={Boolean(fieldErrors.distanceSalesContract)}
+                  checked={distanceSalesContract}
+                  onChange={(e) => {
+                    setDistanceSalesContract(e.target.checked);
+                    clearFieldError("distanceSalesContract");
+                  }}
+                  className={`w-4 h-4 mt-0.5 rounded text-stone-900 focus:ring-stone-900 flex-shrink-0 ${
+                    fieldErrors.distanceSalesContract
+                      ? "border-red-600 ring-1 ring-red-600"
+                      : "border-stone-300"
+                  }`}
+                />
+                <span>
+                  <Link
+                    href="/sayfa/mesafeli-satis-sozlesmesi"
+                    target="_blank"
+                    className="font-semibold text-stone-900 underline hover:text-stone-700"
+                  >
+                    Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu
+                  </Link>{" "}
+                  okudum, içeriğini kabul ediyor ve onaylıyorum.{" "}
+                  <span className="text-red-500">*</span>
+                </span>
+              </label>
+              {fieldErrors.distanceSalesContract && (
+                <p className="text-xs text-red-600 mt-1 ml-6" role="alert">
+                  {fieldErrors.distanceSalesContract}
+                </p>
+              )}
+            </div>
 
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
-              <input
-                type="checkbox"
-                required
-                checked={kvkkConsent}
-                onChange={(e) => setKvkkConsent(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900 flex-shrink-0"
-              />
-              <span>
-                Kişisel verilerimin işlenmesine ilişkin{" "}
-                <Link
-                  href="/sayfa/kvkk"
-                  target="_blank"
-                  className="font-semibold text-stone-900 underline hover:text-stone-700"
-                >
-                  KVKK Aydınlatma Metnini
-                </Link>{" "}
-                okudum ve anladım. <span className="text-red-500">*</span>
-              </span>
-            </label>
+            <div>
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
+                <input
+                  id="kvkkConsent"
+                  type="checkbox"
+                  required
+                  aria-invalid={Boolean(fieldErrors.kvkkConsent)}
+                  checked={kvkkConsent}
+                  onChange={(e) => {
+                    setKvkkConsent(e.target.checked);
+                    clearFieldError("kvkkConsent");
+                  }}
+                  className={`w-4 h-4 mt-0.5 rounded text-stone-900 focus:ring-stone-900 flex-shrink-0 ${
+                    fieldErrors.kvkkConsent
+                      ? "border-red-600 ring-1 ring-red-600"
+                      : "border-stone-300"
+                  }`}
+                />
+                <span>
+                  Kişisel verilerimin işlenmesine ilişkin{" "}
+                  <Link
+                    href="/sayfa/kvkk"
+                    target="_blank"
+                    className="font-semibold text-stone-900 underline hover:text-stone-700"
+                  >
+                    KVKK Aydınlatma Metnini
+                  </Link>{" "}
+                  okudum ve anladım. <span className="text-red-500">*</span>
+                </span>
+              </label>
+              {fieldErrors.kvkkConsent && (
+                <p className="text-xs text-red-600 mt-1 ml-6" role="alert">
+                  {fieldErrors.kvkkConsent}
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
-        {/* Submit Button (Left Column Bottom) */}
-        <div>
+        {/* Submit Button (Left Column Bottom) & Inline Server/Payment Error Notice */}
+        <div className="space-y-3">
+          {errorMsg && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800 animate-fade-in-up"
+            >
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">İşlem tamamlanamadı:</p>
+                <p className="mt-0.5">{errorMsg}</p>
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting || availabilityIssues.length > 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 theme-btn-primary text-sm disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <>
@@ -1220,33 +1517,29 @@ export function CheckoutForm({
         </div>
       </form>
 
-      {/* Order Summary & Coupon Sidebar (Col 4) */}
-      <aside className="lg:col-span-4 bg-white border border-stone-200 rounded-lg p-6 space-y-5 sticky top-24">
-        <h3 className="text-base font-bold text-stone-900 pb-3 border-b border-stone-100">
-          Sipariş Özeti ({cart.items.length} Ürün)
+      {/* Order Summary & Coupon Sidebar (Right Column - Normod/Shopify) */}
+      <aside className="bg-[var(--theme-checkout-summary-bg,#F5F5F5)] px-4 sm:px-6 lg:pl-11 lg:pr-0 py-8 lg:border-l lg:border-[#DEDEDE] space-y-5 lg:sticky lg:top-0 lg:min-h-[calc(100vh-73px)]">
+        <h3 className="text-base font-semibold text-stone-900 pb-3 border-b border-[#DEDEDE]">
+          Sipariş Özeti (
+          {
+            cart.items.filter(
+              (item) => !item.metadata?.is_cod_fee && item.variant?.sku !== "SERVICE-COD-FEE",
+            ).length
+          }{" "}
+          Ürün)
         </h3>
 
-        {/* Mini Item List */}
-        <div className="divide-y divide-stone-100 max-h-60 overflow-y-auto pr-1">
-          {cart.items.map((item) => (
-            <div key={item.id} className="py-2.5 flex justify-between items-center text-xs">
-              <div className="pr-2 truncate">
-                <span className="font-semibold text-stone-900">{item.title}</span>
-                <span className="text-stone-500 ml-1.5">x {item.quantity}</span>
-              </div>
-              <span className="font-bold text-stone-900 flex-shrink-0">
-                {formatTRY(
-                  (item.unit_price ? item.unit_price * item.quantity : 0) ||
-                    item.total ||
-                    item.subtotal,
-                )}
-              </span>
-            </div>
-          ))}
+        {/* Product List (Shopify/Normod 64x64 thumbnail + quantity badge) */}
+        <div className="space-y-3 max-h-[340px] overflow-y-auto pt-2 pr-1">
+          {cart.items
+            .filter((item) => !item.metadata?.is_cod_fee && item.variant?.sku !== "SERVICE-COD-FEE")
+            .map((item) => (
+              <CheckoutOrderSummaryItem key={item.id} item={item} />
+            ))}
         </div>
 
         {/* Coupon Form */}
-        <div className="pt-2 border-t border-stone-100 space-y-2">
+        <div className="pt-3 border-t border-[#DEDEDE] space-y-2">
           <form onSubmit={handleApplyCoupon} className="flex gap-2">
             <input
               type="text"
@@ -1254,12 +1547,12 @@ export function CheckoutForm({
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               placeholder="İndirim Kodu"
               disabled={isCouponPending}
-              className="w-full px-3 py-1.5 text-xs uppercase font-mono tracking-wider border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+              className="w-full px-3 py-2 text-xs uppercase font-mono tracking-wider bg-white border border-[#DEDEDE] rounded-md focus:outline-none focus:ring-1 focus:ring-[#3A4A5B]"
             />
             <button
               type="submit"
               disabled={isCouponPending || !couponCode.trim()}
-              className="px-3 py-1.5 bg-stone-900 text-white text-xs font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 transition flex items-center gap-1"
+              className="px-4 py-2 theme-btn-primary text-xs disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
             >
               {isCouponPending ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -1296,13 +1589,13 @@ export function CheckoutForm({
         </div>
 
         {/* Price Breakdown */}
-        <div className="space-y-2 text-xs pt-3 border-t border-stone-100">
-          <div className="flex justify-between text-stone-600">
+        <div className="space-y-2 text-[13px] pt-3 border-t border-[#DEDEDE]">
+          <div className="flex justify-between text-[#666666]">
             <span>Ara Toplam (KDV Hariç)</span>
             <span className="font-medium text-stone-900">{formatTRY(subtotalNet)}</span>
           </div>
 
-          <div className="flex justify-between text-stone-600">
+          <div className="flex justify-between text-[#666666]">
             <span>Hesaplanan KDV (%20 Dahil)</span>
             <span className="font-medium text-stone-900">{formatTRY(taxTotal)}</span>
           </div>
@@ -1314,7 +1607,7 @@ export function CheckoutForm({
             </div>
           )}
 
-          <div className="flex justify-between text-stone-600">
+          <div className="flex justify-between text-[#666666]">
             <span>Kargo Tutarı</span>
             <span className="font-medium text-stone-900">
               {shippingCost === 0 ? "Ücretsiz" : formatTRY(shippingCost)}
@@ -1322,15 +1615,17 @@ export function CheckoutForm({
           </div>
 
           {paymentMethod === "cod" && (
-            <div className="flex justify-between text-stone-600">
+            <div className="flex justify-between text-[#666666]">
               <span>{paymentOptions?.cod?.fee_label || "Kapıda Ödeme Hizmet Bedeli"}</span>
               <span className="font-medium text-stone-900">+{formatTRY(codFee)}</span>
             </div>
           )}
 
-          <div className="pt-3 border-t border-stone-200 flex justify-between items-baseline">
-            <span className="text-sm font-bold text-stone-900">Ödenecek Tutar</span>
-            <span className="text-lg font-extrabold text-stone-900">{formatTRY(total)}</span>
+          <div className="pt-3 border-t border-[#DEDEDE] flex justify-between items-baseline">
+            <span className="text-base font-semibold text-stone-900">Ödenecek Tutar</span>
+            <span className="text-lg font-bold text-stone-900 tabular-nums">
+              {formatTRY(total)}
+            </span>
           </div>
         </div>
 

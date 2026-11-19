@@ -18,7 +18,7 @@ export async function Footer() {
   const hasDynamicFooter = Array.isArray(footerMenu) && footerMenu.length > 0;
 
   return (
-    <footer className="bg-stone-900 text-stone-300 border-t border-stone-800 mt-auto">
+    <footer className="bg-[var(--theme-footer-bg,#1C1917)] text-[var(--theme-footer-text,#E7E5E4)] border-t border-stone-800 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Info */}

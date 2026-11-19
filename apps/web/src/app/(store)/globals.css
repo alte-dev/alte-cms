@@ -3,8 +3,49 @@
 @tailwind utilities;
 
 body {
-  color: #1e293b;
-  background-color: #f8fafc;
+  color: var(--theme-text, #1c1917);
+  background-color: var(--theme-bg, #fafaf9);
+  font-family: var(--theme-font-body, inherit);
+  font-size: var(--theme-font-size, 16px);
+  line-height: var(--theme-line-height, 1.5);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--theme-font-heading, inherit);
+  font-weight: var(--theme-heading-weight, 700);
+  letter-spacing: var(--theme-heading-tracking, -0.025em);
+}
+
+@layer components {
+  .theme-btn-primary {
+    background-color: var(--theme-primary, #3a4a5b);
+    color: var(--theme-primary-text, #ffffff);
+    border-radius: var(--theme-button-radius, 0.375rem);
+    text-transform: var(--theme-button-transform, none);
+    font-weight: var(--theme-button-weight, 600);
+    transition:
+      background-color 150ms ease,
+      opacity 150ms ease,
+      transform 120ms ease;
+  }
+
+  .theme-btn-primary:hover:not(:disabled) {
+    background-color: var(--theme-primary-hover, #2e3b49);
+  }
+
+  .theme-btn-primary:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+
+  .theme-header-glass {
+    background-color: var(--theme-header-bg, #ffffff);
+    background-color: color-mix(in srgb, var(--theme-header-bg, #ffffff) 78%, transparent);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+  }
 }
 
 @keyframes fadeInUp {
@@ -20,4 +61,69 @@ body {
 
 .animate-fade-in-up {
   animation: fadeInUp 0.35s ease-out both;
+}
+
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerSlideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0.75);
+  }
+  65% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-drawer-right {
+  animation: drawerSlideInRight 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.animate-drawer-left {
+  animation: drawerSlideInLeft 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 0.25s ease-out both;
+}
+
+.animate-badge-pop {
+  animation: badgePop 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-drawer-right,
+  .animate-drawer-left,
+  .animate-backdrop-in,
+  .animate-badge-pop {
+    animation: none !important;
+  }
 }
