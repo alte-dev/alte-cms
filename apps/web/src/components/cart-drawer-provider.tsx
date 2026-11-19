@@ -363,9 +363,9 @@ export function CartDrawerPanel({
 
             <div className="flex items-baseline justify-between">
               <div>
-                <p className="text-sm font-semibold text-stone-900">Ara Toplam</p>
+                <p className="text-sm font-semibold text-stone-900">Toplam</p>
                 <p className="text-[11px] text-stone-500">
-                  Vergi dahil, kargo ücreti ödeme sırasında hesaplanır
+                  Vergi dahil ve kargo ücreti ödeme sırasında hesaplanır
                 </p>
               </div>
               <span className="text-base font-bold text-stone-900 tabular-nums">
