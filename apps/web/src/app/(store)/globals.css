@@ -39,6 +39,13 @@ h4 {
   .theme-btn-primary:active:not(:disabled) {
     transform: scale(0.985);
   }
+
+  .theme-header-glass {
+    background-color: var(--theme-header-bg, #ffffff);
+    background-color: color-mix(in srgb, var(--theme-header-bg, #ffffff) 78%, transparent);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+  }
 }
 
 @keyframes fadeInUp {

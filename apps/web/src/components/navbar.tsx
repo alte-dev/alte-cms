@@ -67,7 +67,7 @@ export async function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-[var(--theme-header-bg,#FFFFFF)] border-b border-[var(--theme-border,#E7E5E4)] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <header className="sticky top-0 z-40 theme-header-glass border-b border-[var(--theme-border,#E7E5E4)] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       {/* Top Banner */}
       <div className="bg-[var(--theme-announcement-bg,#3A4A5B)] text-[var(--theme-announcement-text,#FFFFFF)] text-xs py-2 px-4 text-center font-medium">
         <span>
