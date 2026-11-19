@@ -212,7 +212,8 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
         }),
       );
 
-      expect(html).toContain("Ara Toplam");
+      expect(html).toContain("Toplam");
+      expect(html).toContain("Vergi dahil ve kargo ücreti ödeme sırasında hesaplanır");
       expect(html).toContain("600,00");
       expect(html).not.toContain("689,90");
     });
@@ -353,6 +354,8 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
       );
 
       expect(html).toContain("Ücretsiz");
+      expect(html).toContain("Toplam");
+      expect(html).toContain("*Vergiler dahil");
       expect(html).toContain("1.595,00");
       expect(html).not.toContain("1.684,90");
     });

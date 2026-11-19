@@ -155,7 +155,7 @@ export function CartView({
     ? { id: "free", name: "Ücretsiz Kargo", price_type: "flat" as const, amount: 0 }
     : null;
   const totals = calculateCheckoutTotals(cart, freeShippingOverride, 0, "card");
-  const { subtotalNet, taxTotal, discountTotal, total } = totals;
+  const { discountTotal, total } = totals;
   const shippingTotal = shippingProgress.isEligible ? 0 : (cart.shipping_total ?? 0);
   const promotions = cart.promotions || [];
 
@@ -385,43 +385,41 @@ export function CartView({
         <div className="space-y-2.5 text-sm pt-2 border-t border-stone-100">
           {/* Subtotal */}
           <div className="flex justify-between text-stone-600">
-            <span>Ara Toplam (KDV Hariç)</span>
-            <span className="font-medium text-stone-900">{formatTRY(subtotalNet)}</span>
-          </div>
-
-          {/* Tax Line */}
-          <div className="flex justify-between text-stone-600">
-            <span>Hesaplanan KDV (%20 Dahil)</span>
-            <span className="font-medium text-stone-900">{formatTRY(taxTotal)}</span>
+            <span>Alt toplam</span>
+            <span className="font-medium text-stone-900 tabular-nums">
+              {formatTRY(totals.itemTotal)}
+            </span>
           </div>
 
           {/* Discount */}
           {discountTotal > 0 && (
             <div className="flex justify-between text-emerald-700 font-medium">
-              <span>İndirim Tutarı</span>
-              <span>-{formatTRY(discountTotal)}</span>
+              <span>Uygulanan İndirim</span>
+              <span className="tabular-nums">-{formatTRY(discountTotal)}</span>
             </div>
           )}
 
           {/* Shipping */}
           <div className="flex justify-between text-stone-600">
-            <span>Kargo Tutarı</span>
+            <span>Kargo</span>
             <span className="font-medium text-stone-900">
               {shippingProgress.isEligible
                 ? "Ücretsiz"
                 : shippingTotal > 0
                   ? formatTRY(shippingTotal)
-                  : "Hesaplanacak (Ödeme Adımında)"}
+                  : "Ödeme adımında hesaplanır"}
             </span>
           </div>
 
           {/* Total */}
-          <div className="pt-3 border-t border-stone-200 flex justify-between items-baseline">
-            <div className="flex flex-col">
-              <span className="text-base font-bold text-stone-900">Toplam Tutar</span>
-              <span className="text-[11px] text-stone-500">Tüm yasal vergiler dahildir</span>
+          <div className="pt-3 border-t border-stone-200 space-y-1">
+            <div className="flex justify-between items-baseline">
+              <span className="text-base font-bold text-stone-900">Toplam</span>
+              <span className="text-xl font-extrabold text-stone-900 tabular-nums">
+                {formatTRY(total)}
+              </span>
             </div>
-            <span className="text-xl font-extrabold text-stone-900">{formatTRY(total)}</span>
+            <p className="text-[11px] text-stone-500 text-right">*Vergiler dahil</p>
           </div>
         </div>
 
