@@ -1,7 +1,49 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { z } from "zod";
 import PaymentSettingsService from "../../../modules/payment-settings/service";
 import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
+
+export async function ensureEnabledProvidersLinkedToRegions(
+  scope: MedusaRequest["scope"],
+  settings: { paytr_enabled?: boolean; iyzico_enabled?: boolean; cod_enabled?: boolean },
+): Promise<void> {
+  const providersToEnsure: string[] = [];
+  if (settings.paytr_enabled) providersToEnsure.push("pp_paytr_paytr");
+  if (settings.iyzico_enabled) providersToEnsure.push("pp_iyzico_iyzico");
+  if (settings.cod_enabled) providersToEnsure.push("pp_cod_cod");
+  if (providersToEnsure.length === 0) return;
+
+  try {
+    const regionService = scope.resolve<any>(Modules.REGION);
+    const remoteLink = scope.resolve<any>(ContainerRegistrationKeys.REMOTE_LINK);
+    if (!regionService || !remoteLink) return;
+
+    const regions = await regionService.listRegions({});
+    for (const region of regions || []) {
+      for (const providerId of providersToEnsure) {
+        try {
+          await remoteLink.create([
+            {
+              [Modules.REGION]: { region_id: region.id },
+              [Modules.PAYMENT]: { payment_provider_id: providerId },
+            },
+          ]);
+        } catch (linkErr: any) {
+          const msg = String(linkErr?.message || "");
+          if (!/already\s+exists|already\s+linked|duplicate|unique/i.test(msg)) {
+            console.warn(
+              `[Payment Settings] Bölge (${region.id}) sağlayıcı (${providerId}) bağlantısı oluşturulamadı:`,
+              msg || linkErr,
+            );
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Payment Settings] Bölge sağlayıcı bağlantısı kontrol edilemedi:", err?.message);
+  }
+}
 
 const updatePaymentSettingsSchema = z.object({
   paytr_enabled: z.boolean().optional(),
@@ -74,6 +116,7 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
     const adminUser = (req as any).user?.email || (req as any).user?.id || "admin";
 
     const updatedSettings = await service.updateSafeSettings(parseResult.data, adminUser);
+    await ensureEnabledProvidersLinkedToRegions(req.scope, updatedSettings);
 
     return res.status(200).json({
       success: true,

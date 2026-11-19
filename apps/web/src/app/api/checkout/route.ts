@@ -312,7 +312,22 @@ export async function POST(req: Request) {
         );
       }
 
-      const iyzicoData = await initiateIyzicoPayment(cart.id);
+      const iyzicoItems = (cart.items || [])
+        .filter((i) => i.id !== existingCodFeeItem?.id)
+        .map((i) => ({
+          id: i.id,
+          title: i.title,
+          unit_price: i.unit_price,
+          quantity: i.quantity,
+        }));
+
+      const iyzicoData = await initiateIyzicoPayment(cart.id, {
+        email: effectiveEmail,
+        ip: clientIp,
+        billing_address: billingAddressPayload,
+        shipping_address: shippingAddressPayload,
+        items: iyzicoItems,
+      });
       const iyzicoMode = paymentOptions.iyzico?.mode === "live" ? "live" : "sandbox";
       if (
         iyzicoData.paymentPageUrl &&
