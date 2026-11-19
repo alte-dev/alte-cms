@@ -6,6 +6,7 @@ import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
 import { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
 import type { CartItemAvailabilityIssue, PaymentOptionsResult } from "../lib/medusa/cart";
+import { CheckoutFormSchema } from "../lib/medusa/validation";
 import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
 import { CheckoutOrderSummaryItem } from "./checkout-order-summary-item";
 import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
@@ -30,6 +31,92 @@ import {
   Plus,
 } from "lucide-react";
 import { applyCouponAction, removeCouponAction } from "../app/(store)/actions";
+
+const CHECKOUT_FIELD_ORDER = [
+  "email",
+  "phone",
+  "firstName",
+  "lastName",
+  "city",
+  "district",
+  "addressLine1",
+  "postalCode",
+  "companyName",
+  "taxOffice",
+  "taxNumber",
+  "billingFirstName",
+  "billingLastName",
+  "billingCity",
+  "billingDistrict",
+  "billingAddressLine1",
+  "shippingOptionSection",
+  "distanceSalesContract",
+  "kvkkConsent",
+] as const;
+
+function mapZodPathToFieldId(path: ReadonlyArray<PropertyKey>): string | null {
+  const joined = path.map(String).join(".");
+  if (joined === "deliveryAddress.firstName") return "firstName";
+  if (joined === "deliveryAddress.lastName") return "lastName";
+  if (joined === "deliveryAddress.city") return "city";
+  if (joined === "deliveryAddress.district") return "district";
+  if (joined === "deliveryAddress.addressLine1") return "addressLine1";
+  if (joined === "deliveryAddress.postalCode") return "postalCode";
+  if (joined === "billingAddress.firstName") return "billingFirstName";
+  if (joined === "billingAddress.lastName") return "billingLastName";
+  if (joined === "billingAddress.city") return "billingCity";
+  if (joined === "billingAddress.district") return "billingDistrict";
+  if (joined === "billingAddress.addressLine1") return "billingAddressLine1";
+  if (joined === "shippingOptionId") return "shippingOptionSection";
+  if (
+    joined === "email" ||
+    joined === "phone" ||
+    joined === "companyName" ||
+    joined === "taxOffice" ||
+    joined === "taxNumber" ||
+    joined === "distanceSalesContract" ||
+    joined === "kvkkConsent"
+  ) {
+    return joined;
+  }
+  return null;
+}
+
+export function validateCheckoutFormFields(payload: Record<string, unknown>):
+  | { valid: true }
+  | {
+      valid: false;
+      errors: Record<string, string>;
+      firstErrorFieldId: string | null;
+      firstErrorMessage: string;
+    } {
+  const parsed = CheckoutFormSchema.safeParse(payload);
+  if (parsed.success) {
+    return { valid: true };
+  }
+
+  const errors: Record<string, string> = {};
+  for (const issue of parsed.error.issues) {
+    const fieldId = mapZodPathToFieldId(issue.path);
+    if (fieldId && !errors[fieldId]) {
+      errors[fieldId] = issue.message;
+    }
+  }
+
+  const firstErrorFieldId =
+    CHECKOUT_FIELD_ORDER.find((id) => Boolean(errors[id])) ?? Object.keys(errors)[0] ?? null;
+  const firstErrorMessage =
+    (firstErrorFieldId ? errors[firstErrorFieldId] : undefined) ||
+    parsed.error.issues[0]?.message ||
+    "Lütfen formdaki eksik veya hatalı alanları kontrol ediniz.";
+
+  return {
+    valid: false,
+    errors,
+    firstErrorFieldId,
+    firstErrorMessage,
+  };
+}
 
 interface CheckoutFormProps {
   initialCart: StoreCart;
@@ -62,6 +149,33 @@ export function CheckoutForm({
     useState<CartItemAvailabilityIssue[]>(initialAvailabilityIssues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (fieldId: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[fieldId]) return prev;
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+  };
+
+  const scrollToField = (fieldId: string | null) => {
+    if (!fieldId || typeof document === "undefined") return;
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (typeof (el as HTMLElement).focus === "function") {
+      window.setTimeout(() => {
+        (el as HTMLElement).focus({ preventScroll: true });
+      }, 220);
+    }
+  };
+
+  const getInputBorderClass = (fieldId: string) =>
+    fieldErrors[fieldId]
+      ? "border-red-600 ring-1 ring-red-600/20 focus:border-red-600 focus:ring-red-600"
+      : "border-stone-300 focus:ring-stone-900";
 
   // Payment Method Selection
   const resolveInitialMethod = (): "iyzico" | "paytr" | "cod" | "dev" => {
@@ -250,65 +364,59 @@ export function CheckoutForm({
 
     setErrorMsg(null);
 
-    // Basic client checks before submitting
-    if (!distanceSalesContract) {
-      setErrorMsg("Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu onaylamalısınız.");
-      return;
-    }
-    if (!kvkkConsent) {
-      setErrorMsg("KVKK Aydınlatma Metnini onaylamalısınız.");
-      return;
-    }
-    if (!selectedShippingOptionId) {
-      setErrorMsg("Lütfen geçerli bir kargo seçeneği belirleyiniz.");
+    const payload = {
+      email,
+      phone,
+      deliveryAddress: {
+        firstName,
+        lastName,
+        city,
+        district,
+        addressLine1,
+        addressLine2,
+        postalCode: postalCode || undefined,
+        countryCode: "tr" as const,
+      },
+      sameAsDelivery,
+      ...(sameAsDelivery
+        ? {}
+        : {
+            billingAddress: {
+              firstName: billingFirstName || firstName,
+              lastName: billingLastName || lastName,
+              city: billingCity,
+              district: billingDistrict,
+              addressLine1: billingAddressLine1,
+              addressLine2: billingAddressLine2,
+              postalCode: billingPostalCode || undefined,
+              countryCode: "tr" as const,
+            },
+          }),
+      invoiceType,
+      ...(invoiceType === "corporate"
+        ? {
+            companyName,
+            taxOffice,
+            taxNumber,
+          }
+        : {}),
+      shippingOptionId: selectedShippingOptionId,
+      paymentMethod,
+      distanceSalesContract,
+      kvkkConsent,
+    };
+
+    const validation = validateCheckoutFormFields(payload);
+    if (!validation.valid) {
+      setFieldErrors(validation.errors);
+      scrollToField(validation.firstErrorFieldId);
       return;
     }
 
+    setFieldErrors({});
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        email,
-        phone,
-        deliveryAddress: {
-          firstName,
-          lastName,
-          city,
-          district,
-          addressLine1,
-          addressLine2,
-          postalCode: postalCode || undefined,
-          countryCode: "tr",
-        },
-        sameAsDelivery,
-        ...(sameAsDelivery
-          ? {}
-          : {
-              billingAddress: {
-                firstName: billingFirstName || firstName,
-                lastName: billingLastName || lastName,
-                city: billingCity,
-                district: billingDistrict,
-                addressLine1: billingAddressLine1,
-                addressLine2: billingAddressLine2,
-                postalCode: billingPostalCode || undefined,
-                countryCode: "tr",
-              },
-            }),
-        invoiceType,
-        ...(invoiceType === "corporate"
-          ? {
-              companyName,
-              taxOffice,
-              taxNumber,
-            }
-          : {}),
-        shippingOptionId: selectedShippingOptionId,
-        paymentMethod,
-        distanceSalesContract: true,
-        kvkkConsent: true,
-      };
-
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -454,6 +562,7 @@ export function CheckoutForm({
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[580px_480px] items-start">
       {/* Checkout Form (Left Column) */}
       <form
+        noValidate
         onSubmit={handleSubmit}
         className="bg-[var(--theme-checkout-left-bg,#FFFFFF)] px-4 sm:px-6 lg:px-0 lg:pr-11 py-8 space-y-6"
       >
@@ -481,21 +590,6 @@ export function CheckoutForm({
             </Link>
           </div>
         )}
-        {/* Global Error Notice */}
-        {errorMsg && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800"
-          >
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Lütfen formu kontrol ediniz:</p>
-              <p className="mt-0.5">{errorMsg}</p>
-            </div>
-          </div>
-        )}
-
         {/* Step 1: Contact Information */}
         <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
           <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-3">
@@ -528,16 +622,25 @@ export function CheckoutForm({
                 id="email"
                 type="email"
                 required
+                aria-invalid={Boolean(fieldErrors.email)}
                 readOnly={Boolean(initialCustomer)}
                 value={email}
                 onChange={(e) => {
-                  if (!initialCustomer) setEmail(e.target.value);
+                  if (!initialCustomer) {
+                    setEmail(e.target.value);
+                    clearFieldError("email");
+                  }
                 }}
                 placeholder="ornek@alanadi.com"
-                className={`w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 ${
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("email")} ${
                   initialCustomer ? "bg-stone-50 text-stone-600" : ""
                 }`}
               />
+              {fieldErrors.email && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.email}
+                </p>
+              )}
               {savedAddresses.length > 0 && (
                 <div className="mt-2">
                   <label
@@ -587,14 +690,24 @@ export function CheckoutForm({
                 id="phone"
                 type="tel"
                 required
+                aria-invalid={Boolean(fieldErrors.phone)}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  clearFieldError("phone");
+                }}
                 placeholder="05XX XXX XX XX"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("phone")}`}
               />
-              <p className="text-[11px] text-stone-500 mt-1">
-                Kargo teslimat bildirimleri için gereklidir.
-              </p>
+              {fieldErrors.phone ? (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.phone}
+                </p>
+              ) : (
+                <p className="text-[11px] text-stone-500 mt-1">
+                  Kargo teslimat bildirimleri için gereklidir.
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -620,10 +733,19 @@ export function CheckoutForm({
                 id="firstName"
                 type="text"
                 required
+                aria-invalid={Boolean(fieldErrors.firstName)}
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  clearFieldError("firstName");
+                }}
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("firstName")}`}
               />
+              {fieldErrors.firstName && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.firstName}
+                </p>
+              )}
             </div>
 
             <div>
@@ -634,10 +756,19 @@ export function CheckoutForm({
                 id="lastName"
                 type="text"
                 required
+                aria-invalid={Boolean(fieldErrors.lastName)}
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  clearFieldError("lastName");
+                }}
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("lastName")}`}
               />
+              {fieldErrors.lastName && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.lastName}
+                </p>
+              )}
             </div>
 
             <div>
@@ -646,9 +777,13 @@ export function CheckoutForm({
               </label>
               <select
                 id="city"
+                aria-invalid={Boolean(fieldErrors.city)}
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  clearFieldError("city");
+                }}
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("city")}`}
               >
                 {TURKISH_CITIES.map((c) => (
                   <option key={c} value={c}>
@@ -656,6 +791,11 @@ export function CheckoutForm({
                   </option>
                 ))}
               </select>
+              {fieldErrors.city && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.city}
+                </p>
+              )}
             </div>
 
             <div>
@@ -666,11 +806,20 @@ export function CheckoutForm({
                 id="district"
                 type="text"
                 required
+                aria-invalid={Boolean(fieldErrors.district)}
                 value={district}
-                onChange={(e) => setDistrict(e.target.value)}
+                onChange={(e) => {
+                  setDistrict(e.target.value);
+                  clearFieldError("district");
+                }}
                 placeholder="Örn: Kadıköy"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("district")}`}
               />
+              {fieldErrors.district && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.district}
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">
@@ -683,12 +832,21 @@ export function CheckoutForm({
               <textarea
                 id="addressLine1"
                 required
+                aria-invalid={Boolean(fieldErrors.addressLine1)}
                 rows={2}
                 value={addressLine1}
-                onChange={(e) => setAddressLine1(e.target.value)}
+                onChange={(e) => {
+                  setAddressLine1(e.target.value);
+                  clearFieldError("addressLine1");
+                }}
                 placeholder="Mahalle, Cadde, Sokak, Bina No, Daire No"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("addressLine1")}`}
               />
+              {fieldErrors.addressLine1 && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.addressLine1}
+                </p>
+              )}
             </div>
 
             <div>
@@ -719,11 +877,20 @@ export function CheckoutForm({
                 id="postalCode"
                 type="text"
                 maxLength={5}
+                aria-invalid={Boolean(fieldErrors.postalCode)}
                 value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
+                onChange={(e) => {
+                  setPostalCode(e.target.value);
+                  clearFieldError("postalCode");
+                }}
                 placeholder="34710"
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900"
+                className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass("postalCode")}`}
               />
+              {fieldErrors.postalCode && (
+                <p className="text-xs text-red-600 mt-1" role="alert">
+                  {fieldErrors.postalCode}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -782,11 +949,20 @@ export function CheckoutForm({
                     id="companyName"
                     type="text"
                     required
+                    aria-invalid={Boolean(fieldErrors.companyName)}
                     value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                    onChange={(e) => {
+                      setCompanyName(e.target.value);
+                      clearFieldError("companyName");
+                    }}
                     placeholder="Örn: Alte Teknoloji A.Ş."
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("companyName")}`}
                   />
+                  {fieldErrors.companyName && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.companyName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -799,11 +975,20 @@ export function CheckoutForm({
                     id="taxOffice"
                     type="text"
                     required
+                    aria-invalid={Boolean(fieldErrors.taxOffice)}
                     value={taxOffice}
-                    onChange={(e) => setTaxOffice(e.target.value)}
+                    onChange={(e) => {
+                      setTaxOffice(e.target.value);
+                      clearFieldError("taxOffice");
+                    }}
                     placeholder="Kadıköy VD"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("taxOffice")}`}
                   />
+                  {fieldErrors.taxOffice && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.taxOffice}
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label
@@ -816,12 +1001,21 @@ export function CheckoutForm({
                     id="taxNumber"
                     type="text"
                     required
+                    aria-invalid={Boolean(fieldErrors.taxNumber)}
                     maxLength={10}
                     value={taxNumber}
-                    onChange={(e) => setTaxNumber(e.target.value)}
+                    onChange={(e) => {
+                      setTaxNumber(e.target.value);
+                      clearFieldError("taxNumber");
+                    }}
                     placeholder="1234567890"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-900 bg-white"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 transition-colors bg-white ${getInputBorderClass("taxNumber")}`}
                   />
+                  {fieldErrors.taxNumber && (
+                    <p className="text-xs text-red-600 mt-1" role="alert">
+                      {fieldErrors.taxNumber}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -931,7 +1125,15 @@ export function CheckoutForm({
         </section>
 
         {/* Step 4: Shipping Method Selection */}
-        <section className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
+        <section
+          id="shippingOptionSection"
+          tabIndex={-1}
+          className={`bg-white border rounded-lg p-6 space-y-4 ${
+            fieldErrors.shippingOptionSection
+              ? "border-red-600 ring-1 ring-red-600/20"
+              : "border-stone-200"
+          }`}
+        >
           <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
             <span className="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center font-bold">
               4
@@ -1140,52 +1342,98 @@ export function CheckoutForm({
           </div>
 
           <div className="space-y-3 pt-1">
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
-              <input
-                type="checkbox"
-                required
-                checked={distanceSalesContract}
-                onChange={(e) => setDistanceSalesContract(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900 flex-shrink-0"
-              />
-              <span>
-                <Link
-                  href="/sayfa/mesafeli-satis-sozlesmesi"
-                  target="_blank"
-                  className="font-semibold text-stone-900 underline hover:text-stone-700"
-                >
-                  Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu
-                </Link>{" "}
-                okudum, içeriğini kabul ediyor ve onaylıyorum.{" "}
-                <span className="text-red-500">*</span>
-              </span>
-            </label>
+            <div>
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
+                <input
+                  id="distanceSalesContract"
+                  type="checkbox"
+                  required
+                  aria-invalid={Boolean(fieldErrors.distanceSalesContract)}
+                  checked={distanceSalesContract}
+                  onChange={(e) => {
+                    setDistanceSalesContract(e.target.checked);
+                    clearFieldError("distanceSalesContract");
+                  }}
+                  className={`w-4 h-4 mt-0.5 rounded text-stone-900 focus:ring-stone-900 flex-shrink-0 ${
+                    fieldErrors.distanceSalesContract
+                      ? "border-red-600 ring-1 ring-red-600"
+                      : "border-stone-300"
+                  }`}
+                />
+                <span>
+                  <Link
+                    href="/sayfa/mesafeli-satis-sozlesmesi"
+                    target="_blank"
+                    className="font-semibold text-stone-900 underline hover:text-stone-700"
+                  >
+                    Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formunu
+                  </Link>{" "}
+                  okudum, içeriğini kabul ediyor ve onaylıyorum.{" "}
+                  <span className="text-red-500">*</span>
+                </span>
+              </label>
+              {fieldErrors.distanceSalesContract && (
+                <p className="text-xs text-red-600 mt-1 ml-6" role="alert">
+                  {fieldErrors.distanceSalesContract}
+                </p>
+              )}
+            </div>
 
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
-              <input
-                type="checkbox"
-                required
-                checked={kvkkConsent}
-                onChange={(e) => setKvkkConsent(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900 flex-shrink-0"
-              />
-              <span>
-                Kişisel verilerimin işlenmesine ilişkin{" "}
-                <Link
-                  href="/sayfa/kvkk"
-                  target="_blank"
-                  className="font-semibold text-stone-900 underline hover:text-stone-700"
-                >
-                  KVKK Aydınlatma Metnini
-                </Link>{" "}
-                okudum ve anladım. <span className="text-red-500">*</span>
-              </span>
-            </label>
+            <div>
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-stone-700 leading-relaxed">
+                <input
+                  id="kvkkConsent"
+                  type="checkbox"
+                  required
+                  aria-invalid={Boolean(fieldErrors.kvkkConsent)}
+                  checked={kvkkConsent}
+                  onChange={(e) => {
+                    setKvkkConsent(e.target.checked);
+                    clearFieldError("kvkkConsent");
+                  }}
+                  className={`w-4 h-4 mt-0.5 rounded text-stone-900 focus:ring-stone-900 flex-shrink-0 ${
+                    fieldErrors.kvkkConsent
+                      ? "border-red-600 ring-1 ring-red-600"
+                      : "border-stone-300"
+                  }`}
+                />
+                <span>
+                  Kişisel verilerimin işlenmesine ilişkin{" "}
+                  <Link
+                    href="/sayfa/kvkk"
+                    target="_blank"
+                    className="font-semibold text-stone-900 underline hover:text-stone-700"
+                  >
+                    KVKK Aydınlatma Metnini
+                  </Link>{" "}
+                  okudum ve anladım. <span className="text-red-500">*</span>
+                </span>
+              </label>
+              {fieldErrors.kvkkConsent && (
+                <p className="text-xs text-red-600 mt-1 ml-6" role="alert">
+                  {fieldErrors.kvkkConsent}
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
-        {/* Submit Button (Left Column Bottom) */}
-        <div>
+        {/* Submit Button (Left Column Bottom) & Inline Server/Payment Error Notice */}
+        <div className="space-y-3">
+          {errorMsg && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-sm text-red-800 animate-fade-in-up"
+            >
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">İşlem tamamlanamadı:</p>
+                <p className="mt-0.5">{errorMsg}</p>
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting || availabilityIssues.length > 0}

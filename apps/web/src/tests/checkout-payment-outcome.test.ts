@@ -7,7 +7,7 @@ vi.mock("../app/(store)/actions", () => ({
   removeCouponAction: vi.fn(),
 }));
 
-import { CheckoutForm } from "../components/checkout-form";
+import { CheckoutForm, validateCheckoutFormFields } from "../components/checkout-form";
 import { resolveCheckoutPaymentOutcome } from "../lib/medusa/checkout-pricing";
 import type { PaymentOptionsResult } from "../lib/medusa/cart";
 import type { StoreCart, StoreProduct, StoreShippingOption } from "../lib/medusa/types";
@@ -193,5 +193,40 @@ describe("CheckoutForm 3-Method Single-Button & Outcome Dispatch", () => {
     expect(html).not.toContain("PayTR");
     expect(html).not.toContain('value="cod"');
     expect(html).not.toContain("Şu anda kullanılamıyor");
+    expect(html).toMatch(/novalidate/i);
+  });
+
+  it("maps Zod checkout validation errors to DOM field IDs in top-to-bottom order for smooth scrolling", () => {
+    const res = validateCheckoutFormFields({
+      email: "gecersiz",
+      phone: "123",
+      deliveryAddress: {
+        firstName: "",
+        lastName: "",
+        city: "İstanbul",
+        district: "",
+        addressLine1: "kısa",
+        countryCode: "tr",
+      },
+      sameAsDelivery: true,
+      invoiceType: "individual",
+      shippingOptionId: "so_std",
+      paymentMethod: "iyzico",
+      distanceSalesContract: false,
+      kvkkConsent: false,
+    });
+
+    expect(res.valid).toBe(false);
+    if (!res.valid) {
+      expect(res.firstErrorFieldId).toBe("email");
+      expect(res.errors.email).toBeDefined();
+      expect(res.errors.phone).toBeDefined();
+      expect(res.errors.firstName).toBeDefined();
+      expect(res.errors.lastName).toBeDefined();
+      expect(res.errors.district).toBeDefined();
+      expect(res.errors.addressLine1).toBeDefined();
+      expect(res.errors.distanceSalesContract).toBeDefined();
+      expect(res.errors.kvkkConsent).toBeDefined();
+    }
   });
 });
