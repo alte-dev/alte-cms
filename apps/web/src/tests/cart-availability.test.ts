@@ -166,3 +166,40 @@ describe("POST /api/checkout pre-payment availability guard", () => {
     expect(initiatePaytrPayment).not.toHaveBeenCalled();
   });
 });
+
+describe("validateCartAvailability & getCartAvailabilityIssues safety", () => {
+  beforeEach(() => {
+    vi.doUnmock("../lib/medusa/cart");
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it("rejects malformed cart IDs before issuing any network request", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { validateCartAvailability } = await import("../lib/medusa/cart");
+
+    await expect(validateCartAvailability("../admin?x=1")).rejects.toThrow(
+      /Geçersiz sepet kimliği/,
+    );
+    await expect(validateCartAvailability("cart_1")).rejects.toThrow(/Geçersiz sepet kimliği/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it("logs unexpected errors in getCartAvailabilityIssues while returning an empty list for UI", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("Medusa 503 unavailable"));
+
+    const { getCartAvailabilityIssues } = await import("../lib/medusa/cart");
+    const issues = await getCartAvailabilityIssues("cart_01JABCDEF1234567890");
+
+    expect(issues).toEqual([]);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(String(errorSpy.mock.calls[0][1])).toContain("Medusa 503 unavailable");
+
+    fetchSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+});

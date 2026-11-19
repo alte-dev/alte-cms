@@ -464,6 +464,8 @@ export interface CartAvailabilityCheckResult {
   message?: string;
 }
 
+const SAFE_CART_ID_PATTERN = /^cart_[A-Za-z0-9_-]{4,64}$/;
+
 /**
  * Validates that all non-service items in the cart belong to published, non-deleted products
  * and have sufficient stock. Fail-closed: throws if Medusa cannot be reached.
@@ -471,12 +473,16 @@ export interface CartAvailabilityCheckResult {
 export async function validateCartAvailability(
   cartId: string,
 ): Promise<CartAvailabilityCheckResult> {
-  if (!cartId) {
+  const cleanCartId = typeof cartId === "string" ? cartId.trim() : "";
+  if (!cleanCartId) {
     throw new Error("Sepet bulunamadı.");
+  }
+  if (!SAFE_CART_ID_PATTERN.test(cleanCartId)) {
+    throw new Error("Geçersiz sepet kimliği.");
   }
 
   const data = await medusaFetch<CartAvailabilityCheckResult>(
-    `/store/carts/${cartId}/validate-availability`,
+    `/store/carts/${encodeURIComponent(cleanCartId)}/validate-availability`,
     {
       method: "GET",
       cache: "no-store",
@@ -500,7 +506,11 @@ export async function getCartAvailabilityIssues(
   try {
     const res = await validateCartAvailability(cartId);
     return res.issues;
-  } catch {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/\b404\b|bulunamadı/i.test(msg)) {
+      console.error("[getCartAvailabilityIssues] Sepet durumu doğrulanamadı:", msg);
+    }
     return [];
   }
 }
