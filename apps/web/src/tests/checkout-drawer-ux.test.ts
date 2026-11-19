@@ -212,7 +212,8 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
         }),
       );
 
-      expect(html).toContain("Ara Toplam");
+      expect(html).toContain("Toplam");
+      expect(html).toContain("Vergi dahil ve kargo ücreti ödeme sırasında hesaplanır");
       expect(html).toContain("600,00");
       expect(html).not.toContain("689,90");
     });
@@ -315,6 +316,66 @@ describe("Checkout Order Summary & Cart Drawer UX", () => {
 
       expect(html).toContain("Sepet bilgileri yüklenemedi. Lütfen tekrar deneyin.");
       expect(html).not.toContain("Sepetiniz Boş");
+    });
+  });
+
+  describe("Consistent pricing when cart has stale shipping_total and free shipping is eligible", () => {
+    const staleShippingCart: StoreCart = {
+      ...sampleCart,
+      items: [
+        {
+          ...sampleItemWithThumb,
+          quantity: 1,
+          unit_price: 1595,
+          subtotal: 1595,
+          total: 1595,
+        },
+      ],
+      subtotal: 1595,
+      shipping_total: 89.9,
+      total: 1684.9,
+    };
+
+    const freeEligible = {
+      hasThreshold: true,
+      isEligible: true,
+      threshold: 1000,
+      remaining: 0,
+      percent: 100,
+      message: "Tebrikler, kargonuz ücretsiz!",
+    };
+
+    it("CartView does not add stale cart.shipping_total to Toplam Tutar when free shipping is eligible", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CartView, {
+          initialCart: staleShippingCart,
+          shippingProgress: freeEligible,
+        }),
+      );
+
+      expect(html).toContain("Ücretsiz");
+      expect(html).toContain("Toplam");
+      expect(html).toContain("*Vergiler dahil");
+      expect(html).toContain("1.595,00");
+      expect(html).not.toContain("1.684,90");
+    });
+
+    it("CartDrawerPanel Ara Toplam excludes stale cart.shipping_total", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CartDrawerPanel, {
+          isOpen: true,
+          cart: staleShippingCart,
+          freeShippingProgress: freeEligible,
+          isPending: false,
+          errorMsg: null,
+          onClose: () => {},
+          onUpdateQuantity: () => {},
+          onRemoveItem: () => {},
+        }),
+      );
+
+      expect(html).toContain("1.595,00");
+      expect(html).not.toContain("1.684,90");
     });
   });
 });

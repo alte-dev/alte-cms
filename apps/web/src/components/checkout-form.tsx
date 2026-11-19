@@ -1588,28 +1588,25 @@ export function CheckoutForm({
           )}
         </div>
 
-        {/* Price Breakdown */}
+        {/* Price Breakdown (Normod / Shopify style) */}
         <div className="space-y-2 text-[13px] pt-3 border-t border-[#DEDEDE]">
           <div className="flex justify-between text-[#666666]">
-            <span>Ara Toplam (KDV Hariç)</span>
-            <span className="font-medium text-stone-900">{formatTRY(subtotalNet)}</span>
-          </div>
-
-          <div className="flex justify-between text-[#666666]">
-            <span>Hesaplanan KDV (%20 Dahil)</span>
-            <span className="font-medium text-stone-900">{formatTRY(taxTotal)}</span>
+            <span>Alt toplam</span>
+            <span className="font-medium text-stone-900 tabular-nums">
+              {formatTRY(totals.itemTotal)}
+            </span>
           </div>
 
           {discountTotal > 0 && (
             <div className="flex justify-between text-emerald-700 font-medium">
-              <span>İndirim Tutarı</span>
-              <span>-{formatTRY(discountTotal)}</span>
+              <span>İndirim</span>
+              <span className="tabular-nums">-{formatTRY(discountTotal)}</span>
             </div>
           )}
 
           <div className="flex justify-between text-[#666666]">
-            <span>Kargo Tutarı</span>
-            <span className="font-medium text-stone-900">
+            <span>Kargo</span>
+            <span className="font-medium text-stone-900 uppercase">
               {shippingCost === 0 ? "Ücretsiz" : formatTRY(shippingCost)}
             </span>
           </div>
@@ -1617,15 +1614,24 @@ export function CheckoutForm({
           {paymentMethod === "cod" && (
             <div className="flex justify-between text-[#666666]">
               <span>{paymentOptions?.cod?.fee_label || "Kapıda Ödeme Hizmet Bedeli"}</span>
-              <span className="font-medium text-stone-900">+{formatTRY(codFee)}</span>
+              <span className="font-medium text-stone-900 tabular-nums">+{formatTRY(codFee)}</span>
             </div>
           )}
 
-          <div className="pt-3 border-t border-[#DEDEDE] flex justify-between items-baseline">
-            <span className="text-base font-semibold text-stone-900">Ödenecek Tutar</span>
-            <span className="text-lg font-bold text-stone-900 tabular-nums">
-              {formatTRY(total)}
-            </span>
+          <div className="pt-3 border-t border-[#DEDEDE] space-y-1">
+            <div className="flex justify-between items-baseline">
+              <span className="text-base font-semibold text-stone-900">Toplam</span>
+              <span className="text-lg font-bold text-stone-900 tabular-nums">
+                {formatTRY(total)}
+              </span>
+            </div>
+            <p className="text-[12px] text-[#666666]">{formatTRY(taxTotal)} vergi dahil</p>
+            {discountTotal > 0 && (
+              <p className="text-[12px] font-semibold text-stone-900 pt-0.5 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-stone-700" />
+                <span>TOPLAM TASARRUF {formatTRY(discountTotal)}</span>
+              </p>
+            )}
           </div>
         </div>
 

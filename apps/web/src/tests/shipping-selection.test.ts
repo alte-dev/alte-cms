@@ -220,10 +220,10 @@ describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
         const page = await context.newPage();
         await page.goto(`${BASE_URL}/odeme`, { waitUntil: "networkidle" });
 
-        // 1. Verify "Kargo Tutarı" in sidebar summary is "Ücretsiz"
-        const shippingRow = page.locator("div:has(> span:text('Kargo Tutarı'))");
+        // 1. Verify "Kargo" in sidebar summary is "Ücretsiz"
+        const shippingRow = page.locator("aside div:has(> span:text-is('Kargo'))");
         const shippingText = await shippingRow.innerText();
-        expect(shippingText).toContain("Ücretsiz");
+        expect(shippingText.toLocaleLowerCase("tr-TR")).toContain("ücretsiz");
 
         // 2. Verify "Ücretsiz Kargo" radio button is checked by default
         const freeRadio = page.locator("label:has-text('Ücretsiz Kargo') input[type='radio']");
