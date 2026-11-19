@@ -223,7 +223,7 @@ describe("Shipping Option Selection & Checkout Totals (TDD)", () => {
         // 1. Verify "Kargo" in sidebar summary is "Ücretsiz"
         const shippingRow = page.locator("aside div:has(> span:text-is('Kargo'))");
         const shippingText = await shippingRow.innerText();
-        expect(shippingText).toMatch(/ücretsiz/i);
+        expect(shippingText.toLocaleLowerCase("tr-TR")).toContain("ücretsiz");
 
         // 2. Verify "Ücretsiz Kargo" radio button is checked by default
         const freeRadio = page.locator("label:has-text('Ücretsiz Kargo') input[type='radio']");
