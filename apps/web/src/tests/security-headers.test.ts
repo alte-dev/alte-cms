@@ -58,4 +58,39 @@ describe("Security Headers & CSP", () => {
     expect(adminCsp).toContain("base-uri 'self'");
     expect(adminCsp).toContain("frame-ancestors 'self'");
   });
+
+  it("sets strict no-store Cache-Control on cart, checkout, account, admin, and api routes", () => {
+    const rules = getSecurityHeadersConfig(true);
+    const sensitiveSources = [
+      "/sepet",
+      "/sepet/:path*",
+      "/odeme",
+      "/odeme/:path*",
+      "/hesap",
+      "/hesap/:path*",
+      "/siparis-onay",
+      "/siparis-onay/:path*",
+      "/siparis-takip",
+      "/siparis-takip/:path*",
+      "/onizleme",
+      "/onizleme/:path*",
+      "/admin",
+      "/admin/:path*",
+      "/app",
+      "/app/:path*",
+      "/api/((?!media/file/).*)",
+      "/medusa-api/:path*",
+    ];
+
+    for (const src of sensitiveSources) {
+      const rule = rules.find((r) => r.source === src);
+      expect(rule, `Expected header rule for ${src}`).toBeDefined();
+      const cc = rule!.headers.find((h) => h.key === "Cache-Control");
+      expect(cc?.value, `Expected no-store Cache-Control on ${src}`).toContain("no-store");
+      expect(cc?.value, `Expected private Cache-Control on ${src}`).toContain("private");
+    }
+
+    // Ensure broad /api/:path* does not force no-store on public Payload media files (/api/media/file/*)
+    expect(rules.find((r) => r.source === "/api/:path*")).toBeUndefined();
+  });
 });
