@@ -83,6 +83,7 @@ async function seedContent() {
             { label: "İletişim", href: "/iletisim" },
             { label: "Mesafeli Satış Sözleşmesi", href: "/mesafeli-satis-sozlesmesi" },
             { label: "KVKK Aydınlatma Metni", href: "/kvkk" },
+            { label: "Çerez Politikası", href: "/sayfa/cerez-politikasi" },
           ],
         },
         {
@@ -638,6 +639,41 @@ async function seedContent() {
       },
     });
     console.log("  + Legal Page 'kvkk' created as DRAFT.");
+  }
+
+  // Legal Draft Page 3: Çerez Politikası (Strictly Draft!)
+  const existingCookiePolicy = await payload.find({
+    collection: "pages",
+    where: { slug: { equals: "cerez-politikasi" } },
+    limit: 1,
+  });
+
+  if (existingCookiePolicy.docs.length > 0) {
+    console.log("  - Draft Page 'cerez-politikasi' already exists.");
+  } else {
+    await payload.create({
+      collection: "pages",
+      data: {
+        title: "Çerez Politikası",
+        slug: "cerez-politikasi",
+        _status: "draft" as const,
+        puckData: {
+          root: { props: { title: "Çerez Politikası" } },
+          content: [
+            {
+              type: "RichText",
+              props: {
+                id: "cookie-policy-body",
+                content:
+                  "Yer tutucu — bu Çerez Politikası metni hukuk danışmanı onayından geçirilerek mağaza sahibi tarafından düzenlenip yayınlanmalıdır.\n\nZorunlu Çerezler:\n- cart_id (30 gün, httpOnly): Alışveriş sepetinin korunması.\n- alte_customer_session (7 gün, httpOnly): Müşteri hesap oturumu.\n- _order_confirmation (1 saat, httpOnly): Sipariş onay ekranının güvenliği.\n- alte_cookie_consent (180 gün): Çerez tercihlerinizin hatırlanması.\n\nİsteğe Bağlı Çerez Kategorileri (Açık Rızaya Tabi):\n- İşlevsel / Üçüncü Parti: İletişim sayfasındaki Google Haritası gibi gömülü içerikler.\n- Analitik: Ziyaret ve performans ölçümü.\n- Pazarlama: Kampanya ve reklam ölçümü.\n\nTercihlerinizi dilediğiniz zaman sayfa altındaki 'Çerez Tercihleri' bağlantısından değiştirebilirsiniz.\n\nDikkat: Bu sayfa şu anda taslak modundadır.",
+                maxWidth: "prose-lg",
+              },
+            },
+          ],
+        },
+      },
+    });
+    console.log("  + Legal Page 'cerez-politikasi' created as DRAFT.");
   }
 
   // Draft Test Page (Pure draft page for storefront 404 test)

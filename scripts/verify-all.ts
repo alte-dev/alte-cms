@@ -326,6 +326,7 @@ async function main() {
     { name: "verify:migration", script: "scripts/verify-migration.ts" },
     { name: "verify:journey", script: "scripts/verify-journey.ts" },
     { name: "verify:contact", script: "scripts/verify-contact.ts" },
+    { name: "verify:cookie-consent", script: "scripts/verify-cookie-consent.ts" },
     { name: "verify:quality", script: "scripts/verify-quality.ts" },
     { name: "verify-production-guard", script: "scripts/verify-production-guard.ts" },
     { name: "verify:security", script: "scripts/verify-security.ts" },

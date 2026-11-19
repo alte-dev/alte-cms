@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ContactFormClient } from "../../../components/contact/ContactFormClient";
+import { GoogleMapConsentFrame } from "../../../components/cookie-consent/GoogleMapConsentFrame";
 
 export interface ContactFormBlockProps {
   title?: string;
@@ -87,15 +88,7 @@ export function ContactFormBlockComponent({
         </div>
       )}
       {address && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <iframe
-            title="Mağaza Konumu"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`}
-            className="h-48 w-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
+        <GoogleMapConsentFrame title="Mağaza Konumu" mapLocation={address} heightClassName="h-48" />
       )}
     </section>
   ) : null;

@@ -758,6 +758,19 @@ export const site_settings = pgTable(
     ).default("bestsellers"),
     checkout_recommendedHandles: varchar("checkout_recommended_handles"),
     checkout_recommendedLimit: numeric("checkout_recommended_limit", { mode: "number" }).default(3),
+    cookieConsent_enabled: boolean("cookie_consent_enabled").default(true),
+    cookieConsent_policyVersion: numeric("cookie_consent_policy_version", {
+      mode: "number",
+    }).default(1),
+    cookieConsent_bannerTitle: varchar("cookie_consent_banner_title").default(
+      "Çerez Tercihleriniz",
+    ),
+    cookieConsent_bannerDescription: varchar("cookie_consent_banner_description").default(
+      "Sitemizin düzgün çalışması için zorunlu çerezler kullanıyoruz. İzninizle harita, analitik ve pazarlama çerezlerini de etkinleştirebilirsiniz.",
+    ),
+    cookieConsent_policyUrl: varchar("cookie_consent_policy_url").default(
+      "/sayfa/cerez-politikasi",
+    ),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
   },

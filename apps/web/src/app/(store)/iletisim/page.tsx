@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { getPublishedPageBySlug, getSiteSettings } from "@/lib/payload/content";
 import { ContactFormClient } from "@/components/contact/ContactFormClient";
+import { GoogleMapConsentFrame } from "@/components/cookie-consent/GoogleMapConsentFrame";
 import { RenderPuckContent } from "@/lib/puck/render";
 import { safeParsePuckData } from "@/lib/puck/schema";
 
@@ -150,15 +151,10 @@ export default async function IletisimPage() {
           </div>
 
           {showMap && mapLocation ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
-              <iframe
-                title={`${storeName} Konum Haritası`}
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(mapLocation)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                className="h-64 w-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
+            <GoogleMapConsentFrame
+              title={`${storeName} Konum Haritası`}
+              mapLocation={mapLocation}
+            />
           ) : null}
         </aside>
 
