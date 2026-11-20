@@ -55,6 +55,17 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const contentType = req.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      return NextResponse.json({ error: "Desteklenmeyen içerik türü." }, { status: 415 });
+    }
+    const originHeader = req.headers.get("origin");
+    if (originHeader) {
+      const { requireAccountOrigin } = await import("@/lib/security/origin-guard");
+      const originDenied = requireAccountOrigin(req);
+      if (originDenied) return originDenied;
+    }
+
     const body = await req.json();
     const { action } = body;
 

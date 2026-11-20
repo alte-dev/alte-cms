@@ -105,6 +105,67 @@ describe("account register & verify-email regression tests", () => {
     expect(deleteAuthIdentities).toHaveBeenCalledWith(["auth_1"]);
   });
 
+  it("SEC-005: deletes auth_identity if customerService.createCustomers fails (no orphaned identity)", async () => {
+    const deleteAuthIdentities = vi.fn().mockResolvedValue(undefined);
+    const deleteCustomers = vi.fn().mockResolvedValue(undefined);
+    const mockPg: any = vi.fn(() => {
+      const chain: any = {
+        whereRaw: () => chain,
+        andWhere: () => chain,
+        whereNull: () => chain,
+        first: vi.fn().mockResolvedValue(null),
+      };
+      return chain;
+    });
+
+    const req: any = {
+      headers: { "x-alte-client-ip": "198.51.100.11" },
+      url: "/store/account/register",
+      query: {},
+      protocol: "http",
+      body: {
+        email: `orphan-guard-${Date.now()}@example.test`,
+        password: "StrongPassword123!",
+        first_name: "Ali",
+        last_name: "Yilmaz",
+        kvkk_notice: true,
+        kvkk_version: "v1",
+        marketing_consent: false,
+        marketing_version: "v1",
+      },
+      scope: {
+        resolve: (key: string) => {
+          if (key === "__pg_connection__" || key === "pgConnection") return mockPg;
+          if (key === "event_bus") return { emit: vi.fn() };
+          if (key === "auth") {
+            return {
+              register: vi.fn().mockResolvedValue({
+                success: true,
+                authIdentity: { id: "auth_orphan_1", app_metadata: {} },
+              }),
+              updateAuthIdentities: vi.fn(),
+              deleteAuthIdentities,
+            };
+          }
+          if (key === "customer") {
+            return {
+              createCustomers: vi
+                .fn()
+                .mockRejectedValue(new Error("simulated createCustomers failure")),
+              deleteCustomers,
+            };
+          }
+          return null;
+        },
+      },
+    };
+
+    const res = makeMockRes();
+    await expect(registerPost(req, res)).rejects.toThrow(/simulated createCustomers failure/);
+    expect(deleteCustomers).not.toHaveBeenCalled();
+    expect(deleteAuthIdentities).toHaveBeenCalledWith(["auth_orphan_1"]);
+  });
+
   it("verify-email upserts missing customer_account_state row and marks verified", async () => {
     const rawCalls: Array<{ sql: string; bindings: any[] }> = [];
     const mockPg: any = vi.fn((table: string) => {

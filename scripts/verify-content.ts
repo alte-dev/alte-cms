@@ -457,7 +457,10 @@ async function run() {
       // Now publish via /api/puck/save endpoint as editor
       const saveRes = await fetch(`${STORE_URL}/api/puck/save`, {
         method: "POST",
-        headers: editorAuth.headers,
+        headers: {
+          ...editorAuth.headers,
+          Origin: STORE_URL,
+        },
         body: JSON.stringify({
           id: pageId,
           publish: true,

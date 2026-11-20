@@ -331,12 +331,25 @@ function parseTrustedProxyHops(): number {
 
 /**
  * Fail-closed client IP extraction for Medusa HTTP endpoints.
- * Ignores X-Forwarded-For / X-Real-IP unless TRUST_PROXY is explicitly enabled.
+ * Honors x-alte-client-ip ONLY when authenticated by a valid x-alte-internal secret.
+ * Otherwise ignores X-Forwarded-For unless TRUST_PROXY is explicitly enabled.
  */
 export function extractMedusaClientIp(req: {
   headers?: Record<string, unknown>;
   socket?: { remoteAddress?: string };
 }): string {
+  if (hasValidInternalSecret(req)) {
+    const rawInternalIp = req.headers?.["x-alte-client-ip"];
+    const candidate = Array.isArray(rawInternalIp)
+      ? rawInternalIp[0]
+      : typeof rawInternalIp === "string"
+        ? rawInternalIp.trim()
+        : "";
+    if (candidate && isIP(candidate) !== 0) {
+      return candidate;
+    }
+  }
+
   const trustProxy = process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1";
   if (trustProxy) {
     const rawXff = req.headers?.["x-forwarded-for"];

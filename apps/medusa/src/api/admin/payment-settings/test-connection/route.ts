@@ -100,6 +100,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       (process.env.NODE_ENV !== "production" ? process.env.PAYTR_API_BASE : undefined) ||
       "https://www.paytr.com";
 
+    const webBaseUrl = (process.env.WEB_PUBLIC_URL || "http://localhost:3100").replace(/\/+$/, "");
+
     const formBody = new URLSearchParams({
       merchant_id: settings.paytr_merchant_id,
       user_ip: testIp,
@@ -108,14 +110,14 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       payment_amount: String(testAmountKurus),
       paytr_token: token,
       user_basket: testBasket,
-      debug_on: "1",
+      debug_on: process.env.NODE_ENV === "production" ? "0" : "1",
       no_installment: "1",
       max_installment: "0",
       user_name: "Test Bağlantı",
       user_address: "Test Adres",
       user_phone: "05000000000",
-      merchant_ok_url: "http://localhost:3100/odeme/sonuc?durum=ok",
-      merchant_fail_url: "http://localhost:3100/odeme/sonuc?durum=hata",
+      merchant_ok_url: `${webBaseUrl}/odeme/sonuc?durum=ok`,
+      merchant_fail_url: `${webBaseUrl}/odeme/sonuc?durum=hata`,
       timeout_limit: "30",
       currency: "TL",
       test_mode: "1",

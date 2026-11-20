@@ -59,106 +59,143 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const pgConnection = getPgConnection(req);
   const tokenHash = hashToken(token);
   const now = new Date();
+  const lockKey = `pwreset:${tokenHash}`;
+  let advisoryLockAcquired = false;
+  let lockedConn: {
+    query: (sql: string, bindings?: unknown[]) => Promise<{ rows?: Array<{ locked?: boolean }> }>;
+  } | null = null;
 
-  // 1. Validate reset token without consuming it yet (password update is external to pgConnection.transaction)
-  const pendingToken = await pgConnection("customer_password_reset")
-    .where({ token_hash: tokenHash })
-    .whereNull("used_at")
-    .whereNull("deleted_at")
-    .andWhere("expires_at", ">", now)
-    .select("customer_id")
-    .first();
-
-  if (!pendingToken?.customer_id) {
-    return res.status(400).json(UNIFORM_TOKEN_ERROR);
-  }
-
-  const customerId = pendingToken.customer_id;
-  const customer = await pgConnection("customer")
-    .where({ id: customerId, has_account: true })
-    .whereNull("deleted_at")
-    .select("id", "email", "metadata")
-    .first();
-
-  if (!customer?.email || normalizeEmail(customer.email) !== emailFromToken) {
-    return res.status(400).json(UNIFORM_TOKEN_ERROR);
-  }
-
-  // 2. Update password BEFORE consuming token so a failed password update never burns the token
-  const authService = req.scope.resolve(Modules.AUTH);
-  const email = normalizeEmail(customer.email);
-  const existingProvider = await pgConnection("provider_identity")
-    .where({ entity_id: email, provider: "emailpass" })
-    .first();
-
-  if (existingProvider) {
-    const updateRes = await authService.updateProvider("emailpass", {
-      entity_id: email,
-      password,
-    });
-    if (!updateRes.success) {
-      return res.status(400).json({ error: "Parola güncellenemedi." });
+  if (
+    typeof pgConnection.client?.acquireConnection === "function" &&
+    typeof pgConnection.client?.releaseConnection === "function"
+  ) {
+    lockedConn = await pgConnection.client.acquireConnection();
+    try {
+      const lockRes = await lockedConn!.query(
+        `SELECT pg_try_advisory_lock(hashtext($1)) AS locked`,
+        [lockKey],
+      );
+      advisoryLockAcquired = Boolean(lockRes?.rows?.[0]?.locked);
+    } catch (lockErr) {
+      await Promise.resolve(pgConnection.client.releaseConnection(lockedConn)).catch(() => {});
+      lockedConn = null;
+      throw lockErr;
     }
-  } else {
-    const reg = await authService.register("emailpass", {
-      url: req.url,
-      headers: req.headers as Record<string, string>,
-      query: req.query as Record<string, string>,
-      body: { email, password },
-      protocol: req.protocol,
-    });
-    if (!reg.success || !reg.authIdentity) {
-      return res.status(400).json({ error: "Parola güncellenemedi." });
-    }
-    await authService.updateAuthIdentities({
-      id: reg.authIdentity.id,
-      app_metadata: {
-        ...(reg.authIdentity.app_metadata ?? {}),
-        customer_id: customerId,
-      },
-    });
   }
 
-  // 3. Atomically consume token, clear legacy credentials, and revoke all active sessions
-  const tokenConsumed = await pgConnection.transaction(async (trx: any) => {
-    const consumedRows = await trx("customer_password_reset")
+  try {
+    if (lockedConn && !advisoryLockAcquired) {
+      return res.status(400).json(UNIFORM_TOKEN_ERROR);
+    }
+    // 1. Validate reset token under advisory lock (serializes concurrent requests for same token)
+    const pendingToken = await pgConnection("customer_password_reset")
       .where({ token_hash: tokenHash })
       .whereNull("used_at")
       .whereNull("deleted_at")
       .andWhere("expires_at", ">", now)
-      .update({ used_at: now, updated_at: now })
-      .returning(["customer_id"]);
+      .select("customer_id")
+      .first();
 
-    if (!consumedRows?.[0]?.customer_id) {
-      return false;
+    if (!pendingToken?.customer_id) {
+      return res.status(400).json(UNIFORM_TOKEN_ERROR);
     }
 
-    await trx("customer_legacy_credential").where({ customer_id: customerId }).del();
-    if (
-      customer.metadata &&
-      (customer.metadata as Record<string, unknown>).needs_password_upgrade
-    ) {
-      await trx("customer")
-        .where({ id: customerId })
-        .update({
-          metadata: JSON.stringify(clearNeedsPasswordUpgradeMetadata(customer.metadata)),
-          updated_at: now,
-        });
-    }
-    await trx("customer_password_reset")
-      .where({ customer_id: customerId })
-      .whereNull("used_at")
-      .update({ used_at: now, updated_at: now });
-    await revokeAllCustomerSessions(trx, customerId);
-    return true;
-  });
+    const customerId = pendingToken.customer_id;
+    const customer = await pgConnection("customer")
+      .where({ id: customerId, has_account: true })
+      .whereNull("deleted_at")
+      .select("id", "email", "metadata")
+      .first();
 
-  if (!tokenConsumed) {
-    return res.status(400).json(UNIFORM_TOKEN_ERROR);
+    if (!customer?.email || normalizeEmail(customer.email) !== emailFromToken) {
+      return res.status(400).json(UNIFORM_TOKEN_ERROR);
+    }
+
+    // 2. Update password BEFORE consuming token so a failed password update never burns the token
+    const authService = req.scope.resolve(Modules.AUTH);
+    const email = normalizeEmail(customer.email);
+    const existingProvider = await pgConnection("provider_identity")
+      .where({ entity_id: email, provider: "emailpass" })
+      .first();
+
+    if (existingProvider) {
+      const updateRes = await authService.updateProvider("emailpass", {
+        entity_id: email,
+        password,
+      });
+      if (!updateRes.success) {
+        return res.status(400).json({ error: "Parola güncellenemedi." });
+      }
+    } else {
+      const reg = await authService.register("emailpass", {
+        url: req.url,
+        headers: req.headers as Record<string, string>,
+        query: req.query as Record<string, string>,
+        body: { email, password },
+        protocol: req.protocol,
+      });
+      if (!reg.success || !reg.authIdentity) {
+        return res.status(400).json({ error: "Parola güncellenemedi." });
+      }
+      await authService.updateAuthIdentities({
+        id: reg.authIdentity.id,
+        app_metadata: {
+          ...(reg.authIdentity.app_metadata ?? {}),
+          customer_id: customerId,
+        },
+      });
+    }
+
+    // 3. Atomically consume token, clear legacy credentials, upgrade flag, and revoke all active sessions
+    const tokenConsumed = await pgConnection.transaction(async (trx: any) => {
+      const consumedRows = await trx("customer_password_reset")
+        .where({ token_hash: tokenHash })
+        .whereNull("used_at")
+        .whereNull("deleted_at")
+        .andWhere("expires_at", ">", now)
+        .update({ used_at: now, updated_at: now })
+        .returning(["customer_id"]);
+
+      if (!consumedRows?.[0]?.customer_id) {
+        return false;
+      }
+
+      await trx("customer_legacy_credential").where({ customer_id: customerId }).del();
+      if (
+        customer.metadata &&
+        (customer.metadata as Record<string, unknown>).needs_password_upgrade
+      ) {
+        await trx("customer")
+          .where({ id: customerId })
+          .update({
+            metadata: JSON.stringify(clearNeedsPasswordUpgradeMetadata(customer.metadata)),
+            updated_at: now,
+          });
+      }
+      await trx("customer_password_reset")
+        .where({ customer_id: customerId })
+        .whereNull("used_at")
+        .update({ used_at: now, updated_at: now });
+      await revokeAllCustomerSessions(trx, customerId);
+      return true;
+    });
+
+    if (!tokenConsumed) {
+      return res.status(400).json(UNIFORM_TOKEN_ERROR);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: "Parolanız güncellendi. Yeni parolanızla giriş yapabilirsiniz.",
+    });
+  } finally {
+    if (lockedConn) {
+      if (advisoryLockAcquired) {
+        await lockedConn
+          .query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockKey])
+          .catch(() => {});
+      }
+      await Promise.resolve(pgConnection.client.releaseConnection(lockedConn)).catch(() => {});
+    }
   }
-
-  return res.status(200).json({
-    ok: true,
-    message: "Parolanız güncellendi. Yeni parolanızla giriş yapabilirsiniz.",
-  });
 };

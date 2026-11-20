@@ -242,7 +242,8 @@ export const COMPONENT_PROP_SCHEMAS: Record<AllowedPuckComponent, z.ZodTypeAny> 
   LatestPosts: LatestPostsPropsSchema,
 };
 
-const LINK_KEY_PATTERN = /(?:href|url|src|action)$|^link$/i;
+const LINK_KEY_PATTERN = /(?:href|url|src|action|image)$|^link$/i;
+const UNSAFE_CSS_URL_CHARS = /[()"'\\\r\n]/;
 
 /**
  * Recursively scans all nested objects and arrays for link-like keys and unsafe protocols.
@@ -259,7 +260,7 @@ export function recursivelyScanForUnsafeHrefs(
     if (trimmed.length > 0) {
       const isLinkKey = LINK_KEY_PATTERN.test(path);
       if (isLinkKey) {
-        if (!isSafeHref(trimmed)) {
+        if (!isSafeHref(trimmed) || (/image$/i.test(path) && UNSAFE_CSS_URL_CHARS.test(trimmed))) {
           violations.push(
             `Güvenli olmayan bağlantı tespit edildi (${path}: '${trimmed}'). Sadece '/' veya 'https://' kabul edilir.`,
           );
@@ -289,7 +290,7 @@ export function recursivelyScanForUnsafeHrefs(
     for (const [key, val] of Object.entries(value)) {
       const childPath = path ? `${path}.${key}` : key;
       if (LINK_KEY_PATTERN.test(key) && typeof val === "string" && val.trim().length > 0) {
-        if (!isSafeHref(val)) {
+        if (!isSafeHref(val) || (/image$/i.test(key) && UNSAFE_CSS_URL_CHARS.test(val))) {
           violations.push(
             `Güvenli olmayan bağlantı tespit edildi (${childPath}: '${val}'). Sadece '/' veya 'https://' kabul edilir.`,
           );

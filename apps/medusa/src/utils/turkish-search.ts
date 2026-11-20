@@ -125,14 +125,30 @@ interface RateLimitRecord {
 const rateLimitMap = new Map<string, RateLimitRecord>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 60 seconds
 const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per window
+const MAX_RATE_LIMIT_ENTRIES = 10_000;
 
 /**
  * Checks whether an IP has exceeded rate limit.
- * Returns true if allowed, false if limit exceeded.
+ * Bounded to MAX_RATE_LIMIT_ENTRIES with expired-entry pruning to prevent OOM.
  */
 export function checkSearchRateLimit(ip: string): { allowed: boolean; remaining: number } {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW_MS;
+
+  if (rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES && !rateLimitMap.has(ip)) {
+    for (const [k, rec] of rateLimitMap) {
+      const active = rec.timestamps.filter((ts) => ts > windowStart);
+      if (active.length === 0) {
+        rateLimitMap.delete(k);
+      }
+    }
+    if (rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES) {
+      const oldestKey = rateLimitMap.keys().next().value;
+      if (oldestKey !== undefined) {
+        rateLimitMap.delete(oldestKey);
+      }
+    }
+  }
 
   let record = rateLimitMap.get(ip);
   if (!record) {

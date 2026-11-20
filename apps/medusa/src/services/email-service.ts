@@ -1,6 +1,12 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { decryptSetting, encryptSetting, maskSecret, parseEncryptionKey } from "../utils/crypto";
-import { escapeHtml, isValidEmail, maskEmail, sanitizeHeader } from "../utils/email-sanitizer";
+import {
+  escapeHtml,
+  isValidEmail,
+  maskEmail,
+  resolveAndValidateSmtpHost,
+  sanitizeHeader,
+} from "../utils/email-sanitizer";
 
 export const SINGLETON_EMAIL_SETTING_ID = "es_default";
 
@@ -208,6 +214,12 @@ export async function createTransporter(pgConnection: any): Promise<{
     return { transporter: null, settings };
   }
 
+  const hostCheck = await resolveAndValidateSmtpHost(settings.host);
+  if (!hostCheck.valid) {
+    console.error(`[Email Service] Güvensiz SMTP sunucu adresi reddedildi: ${hostCheck.error}`);
+    return { transporter: null, settings };
+  }
+
   let decryptedPassword = "";
   if (settings.password) {
     try {
@@ -236,18 +248,39 @@ export async function createTransporter(pgConnection: any): Promise<{
   return { transporter, settings };
 }
 
-const inMemoryOrderPayloads = new Map<string, OrderEmailPayload>();
+const MAX_IN_MEMORY_PAYLOADS = 200;
+const IN_MEMORY_PAYLOAD_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const inMemoryOrderPayloads = new Map<string, { payload: OrderEmailPayload; expiresAt: number }>();
 
 export function cacheOrderPayloadForRetry(orderId: string, payload: OrderEmailPayload) {
-  inMemoryOrderPayloads.set(orderId, payload);
+  const now = Date.now();
+  for (const [k, v] of inMemoryOrderPayloads) {
+    if (v.expiresAt <= now) {
+      inMemoryOrderPayloads.delete(k);
+    }
+  }
+  if (inMemoryOrderPayloads.size >= MAX_IN_MEMORY_PAYLOADS && !inMemoryOrderPayloads.has(orderId)) {
+    const oldestKey = inMemoryOrderPayloads.keys().next().value;
+    if (oldestKey !== undefined) {
+      inMemoryOrderPayloads.delete(oldestKey);
+    }
+  }
+  inMemoryOrderPayloads.set(orderId, {
+    payload,
+    expiresAt: now + IN_MEMORY_PAYLOAD_TTL_MS,
+  });
 }
 
 export async function getOrderPayloadById(
   pgConnection: any,
   orderId: string,
 ): Promise<OrderEmailPayload | null> {
-  if (inMemoryOrderPayloads.has(orderId)) {
-    return inMemoryOrderPayloads.get(orderId)!;
+  const cached = inMemoryOrderPayloads.get(orderId);
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return cached.payload;
+    }
+    inMemoryOrderPayloads.delete(orderId);
   }
 
   if (!pgConnection) return null;
@@ -588,14 +621,15 @@ export async function sendEmailNotification(
           status: "skipped",
           error_code: "SMTP_DISABLED",
           attempts: 0,
-          payload_json: JSON.stringify(payload),
           created_at: new Date(),
           updated_at: new Date(),
         })
         .onConflict("idempotency_key")
         .merge();
-    } catch {
-      // ignore log error
+    } catch (logErr: any) {
+      console.warn(
+        `[Email Service] skipped email_log kaydı yazılamadı: ${logErr?.message || String(logErr)}`,
+      );
     }
     return { success: false, logId, status: "skipped" };
   }

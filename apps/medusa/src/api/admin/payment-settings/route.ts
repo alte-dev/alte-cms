@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { z } from "zod";
 import PaymentSettingsService from "../../../modules/payment-settings/service";
 import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
+import { resolveAdminActorId } from "../../../utils/order-metadata-tx";
 
 export async function ensureEnabledProvidersLinkedToRegions(
   scope: MedusaRequest["scope"],
@@ -113,7 +114,7 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
 
   try {
     const service = req.scope.resolve<PaymentSettingsService>("paymentSettingsModuleService");
-    const adminUser = (req as any).user?.email || (req as any).user?.id || "admin";
+    const adminUser = resolveAdminActorId(req);
 
     const updatedSettings = await service.updateSafeSettings(parseResult.data, adminUser);
     await ensureEnabledProvidersLinkedToRegions(req.scope, updatedSettings);

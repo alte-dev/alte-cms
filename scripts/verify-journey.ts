@@ -845,15 +845,13 @@ async function main() {
       });
       await trackPage.fill("#no, input[name='no']", String(customerOrderDisplayId));
       await trackPage.fill("#email, input[name='email']", emailA);
-      await Promise.all([
-        trackPage.waitForURL((u) => u.pathname === "/siparis-takip" && u.searchParams.has("no"), {
-          timeout: 15000,
-        }),
-        trackPage.locator("main form button[type='submit']").click(),
-      ]);
-      await trackPage.waitForLoadState("networkidle");
+      await trackPage.locator("main form button[type='submit']").click();
+      await trackPage
+        .locator("[data-testid='order-tracking-result']")
+        .waitFor({ state: "visible", timeout: 15000 });
       const trackHtml = await trackPage.content();
-      const trackWorked = trackHtml.indexOf("https://") !== -1;
+      const noEmailInUrl = trackPage.url().indexOf("email=") === -1;
+      const trackWorked = trackHtml.indexOf("https://") !== -1 && noEmailInUrl;
       await trackPage.close();
 
       const codRes = await fetch(

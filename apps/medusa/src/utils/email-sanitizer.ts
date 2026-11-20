@@ -2,6 +2,7 @@
  * Email sanitization and security utilities.
  * Handles HTML escaping, header injection protection, and email masking.
  */
+import dns from "node:dns/promises";
 import net from "net";
 
 /**
@@ -127,4 +128,49 @@ export function validateSmtpHost(
     };
   }
   return { valid: true };
+}
+
+export type DnsLookupFn = (
+  hostname: string,
+) => Promise<Array<{ address: string; family?: number }>>;
+
+/**
+ * SEC-009: Validates SMTP host both syntactically and after DNS resolution
+ * to prevent DNS rebinding / hostname-based SSRF to cloud metadata IP ranges.
+ */
+export async function resolveAndValidateSmtpHost(
+  host: string,
+  nodeEnv: string = process.env.NODE_ENV || "development",
+  lookupFn: DnsLookupFn = (h) => dns.lookup(h, { all: true }),
+): Promise<{ valid: boolean; error?: string }> {
+  const basic = validateSmtpHost(host, nodeEnv);
+  if (!basic.valid) return basic;
+
+  if (nodeEnv !== "production") {
+    return { valid: true };
+  }
+
+  let normalized = host.trim().toLowerCase();
+  if (normalized.startsWith("[") && normalized.endsWith("]")) {
+    normalized = normalized.slice(1, -1);
+  }
+  if (net.isIP(normalized) !== 0) {
+    return { valid: true };
+  }
+
+  try {
+    const records = await lookupFn(normalized);
+    for (const rec of records) {
+      if (isBlockedSmtpMetadataHost(rec.address)) {
+        return {
+          valid: false,
+          error: "SMTP alan adı yasaklı link-local veya bulut metadata IP adresine çözümleniyor.",
+        };
+      }
+    }
+    return { valid: true };
+  } catch {
+    // Allow connection attempt to surface normal DNS error if hostname cannot be resolved yet
+    return { valid: true };
+  }
 }

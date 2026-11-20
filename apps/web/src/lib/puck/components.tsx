@@ -40,20 +40,22 @@ export function HeroComponent({
     right: "text-right items-end ml-auto",
   }[align];
 
+  const safeBgImage = bgImage && !/[()"'\\\r\n]/.test(bgImage) ? safeHref(bgImage, "") : "";
+
   return (
     <section
       className={`relative py-16 md:py-24 px-4 sm:px-6 lg:px-8 ${bgClasses} overflow-hidden`}
       style={
-        bgImage
+        safeBgImage
           ? {
-              backgroundImage: `url(${bgImage})`,
+              backgroundImage: `url("${safeBgImage}")`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }
           : undefined
       }
     >
-      {bgImage && <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />}
+      {safeBgImage && <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />}
       <div className={`relative max-w-4xl flex flex-col ${alignClasses}`}>
         {title && (
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
@@ -135,12 +137,15 @@ export function ImageBlockComponent({
     right: "ml-auto",
   }[align];
 
-  const isExternal = src.startsWith("http://") || src.startsWith("https://");
+  const safeSrc = safeHref(src, "");
+  if (!safeSrc) return null;
+
+  const isExternal = safeSrc.startsWith("https://");
 
   const content = (
     <figure className={`max-w-4xl px-4 py-6 ${alignClass}`}>
       <Image
-        src={src}
+        src={safeSrc}
         alt={alt || "Görsel"}
         width={1200}
         height={675}

@@ -43,6 +43,7 @@ interface RateLimitEntry {
 
 const CONTACT_WINDOW_MS = 15 * 60 * 1000;
 const CONTACT_MAX_REQUESTS = 5;
+const MAX_CONTACT_RATE_LIMIT_ENTRIES = 10_000;
 const contactRateLimitStore = new Map<string, RateLimitEntry>();
 
 export function checkContactRateLimit(
@@ -51,6 +52,23 @@ export function checkContactRateLimit(
   maxRequests = CONTACT_MAX_REQUESTS,
   windowMs = CONTACT_WINDOW_MS,
 ): { allowed: boolean; retryAfterSec?: number } {
+  if (
+    contactRateLimitStore.size >= MAX_CONTACT_RATE_LIMIT_ENTRIES &&
+    !contactRateLimitStore.has(key)
+  ) {
+    for (const [k, entry] of contactRateLimitStore) {
+      if (now >= entry.resetAt) {
+        contactRateLimitStore.delete(k);
+      }
+    }
+    if (contactRateLimitStore.size >= MAX_CONTACT_RATE_LIMIT_ENTRIES) {
+      const oldestKey = contactRateLimitStore.keys().next().value;
+      if (oldestKey !== undefined) {
+        contactRateLimitStore.delete(oldestKey);
+      }
+    }
+  }
+
   const existing = contactRateLimitStore.get(key);
   if (!existing || now >= existing.resetAt) {
     contactRateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
