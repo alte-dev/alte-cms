@@ -1631,8 +1631,8 @@ export function CheckoutForm({
               const totalSavings = calculateCartTotalSavings(cart.items || [], discountTotal);
               if (totalSavings <= 0) return null;
               return (
-                <p className="text-[12px] font-semibold text-stone-900 pt-0.5 flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-stone-700" />
+                <p className="text-[12px] font-semibold text-emerald-700 pt-0.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
                   <span>TOPLAM TASARRUF {formatTRY(totalSavings)}</span>
                 </p>
               );
