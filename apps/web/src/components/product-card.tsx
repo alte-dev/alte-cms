@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { formatTRY } from "../lib/medusa/format";
+import { resolveProductCardImage } from "../lib/medusa/product-images";
 import { StoreProduct } from "../lib/medusa/types";
 import { PlaceholderImage } from "./placeholder-image";
 
@@ -11,6 +12,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const primaryVariant = product.variants?.[0];
   const calculatedPrice = primaryVariant?.calculated_price;
+  const imageUrl = resolveProductCardImage(product);
 
   const currentPrice =
     calculatedPrice?.calculated_amount ?? primaryVariant?.prices?.[0]?.amount ?? 0;
@@ -22,10 +24,20 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Thumbnail Area */}
       <div className="aspect-square bg-stone-100 relative overflow-hidden">
         <Link href={`/urun/${product.handle}`} className="block w-full h-full">
-          <PlaceholderImage
-            title={product.title}
-            className="w-full h-full group-hover:scale-105 transition duration-300"
-          />
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={product.title}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+            />
+          ) : (
+            <PlaceholderImage
+              title={product.title}
+              className="w-full h-full group-hover:scale-105 transition duration-300"
+            />
+          )}
         </Link>
 
         {isDiscounted && (

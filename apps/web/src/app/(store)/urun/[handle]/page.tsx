@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductByHandle } from "@/lib/medusa/products";
+import { resolveProductGalleryImages } from "@/lib/medusa/product-images";
 import { isVariantOutOfStock } from "@/lib/medusa/variant-stock";
 import { AddToCartForm } from "@/components/add-to-cart-button";
-import { PlaceholderImage } from "@/components/placeholder-image";
+import { ProductImageGallery } from "@/components/product-image-gallery";
 import { getSiteSettings } from "@/lib/payload/content";
 import { generateJsonLdProduct, generateJsonLdBreadcrumbs } from "@/lib/seo/json-ld";
 
@@ -135,39 +136,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
       {/* Main Grid: Gallery & Info */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
         {/* Gallery / Image Area */}
-        <div className="space-y-4">
-          <div className="aspect-square bg-stone-100 rounded-2xl overflow-hidden border border-stone-200">
-            {product.thumbnail ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={product.thumbnail}
-                alt={product.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <PlaceholderImage title={product.title} className="w-full h-full" />
-            )}
-          </div>
-
-          {/* Secondary Images if available */}
-          {product.images && product.images.length > 1 && (
-            <div className="grid grid-cols-4 gap-4">
-              {product.images.slice(0, 4).map((img, i) => (
-                <div
-                  key={img.id || i}
-                  className="aspect-square bg-stone-100 rounded-lg overflow-hidden border border-stone-200"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.url}
-                    alt={`${product.title} - Görsel ${i + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductImageGallery title={product.title} images={resolveProductGalleryImages(product)} />
 
         {/* Product Details & Purchase Form */}
         <div className="space-y-6">
