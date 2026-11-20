@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { OrderEmailPayload, sendEmailNotification } from "../../../../../services/email-service";
 import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
+import { updateOrderAtomically } from "../../../../../utils/order-metadata-tx";
 import {
   buildTrackingUrl,
   SUPPORTED_CARRIERS,
@@ -71,24 +72,31 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       return res.status(404).json({ error: "Sipariş bulunamadı." });
     }
 
-    const currentMeta = order.metadata || {};
-    const updatedMeta = {
-      ...currentMeta,
-      carrier_id,
-      carrier_name: carrierName,
-      tracking_code,
-      tracking_url: trackingUrl,
-      shipped_at: new Date().toISOString(),
-      fulfillment_status: "shipped",
-    };
+    const txResult = await updateOrderAtomically(pgConnection, id, (lockedOrder) => {
+      if (lockedOrder.status === "canceled") {
+        return {
+          abort: {
+            statusCode: 400,
+            body: { error: "İptal edilmiş siparişe kargo bilgisi girilemez." },
+          },
+        };
+      }
+      return {
+        metadataPatch: {
+          carrier_id,
+          carrier_name: carrierName,
+          tracking_code,
+          tracking_url: trackingUrl,
+          shipped_at: new Date().toISOString(),
+          fulfillment_status: "shipped",
+        },
+        result: true,
+      };
+    });
 
-    // Update order metadata in database
-    await pgConnection("order")
-      .where({ id })
-      .update({
-        metadata: JSON.stringify(updatedMeta),
-        updated_at: new Date(),
-      });
+    if (!txResult.ok) {
+      return res.status(txResult.statusCode).json(txResult.body);
+    }
 
     // Send customer shipment notification (FAZ 6B)
     if (order.email) {

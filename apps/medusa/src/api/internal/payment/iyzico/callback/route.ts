@@ -432,20 +432,15 @@ export async function processIyzicoCallback(
 
       if (order?.id && deps.pgConnection) {
         try {
-          const orderRows = await deps
-            .pgConnection("order")
-            .where({ id: order.id })
-            .select("metadata");
-          const currentMeta = orderRows?.[0]?.metadata || {};
-          await deps
-            .pgConnection("order")
-            .where({ id: order.id })
-            .update({
-              metadata: JSON.stringify({
-                ...currentMeta,
-                payment_provider: "iyzico",
-              }),
-            });
+          if (typeof deps.pgConnection.raw === "function") {
+            await deps.pgConnection.raw(
+              `UPDATE "order"
+               SET metadata = COALESCE(metadata, '{}'::jsonb) || CAST(? AS jsonb),
+                   updated_at = NOW()
+               WHERE id = ?`,
+              [JSON.stringify({ payment_provider: "iyzico" }), order.id],
+            );
+          }
         } catch (metaErr: any) {
           console.debug("[iyzico Callback] order metadata update notice:", metaErr?.message);
         }

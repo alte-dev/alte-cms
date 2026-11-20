@@ -356,4 +356,38 @@ describe("Medusa Middleware Guards (Fail-Closed)", () => {
     expect(reqCustom.body.variants[0]).toEqual({ title: "12", options: { Beden: "12" } });
     expect(next2).toHaveBeenCalledOnce();
   });
+
+  it("extractMedusaClientIp honors x-alte-client-ip only with valid x-alte-internal secret", async () => {
+    const { extractMedusaClientIp } = await import("./middleware-guards");
+    const prevTrust = process.env.TRUST_PROXY;
+    process.env.TRUST_PROXY = "false";
+    try {
+      // Valid internal secret + valid IP -> returns forwarded client IP
+      expect(
+        extractMedusaClientIp({
+          headers: { "x-alte-internal": SECRET, "x-alte-client-ip": "203.0.113.77" },
+          socket: { remoteAddress: "127.0.0.1" },
+        }),
+      ).toBe("203.0.113.77");
+
+      // Missing/invalid internal secret -> ignores spoofed x-alte-client-ip
+      expect(
+        extractMedusaClientIp({
+          headers: { "x-alte-internal": "wrong", "x-alte-client-ip": "203.0.113.77" },
+          socket: { remoteAddress: "127.0.0.1" },
+        }),
+      ).toBe("127.0.0.1");
+
+      // Valid internal secret + invalid IP string -> falls back to socket address
+      expect(
+        extractMedusaClientIp({
+          headers: { "x-alte-internal": SECRET, "x-alte-client-ip": "not-an-ip" },
+          socket: { remoteAddress: "127.0.0.1" },
+        }),
+      ).toBe("127.0.0.1");
+    } finally {
+      if (prevTrust === undefined) delete process.env.TRUST_PROXY;
+      else process.env.TRUST_PROXY = prevTrust;
+    }
+  });
 });

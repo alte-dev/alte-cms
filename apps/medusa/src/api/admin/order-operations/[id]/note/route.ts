@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
+import { resolveAdminActorId, updateOrderAtomically } from "../../../../../utils/order-metadata-tx";
 
 const noteSchema = z.object({
   note: z.string().min(1, "Not boş olamaz.").max(500, "Not en fazla 500 karakter olabilir."),
@@ -18,29 +19,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 
   const { note } = parseResult.data;
-  const adminUser = (req as any).user?.email || (req as any).user?.id || "admin";
+  const adminUser = resolveAdminActorId(req);
 
   try {
-    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
     const pgConnection =
       req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
       req.scope.resolve("__pg_connection__");
-
-    const { data: orders } = await query.graph({
-      entity: "order",
-      fields: ["id", "metadata"],
-      filters: { id },
-    });
-
-    const order = orders?.[0];
-    if (!order) {
-      return res.status(404).json({ error: "Sipariş bulunamadı." });
-    }
-
-    const currentMeta = order.metadata || {};
-    const existingNotes: any[] = Array.isArray(currentMeta.admin_notes)
-      ? currentMeta.admin_notes
-      : [];
 
     const newNote = {
       id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -49,22 +33,27 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       created_at: new Date().toISOString(),
     };
 
-    const updatedNotes = [newNote, ...existingNotes].slice(0, 50); // keep last 50 notes
+    const txResult = await updateOrderAtomically(pgConnection, id, (lockedOrder) => {
+      const currentMeta = lockedOrder.metadata || {};
+      const existingNotes: unknown[] = Array.isArray(currentMeta.admin_notes)
+        ? currentMeta.admin_notes
+        : [];
+      const updatedNotes = [newNote, ...existingNotes].slice(0, 50); // keep last 50 notes
 
-    await pgConnection("order")
-      .where({ id })
-      .update({
-        metadata: JSON.stringify({
-          ...currentMeta,
-          admin_notes: updatedNotes,
-        }),
-        updated_at: new Date(),
-      });
+      return {
+        metadataPatch: { admin_notes: updatedNotes },
+        result: newNote,
+      };
+    });
+
+    if (!txResult.ok) {
+      return res.status(txResult.statusCode).json(txResult.body);
+    }
 
     return res.status(200).json({
       success: true,
       message: "Yönetici notu kaydedildi.",
-      note: newNote,
+      note: txResult.result,
     });
   } catch (err: any) {
     return res.status(500).json({

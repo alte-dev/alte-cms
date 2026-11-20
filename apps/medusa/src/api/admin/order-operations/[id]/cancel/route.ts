@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { OrderEmailPayload, sendEmailNotification } from "../../../../../services/email-service";
 import { checkAdminOrShopManagerRole } from "../../../../../utils/admin-role-guard";
+import { updateOrderAtomically } from "../../../../../utils/order-metadata-tx";
 
 const cancelSchema = z.object({
   reason: z.string().optional(),
@@ -44,56 +45,70 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       return res.status(404).json({ error: "Sipariş bulunamadı." });
     }
 
-    if (order.status === "canceled") {
-      return res.status(200).json({
-        success: true,
-        message: "Sipariş zaten iptal edilmiş durumdadır.",
-      });
-    }
-
-    const currentMeta = order.metadata || {};
-
-    // 1. Guard: If order is already shipped, reject cancellation
-    if (
-      currentMeta.tracking_code ||
-      currentMeta.fulfillment_status === "shipped" ||
-      order.status === "completed"
-    ) {
-      return res.status(400).json({
-        error: "Kargoya verilmiş siparişler iptal edilemez. Lütfen iade sürecini başlatınız.",
-      });
-    }
-
-    // 2. Check payment method: if paid by Card (PayTR or iyzico), mark as needs_manual_refund
     const payments = order.payment_collections?.flatMap((pc: any) => pc.payments || []) || [];
-    const isCardPayment =
-      currentMeta.payment_provider === "paytr" ||
-      currentMeta.payment_provider === "iyzico" ||
-      payments.some(
-        (p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"),
-      );
 
-    const needsManualRefund = isCardPayment && Number(order.total) > 0;
+    const txResult = await updateOrderAtomically(pgConnection, id, (lockedOrder) => {
+      if (lockedOrder.status === "canceled") {
+        return {
+          abort: {
+            statusCode: 200,
+            body: {
+              success: true,
+              message: "Sipariş zaten iptal edilmiş durumdadır.",
+            },
+          },
+        };
+      }
 
-    const updatedMeta = {
-      ...currentMeta,
-      canceled_at: new Date().toISOString(),
-      cancel_reason: cancelReason,
-      needs_manual_refund: needsManualRefund,
-      manual_refund_amount: needsManualRefund ? Number(order.total) : 0,
-      manual_refund_reason: needsManualRefund
-        ? `Sipariş iptali (#${order.display_id || order.id}): ${cancelReason}`
-        : undefined,
-    };
+      const currentMeta = lockedOrder.metadata || {};
 
-    // Update order status to canceled
-    await pgConnection("order")
-      .where({ id })
-      .update({
+      // 1. Guard: If order is already shipped, reject cancellation (checked inside FOR UPDATE lock)
+      if (
+        currentMeta.tracking_code ||
+        currentMeta.fulfillment_status === "shipped" ||
+        lockedOrder.status === "completed"
+      ) {
+        return {
+          abort: {
+            statusCode: 400,
+            body: {
+              error: "Kargoya verilmiş siparişler iptal edilemez. Lütfen iade sürecini başlatınız.",
+            },
+          },
+        };
+      }
+
+      // 2. Check payment method: if paid by Card (PayTR or iyzico), mark as needs_manual_refund
+      const isCardPayment =
+        currentMeta.payment_provider === "paytr" ||
+        currentMeta.payment_provider === "iyzico" ||
+        payments.some(
+          (p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"),
+        );
+
+      const needsManualRefund = isCardPayment && Number(order.total) > 0;
+      const patch: Record<string, unknown> = {
+        canceled_at: new Date().toISOString(),
+        cancel_reason: cancelReason,
+        needs_manual_refund: needsManualRefund,
+        manual_refund_amount: needsManualRefund ? Number(order.total) : 0,
+      };
+      if (needsManualRefund) {
+        patch.manual_refund_reason = `Sipariş iptali (#${order.display_id || order.id}): ${cancelReason}`;
+      }
+
+      return {
         status: "canceled",
-        metadata: JSON.stringify(updatedMeta),
-        updated_at: new Date(),
-      });
+        metadataPatch: patch,
+        result: { needsManualRefund },
+      };
+    });
+
+    if (!txResult.ok) {
+      return res.status(txResult.statusCode).json(txResult.body);
+    }
+
+    const { needsManualRefund } = txResult.result;
 
     // 3. Send order.canceled email notification to customer (FAZ 6B)
     if (order.email) {

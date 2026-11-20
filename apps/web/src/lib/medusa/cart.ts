@@ -571,15 +571,17 @@ export async function completeCart(
   }
 }
 
+const SAFE_ORDER_ID_REGEX = /^order_[A-Za-z0-9_-]{6,64}$/;
+
 /**
- * Retrieves an order by its UUID.
+ * Retrieves an order by its validated Medusa order ID.
  */
 export async function getOrder(orderId: string): Promise<StoreOrder | null> {
-  if (!orderId) return null;
+  if (!orderId || !SAFE_ORDER_ID_REGEX.test(orderId)) return null;
   try {
     const internalSecret = process.env.INTERNAL_API_SECRET || "";
     const data = await medusaFetch<StoreOrderResponse>(
-      `/store/orders/${orderId}?fields=${ORDER_FIELDS}`,
+      `/store/orders/${encodeURIComponent(orderId)}?fields=${ORDER_FIELDS}`,
       {
         cache: "no-store",
         headers: internalSecret ? { "x-alte-internal": internalSecret } : {},

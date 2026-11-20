@@ -5,10 +5,10 @@ import { getPayload } from "payload";
 import configPromise from "@payload-config";
 import { isStaffRole } from "@/access/content";
 import { RenderPuckContent } from "@/lib/puck/render";
+import { safeParsePuckData } from "@/lib/puck/schema";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ token?: string }>;
 }
 
 export const dynamic = "force-dynamic";
@@ -24,19 +24,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function PagePreview({ params, searchParams }: Props) {
+export default async function PagePreview({ params }: Props) {
   const { id } = await params;
-  const { token } = await searchParams;
 
   const payload = await getPayload({ config: configPromise });
   const reqHeaders = await headers();
   const { user } = await payload.auth({ headers: reqHeaders });
 
-  // Verification: Staff session OR preview token match
-  const isStaff = user && isStaffRole(user.role as string);
-  const isValidToken = token && token === process.env.PAYLOAD_SECRET;
+  // SEC-002: Strictly require authenticated staff session (never accept PAYLOAD_SECRET in URL query string)
+  const isStaff = Boolean(user && isStaffRole(user.role as string));
 
-  if (!isStaff && !isValidToken) {
+  if (!isStaff) {
     notFound();
   }
 
@@ -55,6 +53,8 @@ export default async function PagePreview({ params, searchParams }: Props) {
     notFound();
   }
 
+  const safePuckData = safeParsePuckData(pageDoc.puckData);
+
   return (
     <div className="w-full">
       {/* Draft Warning Banner */}
@@ -69,7 +69,7 @@ export default async function PagePreview({ params, searchParams }: Props) {
       </div>
 
       <div className="py-6">
-        <RenderPuckContent data={pageDoc.puckData} />
+        <RenderPuckContent data={safePuckData} />
       </div>
     </div>
   );
