@@ -12,37 +12,41 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
       req.scope.resolve("__pg_connection__");
 
-    const txResult = await updateOrderAtomically(pgConnection, id, (lockedOrder) => {
-      const currentMeta = lockedOrder.metadata || {};
+    const txResult = await updateOrderAtomically<{ cod_collected_at: string }>(
+      pgConnection,
+      id,
+      (lockedOrder) => {
+        const currentMeta = lockedOrder.metadata || {};
 
-      // Idempotency: if already marked collected, return success immediately
-      if (currentMeta.cod_collected === true) {
-        return {
-          abort: {
-            statusCode: 200,
-            body: {
-              success: true,
-              message:
-                "Kapıda ödeme zaten daha önce tahsil edildi olarak işaretlenmiş (İdempotent).",
-              cod_collected: true,
-              cod_collected_at: currentMeta.cod_collected_at,
+        // Idempotency: if already marked collected, return success immediately
+        if (currentMeta.cod_collected === true) {
+          return {
+            abort: {
+              statusCode: 200,
+              body: {
+                success: true,
+                message:
+                  "Kapıda ödeme zaten daha önce tahsil edildi olarak işaretlenmiş (İdempotent).",
+                cod_collected: true,
+                cod_collected_at: currentMeta.cod_collected_at,
+              },
             },
+          };
+        }
+
+        const collectedAt = new Date().toISOString();
+        return {
+          metadataPatch: {
+            cod_collected: true,
+            cod_collected_at: collectedAt,
+            payment_status: "captured",
           },
+          result: { cod_collected_at: collectedAt },
         };
-      }
+      },
+    );
 
-      const collectedAt = new Date().toISOString();
-      return {
-        metadataPatch: {
-          cod_collected: true,
-          cod_collected_at: collectedAt,
-          payment_status: "captured",
-        },
-        result: { cod_collected_at: collectedAt },
-      };
-    });
-
-    if (!txResult.ok) {
+    if (txResult.ok === false) {
       return res.status(txResult.statusCode).json(txResult.body);
     }
 

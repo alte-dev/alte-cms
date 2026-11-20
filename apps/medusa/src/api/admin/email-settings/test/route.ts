@@ -9,10 +9,10 @@ import {
 } from "../../../../utils/email-sanitizer";
 import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
 import { resolveAdminActorId } from "../../../../utils/order-metadata-tx";
-import { SlidingWindowRateLimiter } from "../../../../utils/rate-limiter";
+import { FixedWindowRateLimiter } from "../../../../utils/rate-limiter";
 
 // Bounded in-memory rate limiter for test email: max 3 per 5 minutes per admin
-const testEmailRateLimiter = new SlidingWindowRateLimiter({
+const testEmailRateLimiter = new FixedWindowRateLimiter({
   windowMs: 5 * 60 * 1000,
   maxRequests: 3,
   maxEntries: 1000,

@@ -47,64 +47,69 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
     const payments = order.payment_collections?.flatMap((pc: any) => pc.payments || []) || [];
 
-    const txResult = await updateOrderAtomically(pgConnection, id, (lockedOrder) => {
-      if (lockedOrder.status === "canceled") {
-        return {
-          abort: {
-            statusCode: 200,
-            body: {
-              success: true,
-              message: "Sipariş zaten iptal edilmiş durumdadır.",
+    const txResult = await updateOrderAtomically<{ needsManualRefund: boolean }>(
+      pgConnection,
+      id,
+      (lockedOrder) => {
+        if (lockedOrder.status === "canceled") {
+          return {
+            abort: {
+              statusCode: 200,
+              body: {
+                success: true,
+                message: "Sipariş zaten iptal edilmiş durumdadır.",
+              },
             },
-          },
-        };
-      }
+          };
+        }
 
-      const currentMeta = lockedOrder.metadata || {};
+        const currentMeta = lockedOrder.metadata || {};
 
-      // 1. Guard: If order is already shipped, reject cancellation (checked inside FOR UPDATE lock)
-      if (
-        currentMeta.tracking_code ||
-        currentMeta.fulfillment_status === "shipped" ||
-        lockedOrder.status === "completed"
-      ) {
-        return {
-          abort: {
-            statusCode: 400,
-            body: {
-              error: "Kargoya verilmiş siparişler iptal edilemez. Lütfen iade sürecini başlatınız.",
+        // 1. Guard: If order is already shipped, reject cancellation (checked inside FOR UPDATE lock)
+        if (
+          currentMeta.tracking_code ||
+          currentMeta.fulfillment_status === "shipped" ||
+          lockedOrder.status === "completed"
+        ) {
+          return {
+            abort: {
+              statusCode: 400,
+              body: {
+                error:
+                  "Kargoya verilmiş siparişler iptal edilemez. Lütfen iade sürecini başlatınız.",
+              },
             },
-          },
+          };
+        }
+
+        // 2. Check payment method: if paid by Card (PayTR or iyzico), mark as needs_manual_refund
+        const isCardPayment =
+          currentMeta.payment_provider === "paytr" ||
+          currentMeta.payment_provider === "iyzico" ||
+          payments.some(
+            (p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"),
+          );
+
+        const needsManualRefund = isCardPayment && Number(order.total) > 0;
+        const patch: Record<string, unknown> = {
+          canceled_at: new Date().toISOString(),
+          cancel_reason: cancelReason,
+          needs_manual_refund: needsManualRefund,
+          manual_refund_amount: needsManualRefund ? Number(order.total) : 0,
         };
-      }
+        if (needsManualRefund) {
+          patch.manual_refund_reason = `Sipariş iptali (#${order.display_id || order.id}): ${cancelReason}`;
+        }
 
-      // 2. Check payment method: if paid by Card (PayTR or iyzico), mark as needs_manual_refund
-      const isCardPayment =
-        currentMeta.payment_provider === "paytr" ||
-        currentMeta.payment_provider === "iyzico" ||
-        payments.some(
-          (p: any) => p.provider_id?.includes("paytr") || p.provider_id?.includes("iyzico"),
-        );
+        return {
+          status: "canceled",
+          metadataPatch: patch,
+          result: { needsManualRefund },
+        };
+      },
+    );
 
-      const needsManualRefund = isCardPayment && Number(order.total) > 0;
-      const patch: Record<string, unknown> = {
-        canceled_at: new Date().toISOString(),
-        cancel_reason: cancelReason,
-        needs_manual_refund: needsManualRefund,
-        manual_refund_amount: needsManualRefund ? Number(order.total) : 0,
-      };
-      if (needsManualRefund) {
-        patch.manual_refund_reason = `Sipariş iptali (#${order.display_id || order.id}): ${cancelReason}`;
-      }
-
-      return {
-        status: "canceled",
-        metadataPatch: patch,
-        result: { needsManualRefund },
-      };
-    });
-
-    if (!txResult.ok) {
+    if (txResult.ok === false) {
       return res.status(txResult.statusCode).json(txResult.body);
     }
 

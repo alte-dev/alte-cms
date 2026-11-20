@@ -5,8 +5,9 @@ export interface LockedOrderRow {
 }
 
 export type AtomicOrderMutationResult<T> =
-  | { abort: { statusCode: number; body: Record<string, unknown> } }
+  | { abort: { statusCode: number; body: Record<string, unknown> }; result?: never }
   | {
+      abort?: never;
       status?: string;
       metadataPatch: Record<string, unknown>;
       result: T;
@@ -52,7 +53,7 @@ export async function updateOrderAtomically<T>(
       metadata: parsedMeta,
     });
 
-    if ("abort" in outcome) {
+    if (outcome.abort) {
       return {
         ok: false as const,
         statusCode: outcome.abort.statusCode,

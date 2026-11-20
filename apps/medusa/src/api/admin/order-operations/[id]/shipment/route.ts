@@ -94,7 +94,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       };
     });
 
-    if (!txResult.ok) {
+    if (txResult.ok === false) {
       return res.status(txResult.statusCode).json(txResult.body);
     }
 
