@@ -850,7 +850,7 @@ async function main() {
         .locator("[data-testid='order-tracking-result']")
         .waitFor({ state: "visible", timeout: 15000 });
       const trackHtml = await trackPage.content();
-      const noEmailInUrl = !trackPage.url().includes("email=");
+      const noEmailInUrl = trackPage.url().indexOf("email=") === -1;
       const trackWorked = trackHtml.indexOf("https://") !== -1 && noEmailInUrl;
       await trackPage.close();
 
