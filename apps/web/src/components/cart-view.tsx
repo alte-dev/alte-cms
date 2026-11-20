@@ -10,6 +10,7 @@ import {
   updateCartItemAction,
 } from "../app/(store)/actions";
 import type { CartItemAvailabilityIssue } from "../lib/medusa/cart";
+import { calculateCartTotalSavings, resolveCartLinePricing } from "../lib/medusa/cart-pricing";
 import { formatTRY, FreeShippingProgress } from "../lib/medusa/format";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { StoreCart } from "../lib/medusa/types";
@@ -158,6 +159,7 @@ export function CartView({
   const { discountTotal, total } = totals;
   const shippingTotal = shippingProgress.isEligible ? 0 : (cart.shipping_total ?? 0);
   const promotions = cart.promotions || [];
+  const totalSavings = calculateCartTotalSavings(items, discountTotal);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -214,6 +216,7 @@ export function CartView({
             const thumbnail = resolveCartItemThumbnail(item);
             const productHref = resolveCartItemHref(item);
             const itemTitle = item.product_title || item.title;
+            const pricing = resolveCartLinePricing(item);
             const thumbVisual = thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -262,9 +265,25 @@ export function CartView({
                       {getAvailabilityIssueText(issueByLineItemId.get(item.id)!)}
                     </p>
                   )}
-                  <div className="text-sm font-semibold text-stone-900 mt-2">
-                    {formatTRY(item.unit_price)}
-                    <span className="text-[11px] font-normal text-stone-500 ml-1">KDV dahil</span>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {pricing.isDiscounted ? (
+                      <>
+                        <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 rounded leading-none">
+                          -%{pricing.discountPercent}
+                        </span>
+                        <span className="text-xs text-stone-400 line-through tabular-nums">
+                          {formatTRY(pricing.originalUnitPrice)}
+                        </span>
+                        <span className="text-sm font-semibold text-stone-900 tabular-nums">
+                          {formatTRY(pricing.currentUnitPrice)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-semibold text-stone-900 tabular-nums">
+                        {formatTRY(pricing.currentUnitPrice)}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-normal text-stone-500">KDV dahil</span>
                   </div>
                 </div>
 
@@ -300,14 +319,21 @@ export function CartView({
                 )}
 
                 {/* Line Total */}
-                <div className="text-right min-w-[5rem]">
-                  <span className="text-sm font-bold text-stone-900">
-                    {formatTRY(
-                      (item.unit_price ? item.unit_price * item.quantity : 0) ||
-                        item.total ||
-                        item.subtotal,
-                    )}
-                  </span>
+                <div className="text-right min-w-[5.5rem]">
+                  {pricing.isDiscounted ? (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-xs text-stone-400 line-through tabular-nums">
+                        {formatTRY(pricing.originalLineTotal)}
+                      </span>
+                      <span className="text-sm font-bold text-stone-900 tabular-nums">
+                        {formatTRY(pricing.currentLineTotal)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-bold text-stone-900 tabular-nums">
+                      {formatTRY(pricing.currentLineTotal)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Delete Button */}
@@ -420,6 +446,12 @@ export function CartView({
               </span>
             </div>
             <p className="text-[11px] text-stone-500 text-right">*Vergiler dahil</p>
+            {totalSavings > 0 && (
+              <p className="text-xs font-semibold text-emerald-700 flex items-center justify-end gap-1.5 pt-1">
+                <Tag className="w-3.5 h-3.5" />
+                <span>TOPLAM TASARRUF {formatTRY(totalSavings)}</span>
+              </p>
+            )}
           </div>
         </div>
 
