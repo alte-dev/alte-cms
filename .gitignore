@@ -27,6 +27,7 @@ out/
 build/
 dist/
 apps/medusa/public/
+apps/medusa/static/
 
 # Payload CMS & Media Uploads
 media/uploads/
