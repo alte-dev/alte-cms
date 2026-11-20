@@ -223,7 +223,11 @@ describe("Admin Cache API (/api/admin/cache)", () => {
       mockAuth.mockResolvedValueOnce({ user: { id: "u1", role, email: "staff@example.test" } });
       const req = new NextRequest("http://localhost:3100/api/admin/cache", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:3100",
+          Host: "localhost:3100",
+        },
         body: JSON.stringify({ action: "purge" }),
       });
       const res = await POST(req);
@@ -237,7 +241,11 @@ describe("Admin Cache API (/api/admin/cache)", () => {
     });
     const req = new NextRequest("http://localhost:3100/api/admin/cache", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3100",
+        Host: "localhost:3100",
+      },
       body: JSON.stringify({ action: "invalid" }),
     });
     const res = await POST(req);
@@ -250,7 +258,11 @@ describe("Admin Cache API (/api/admin/cache)", () => {
     });
     const req = new NextRequest("http://localhost:3100/api/admin/cache", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3100",
+        Host: "localhost:3100",
+      },
       body: JSON.stringify({ action: "purge" }),
     });
     const res = await POST(req);
@@ -262,8 +274,8 @@ describe("Admin Cache API (/api/admin/cache)", () => {
     expect(revalidateTag).toHaveBeenCalled();
   });
 
-  it("rejects cross-origin POST requests with 403 (CSRF protection)", async () => {
-    mockAuth.mockResolvedValueOnce({
+  it("rejects cross-origin and missing-origin POST requests with 403 (CSRF protection)", async () => {
+    mockAuth.mockResolvedValue({
       user: { id: "u1", role: "admin", email: "admin@example.test" },
     });
     const req = new NextRequest("http://localhost:3100/api/admin/cache", {
@@ -277,6 +289,16 @@ describe("Admin Cache API (/api/admin/cache)", () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(403);
+
+    const missingOriginReq = new NextRequest("http://localhost:3100/api/admin/cache", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Host: "localhost:3100",
+      },
+      body: JSON.stringify({ action: "purge" }),
+    });
+    expect((await POST(missingOriginReq)).status).toBe(403);
   });
 
   it("starts warm asynchronously with 202 Accepted and returns 409 on concurrent warm", async () => {
@@ -298,7 +320,11 @@ describe("Admin Cache API (/api/admin/cache)", () => {
 
     const req1 = new NextRequest("http://localhost:3100/api/admin/cache", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3100",
+        Host: "localhost:3100",
+      },
       body: JSON.stringify({ action: "warm" }),
     });
     const res1 = await POST(req1);
@@ -309,7 +335,11 @@ describe("Admin Cache API (/api/admin/cache)", () => {
 
     const req2 = new NextRequest("http://localhost:3100/api/admin/cache", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3100",
+        Host: "localhost:3100",
+      },
       body: JSON.stringify({ action: "warm" }),
     });
     const res2 = await POST(req2);

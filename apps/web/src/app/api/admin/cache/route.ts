@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import configPromise from "@payload-config";
 import { z } from "zod";
 import { canSwitchToMedusa } from "../../../../lib/auth/admin-sso";
+import { requireAccountOrigin } from "../../../../lib/security/origin-guard";
 import {
   getLastWarmSummary,
   isWarmRunning,
@@ -18,18 +19,6 @@ const NO_STORE_HEADERS = {
 const cacheActionSchema = z.object({
   action: z.enum(["purge", "warm"]),
 });
-
-function isSameOriginPost(req: NextRequest): boolean {
-  const origin = req.headers.get("origin");
-  if (!origin) return true;
-  const host = (req.headers.get("x-forwarded-host") || req.headers.get("host") || "").toLowerCase();
-  if (!host) return false;
-  try {
-    return new URL(origin).host.toLowerCase() === host;
-  } catch {
-    return false;
-  }
-}
 
 async function authenticateAdmin(req: NextRequest) {
   const payload = await getPayload({ config: configPromise });
@@ -73,7 +62,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isSameOriginPost(req)) {
+  const originError = requireAccountOrigin(req);
+  if (originError) {
     return NextResponse.json(
       { error: "Geçersiz istek kaynağı." },
       { status: 403, headers: NO_STORE_HEADERS },

@@ -164,11 +164,11 @@ export class PaytrPaymentService extends AbstractPaymentProvider {
       throw new Error("Ödeme tutarı sıfırdan büyük olmalıdır.");
     }
 
-    // Determine customer IP safely
+    // SEC-012: Determine customer IP safely (never trust raw unvalidated x-forwarded-for split[0])
     let userIp =
-      (context as any)?.ip ||
-      (context as any)?.headers?.["x-forwarded-for"]?.split(",")[0]?.trim() ||
-      "127.0.0.1";
+      typeof (context as any)?.ip === "string" && (context as any).ip.trim()
+        ? (context as any).ip.trim()
+        : "127.0.0.1";
 
     if (process.env.NODE_ENV !== "production" && process.env.DEV_PAYTR_USER_IP) {
       userIp = process.env.DEV_PAYTR_USER_IP;

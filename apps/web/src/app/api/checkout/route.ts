@@ -47,6 +47,19 @@ const checkoutIpLimiter = new FixedWindowRateLimiter({
 export async function POST(req: Request) {
   let lockedCartId: string | null = null;
   try {
+    const contentType = req.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      return NextResponse.json(
+        { success: false, error: "Desteklenmeyen içerik türü." },
+        { status: 415 },
+      );
+    }
+    if (req.headers.get("origin")) {
+      const { requireAccountOrigin } = await import("../../../lib/security/origin-guard");
+      const originDenied = requireAccountOrigin(req);
+      if (originDenied) return originDenied;
+    }
+
     const clientIp = extractClientIp(req);
     const rl = checkoutIpLimiter.consume(`checkout:${clientIp}`);
     if (!rl.allowed) {

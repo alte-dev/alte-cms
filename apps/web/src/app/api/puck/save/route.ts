@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import configPromise from "@payload-config";
 import { isStaffRole } from "@/access/content";
 import { validatePuckData } from "@/lib/puck/schema";
+import { requireAccountOrigin } from "@/lib/security/origin-guard";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +15,11 @@ export async function POST(req: NextRequest) {
         { error: "Bu işlem için yetkiniz bulunmamaktadır." },
         { status: 403 },
       );
+    }
+
+    const originError = requireAccountOrigin(req);
+    if (originError) {
+      return originError;
     }
 
     const body = await req.json();
