@@ -250,10 +250,7 @@ export async function createTransporter(pgConnection: any): Promise<{
 
 const MAX_IN_MEMORY_PAYLOADS = 200;
 const IN_MEMORY_PAYLOAD_TTL_MS = 15 * 60 * 1000; // 15 minutes
-const inMemoryOrderPayloads = new Map<
-  string,
-  { payload: OrderEmailPayload; expiresAt: number }
->();
+const inMemoryOrderPayloads = new Map<string, { payload: OrderEmailPayload; expiresAt: number }>();
 
 export function cacheOrderPayloadForRetry(orderId: string, payload: OrderEmailPayload) {
   const now = Date.now();

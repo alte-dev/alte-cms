@@ -22,8 +22,7 @@ export async function updateOrderAtomically<T>(
   orderId: string,
   mutate: (row: LockedOrderRow) => AtomicOrderMutationResult<T>,
 ): Promise<
-  | { ok: false; statusCode: number; body: Record<string, unknown> }
-  | { ok: true; result: T }
+  { ok: false; statusCode: number; body: Record<string, unknown> } | { ok: true; result: T }
 > {
   return pgConnection.transaction(async (trx: any) => {
     const lockedRes = await trx.raw(

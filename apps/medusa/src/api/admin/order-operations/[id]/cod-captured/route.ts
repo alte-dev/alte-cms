@@ -22,7 +22,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
             statusCode: 200,
             body: {
               success: true,
-              message: "Kapıda ödeme zaten daha önce tahsil edildi olarak işaretlenmiş (İdempotent).",
+              message:
+                "Kapıda ödeme zaten daha önce tahsil edildi olarak işaretlenmiş (İdempotent).",
               cod_collected: true,
               cod_collected_at: currentMeta.cod_collected_at,
             },

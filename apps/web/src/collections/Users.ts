@@ -1,4 +1,10 @@
-import { ValidationError, type CollectionConfig, type Access, type FieldAccess, type Where } from "payload";
+import {
+  ValidationError,
+  type CollectionConfig,
+  type Access,
+  type FieldAccess,
+  type Where,
+} from "payload";
 import { USER_ROLES, validateCustomerPassword, type UserRole } from "@alte/shared";
 import { canReadUserEmail } from "../access/content";
 

@@ -164,8 +164,7 @@ export async function resolveAndValidateSmtpHost(
       if (isBlockedSmtpMetadataHost(rec.address)) {
         return {
           valid: false,
-          error:
-            "SMTP alan adı yasaklı link-local veya bulut metadata IP adresine çözümleniyor.",
+          error: "SMTP alan adı yasaklı link-local veya bulut metadata IP adresine çözümleniyor.",
         };
       }
     }

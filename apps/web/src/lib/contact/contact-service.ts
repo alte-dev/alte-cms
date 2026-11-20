@@ -52,7 +52,10 @@ export function checkContactRateLimit(
   maxRequests = CONTACT_MAX_REQUESTS,
   windowMs = CONTACT_WINDOW_MS,
 ): { allowed: boolean; retryAfterSec?: number } {
-  if (contactRateLimitStore.size >= MAX_CONTACT_RATE_LIMIT_ENTRIES && !contactRateLimitStore.has(key)) {
+  if (
+    contactRateLimitStore.size >= MAX_CONTACT_RATE_LIMIT_ENTRIES &&
+    !contactRateLimitStore.has(key)
+  ) {
     for (const [k, entry] of contactRateLimitStore) {
       if (now >= entry.resetAt) {
         contactRateLimitStore.delete(k);

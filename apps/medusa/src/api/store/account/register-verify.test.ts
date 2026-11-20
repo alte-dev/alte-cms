@@ -149,7 +149,9 @@ describe("account register & verify-email regression tests", () => {
           }
           if (key === "customer") {
             return {
-              createCustomers: vi.fn().mockRejectedValue(new Error("simulated createCustomers failure")),
+              createCustomers: vi
+                .fn()
+                .mockRejectedValue(new Error("simulated createCustomers failure")),
               deleteCustomers,
             };
           }

@@ -40,8 +40,7 @@ export function HeroComponent({
     right: "text-right items-end ml-auto",
   }[align];
 
-  const safeBgImage =
-    bgImage && !/[()"'\\\r\n]/.test(bgImage) ? safeHref(bgImage, "") : "";
+  const safeBgImage = bgImage && !/[()"'\\\r\n]/.test(bgImage) ? safeHref(bgImage, "") : "";
 
   return (
     <section
