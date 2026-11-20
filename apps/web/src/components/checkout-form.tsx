@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { TURKISH_CITIES } from "../lib/constants/turkish-cities";
 import { formatTRY } from "../lib/medusa/format";
@@ -1251,7 +1252,7 @@ export function CheckoutForm({
             {/* iyzico Option */}
             {paymentOptions?.iyzico?.enabled && (
               <label
-                className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer transition ${
+                className={`flex items-start justify-between gap-3 p-4 border rounded-lg cursor-pointer transition ${
                   paymentMethod === "iyzico"
                     ? "border-stone-900 bg-stone-50"
                     : "border-stone-200 hover:border-stone-300 bg-white"
@@ -1270,13 +1271,22 @@ export function CheckoutForm({
                     <div className="flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-stone-700" />
                       <span className="text-sm font-semibold text-stone-900">
-                        Kredi / Banka Kartı (iyzico)
+                        Kredi / Banka Kartı
                       </span>
                     </div>
                     <p className="text-xs text-stone-500 mt-1">
                       iyzico güvencesiyle tek çekim veya taksitli 3D Secure kart ödemesi.
                     </p>
                   </div>
+                </div>
+                <div className="shrink-0 bg-white rounded px-2 py-1 border border-stone-200">
+                  <Image
+                    src="/images/iyzico-pay-horizontal.png"
+                    alt="iyzico ile Öde"
+                    width={80}
+                    height={28}
+                    className="h-6 w-auto"
+                  />
                 </div>
               </label>
             )}

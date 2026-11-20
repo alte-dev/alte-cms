@@ -63,6 +63,9 @@ export default function PaymentSettingsPage() {
   const [iyzicoDisplayMode, setIyzicoDisplayMode] = useState<"redirect" | "embedded">("redirect");
   const [iyzicoMaxInstallment, setIyzicoMaxInstallment] = useState(1);
   const [iyzicoLang, setIyzicoLang] = useState<"tr" | "en">("tr");
+  const [iyzicoFooterLogoVariant, setIyzicoFooterLogoVariant] = useState<"colored" | "white">(
+    "colored",
+  );
   const [iyzicoCallbackUrl, setIyzicoCallbackUrl] = useState("");
   const [testingIyzico, setTestingIyzico] = useState(false);
   const [iyzicoTestResult, setIyzicoTestResult] = useState<{
@@ -121,6 +124,7 @@ export default function PaymentSettingsPage() {
       setIyzicoDisplayMode(s.iyzico_display_mode === "embedded" ? "embedded" : "redirect");
       setIyzicoMaxInstallment(Number(s.iyzico_max_installment || 1));
       setIyzicoLang(s.iyzico_lang || "tr");
+      setIyzicoFooterLogoVariant(s.iyzico_footer_logo_variant === "white" ? "white" : "colored");
       setIyzicoCallbackUrl(s.iyzico_callback_url || "");
       setDefaultPaymentMethod(s.default_payment_method || "auto");
       setSettingsWarning(s.warning || null);
@@ -174,6 +178,7 @@ export default function PaymentSettingsPage() {
         iyzico_display_mode: iyzicoDisplayMode,
         iyzico_max_installment: Number(iyzicoMaxInstallment),
         iyzico_lang: iyzicoLang,
+        iyzico_footer_logo_variant: iyzicoFooterLogoVariant,
         default_payment_method:
           defaultPaymentMethod === "auto" ? null : (defaultPaymentMethod as any),
       };
@@ -738,6 +743,22 @@ export default function PaymentSettingsPage() {
                 </Select.Content>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label>Footer Logo Stili</Label>
+            <Select
+              value={iyzicoFooterLogoVariant}
+              onValueChange={(v) => setIyzicoFooterLogoVariant(v as "colored" | "white")}
+            >
+              <Select.Trigger>
+                <Select.Value />
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="colored">Renkli (Beyaz Zeminli Rozet)</Select.Item>
+                <Select.Item value="white">Beyaz (Koyu Zeminler İçin)</Select.Item>
+              </Select.Content>
+            </Select>
           </div>
 
           {iyzicoMode === "live" && (

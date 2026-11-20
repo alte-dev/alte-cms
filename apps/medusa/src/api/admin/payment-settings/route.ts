@@ -80,6 +80,7 @@ const updatePaymentSettingsSchema = z.object({
     .max(12, "iyzico maksimum taksit sayısı en fazla 12 olabilir.")
     .optional(),
   iyzico_lang: z.enum(["tr", "en"]).optional(),
+  iyzico_footer_logo_variant: z.enum(["colored", "white"]).optional(),
   default_payment_method: z.enum(["paytr", "iyzico", "cod"]).nullable().optional(),
   cod_enabled: z.boolean().optional(),
   cod_fee: z.number().min(0, "Kapıda ödeme bedeli negatif olamaz.").optional(),

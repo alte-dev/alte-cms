@@ -19,6 +19,7 @@ export const PaymentSetting = model.define("payment_setting", {
   iyzico_display_mode: model.text().default("redirect"), // "redirect" | "embedded"
   iyzico_max_installment: model.number().default(1), // 1..12
   iyzico_lang: model.text().default("tr"), // "tr" | "en"
+  iyzico_footer_logo_variant: model.text().default("colored"), // "colored" | "white"
   default_payment_method: model.text().nullable(), // "paytr" | "iyzico" | "cod" | null
   cod_enabled: model.boolean().default(false),
   cod_fee: model.number().default(100), // TL including tax

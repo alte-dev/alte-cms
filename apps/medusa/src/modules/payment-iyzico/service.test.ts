@@ -28,6 +28,7 @@ function setValidSettings(overrides: Record<string, any> = {}) {
     iyzico_display_mode: "redirect",
     iyzico_max_installment: 1,
     iyzico_lang: "tr",
+    iyzico_footer_logo_variant: "colored",
     default_payment_method: "iyzico",
     cod_enabled: false,
     cod_fee: 100,

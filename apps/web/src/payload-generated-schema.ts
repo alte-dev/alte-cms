@@ -771,6 +771,14 @@ export const site_settings = pgTable(
     cookieConsent_policyUrl: varchar("cookie_consent_policy_url").default(
       "/sayfa/cerez-politikasi",
     ),
+    footer_taxNotice: varchar("footer_tax_notice").default(
+      "Mağazamızdaki tüm ürün fiyatlarına yasal KDV oranları (%20 standart, %10 ve %1 indirimli) dahildir.",
+    ),
+    footer_copyrightText: varchar("footer_copyright_text"),
+    footer_poweredByText: varchar("footer_powered_by_text").default(
+      "Alte CMS & Medusa v2 E-Ticaret Altyapısı",
+    ),
+    footer_showPaymentBadge: boolean("footer_show_payment_badge").default(true),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
   },

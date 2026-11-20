@@ -761,6 +761,24 @@ export interface SiteSetting {
      */
     policyUrl?: string | null;
   };
+  /**
+   * Alt bilgi (footer) metinlerini ve ödeme logosu görünürlüğünü buradan düzenleyebilirsiniz. Footer kolonları ve bağlantıları Menü ve Navigasyon altından yönetilir.
+   */
+  footer?: {
+    taxNotice?: string | null;
+    /**
+     * Boş bırakılırsa otomatik olarak '© Yıl Mağaza Adı. Tüm hakları saklıdır.' gösterilir.
+     */
+    copyrightText?: string | null;
+    /**
+     * Boş bırakılırsa bu metin gizlenir.
+     */
+    poweredByText?: string | null;
+    /**
+     * Aktif ödeme sağlayıcısı (ör. iyzico) logosunun footer'da gösterilip gösterilmeyeceğini belirler.
+     */
+    showPaymentBadge?: boolean | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -968,6 +986,14 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         bannerTitle?: T;
         bannerDescription?: T;
         policyUrl?: T;
+      };
+  footer?:
+    | T
+    | {
+        taxNotice?: T;
+        copyrightText?: T;
+        poweredByText?: T;
+        showPaymentBadge?: T;
       };
   updatedAt?: T;
   createdAt?: T;
