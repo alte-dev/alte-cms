@@ -19,15 +19,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "cart_id parametresi gereklidir." }, { status: 400 });
     }
 
-    // SEC-001: Verify caller owns this cart_id via httpOnly session cookie (or already has signed order confirmation)
+    // SEC-001: Verify caller owns this cart_id via httpOnly session cookie (or already has signed order confirmation when cart cookie was cleared)
     const sessionCartId = await getCartId();
     if (!sessionCartId || sessionCartId !== cartId) {
-      const existingOrderId = await getOrderConfirmation();
-      if (existingOrderId) {
-        return NextResponse.json({
-          status: "completed",
-          order_id: existingOrderId,
-        });
+      if (!sessionCartId) {
+        const existingOrderId = await getOrderConfirmation();
+        if (existingOrderId) {
+          return NextResponse.json({
+            status: "completed",
+            order_id: existingOrderId,
+          });
+        }
       }
       return NextResponse.json(
         { error: "Bu sepet oturumuna erişim yetkiniz yok." },

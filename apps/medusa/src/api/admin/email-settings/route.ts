@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getMaskedEmailSettings, updateEmailSettings } from "../../../services/email-service";
 import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
 import { resolveAdminActorId } from "../../../utils/order-metadata-tx";
-import { validateSmtpHost } from "../../../utils/email-sanitizer";
+import { resolveAndValidateSmtpHost } from "../../../utils/email-sanitizer";
 
 const updateEmailSettingsSchema = z.object({
   enabled: z.boolean().optional(),
@@ -61,7 +61,7 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 
   if (parseResult.data.host !== undefined) {
-    const hostCheck = validateSmtpHost(parseResult.data.host);
+    const hostCheck = await resolveAndValidateSmtpHost(parseResult.data.host);
     if (!hostCheck.valid) {
       return res.status(400).json({ error: hostCheck.error });
     }

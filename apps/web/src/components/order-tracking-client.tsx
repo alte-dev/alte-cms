@@ -12,6 +12,7 @@ interface TrackedOrder {
   items?: Array<{ title: string; quantity: number }>;
   subtotal: number;
   shipping_total: number;
+  cod_fee?: number;
   total: number;
   carrier_name?: string | null;
   tracking_code?: string | null;
@@ -232,6 +233,12 @@ export function OrderTrackingClient() {
                   : "Ücretsiz"}
               </span>
             </div>
+            {orderData.cod_fee ? (
+              <div className="flex justify-between text-stone-600">
+                <span>Kapıda Ödeme Bedeli</span>
+                <span>{formatTRY(orderData.cod_fee)}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-stone-900 font-bold text-base pt-2 border-t border-stone-200">
               <span>Genel Toplam</span>
               <span>{formatTRY(orderData.total)}</span>

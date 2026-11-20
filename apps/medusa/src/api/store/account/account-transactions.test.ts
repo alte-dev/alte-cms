@@ -371,4 +371,142 @@ describe("SEC-030: Multi-step account writes use transactions & safe ordering", 
     expect(trxMutationCalls).toContain("customer_session.update");
     expect(trxMutationCalls).toContain("customer_session.insert");
   });
+
+  it("password-reset/confirm acquires and unlocks session advisory lock on the SAME pinned connection", async () => {
+    const resetJwt = createJwt(
+      {
+        actor_type: "customer",
+        purpose: "reset",
+        entity_id: "user@example.test",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      TEST_JWT_SECRET,
+    );
+
+    const pinnedQueries: string[] = [];
+    const pinnedConn = {
+      query: vi.fn(async (sql: string) => {
+        pinnedQueries.push(sql);
+        if (sql.includes("pg_try_advisory_lock")) {
+          return { rows: [{ locked: true }] };
+        }
+        return { rows: [] };
+      }),
+    };
+
+    const makeChain = (table: string) => {
+      const chain: any = {
+        where: () => chain,
+        whereNull: () => chain,
+        andWhere: () => chain,
+        select: () => chain,
+        first: vi
+          .fn()
+          .mockResolvedValue(
+            table === "customer_password_reset"
+              ? { customer_id: "cust_1" }
+              : table === "customer"
+                ? { id: "cust_1", email: "user@example.test" }
+                : table === "provider_identity"
+                  ? { id: "prov_1" }
+                  : null,
+          ),
+        update: vi.fn(() => ({
+          returning: async () => [{ customer_id: "cust_1" }],
+          then: (resolve: any) => resolve(1),
+        })),
+        del: vi.fn(async () => 1),
+      };
+      return chain;
+    };
+
+    const mockPg: any = vi.fn((table: string) => makeChain(table));
+    mockPg.client = {
+      acquireConnection: vi.fn(async () => pinnedConn),
+      releaseConnection: vi.fn(async () => {}),
+    };
+    mockPg.transaction = vi.fn(async (cb: any) => cb(vi.fn((table: string) => makeChain(table))));
+
+    const req: any = {
+      headers: { "x-alte-client-ip": "198.51.100.77" },
+      body: { token: resetJwt, password: "NewStrongPassword123!" },
+      url: "/store/account/password-reset/confirm",
+      query: {},
+      protocol: "http",
+      scope: {
+        resolve: (key: string) => {
+          if (key === ContainerRegistrationKeys.CONFIG_MODULE) {
+            return { projectConfig: { http: { jwtSecret: TEST_JWT_SECRET } } };
+          }
+          if (key === ContainerRegistrationKeys.PG_CONNECTION || key === "__pg_connection__") {
+            return mockPg;
+          }
+          if (key === Modules.AUTH) {
+            return {
+              updateProvider: vi.fn().mockResolvedValue({ success: true }),
+            };
+          }
+          return null;
+        },
+      },
+    };
+
+    const res = makeMockRes();
+    await resetConfirmPost(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(mockPg.client.acquireConnection).toHaveBeenCalledOnce();
+    expect(mockPg.client.releaseConnection).toHaveBeenCalledWith(pinnedConn);
+    expect(pinnedQueries).toHaveLength(2);
+    expect(pinnedQueries[0]).toContain("pg_try_advisory_lock");
+    expect(pinnedQueries[1]).toContain("pg_advisory_unlock");
+  });
+
+  it("password-reset/confirm releases pinned connection and returns 400 when advisory lock is busy", async () => {
+    const resetJwt = createJwt(
+      {
+        actor_type: "customer",
+        purpose: "reset",
+        entity_id: "user@example.test",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      TEST_JWT_SECRET,
+    );
+
+    const pinnedConn = {
+      query: vi.fn(async () => ({ rows: [{ locked: false }] })),
+    };
+    const mockPg: any = vi.fn();
+    mockPg.client = {
+      acquireConnection: vi.fn(async () => pinnedConn),
+      releaseConnection: vi.fn(async () => {}),
+    };
+
+    const req: any = {
+      headers: { "x-alte-client-ip": "198.51.100.78" },
+      body: { token: resetJwt, password: "NewStrongPassword123!" },
+      url: "/store/account/password-reset/confirm",
+      query: {},
+      protocol: "http",
+      scope: {
+        resolve: (key: string) => {
+          if (key === ContainerRegistrationKeys.CONFIG_MODULE) {
+            return { projectConfig: { http: { jwtSecret: TEST_JWT_SECRET } } };
+          }
+          if (key === ContainerRegistrationKeys.PG_CONNECTION || key === "__pg_connection__") {
+            return mockPg;
+          }
+          return null;
+        },
+      },
+    };
+
+    const res = makeMockRes();
+    await resetConfirmPost(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockPg.client.releaseConnection).toHaveBeenCalledWith(pinnedConn);
+    expect(pinnedConn.query).toHaveBeenCalledTimes(1);
+    expect(mockPg).not.toHaveBeenCalled();
+  });
 });

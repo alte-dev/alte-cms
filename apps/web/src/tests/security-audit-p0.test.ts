@@ -75,6 +75,8 @@ describe("Security Audit P0 Fixes (SEC-001, SEC-002, SEC-004)", () => {
       vi.stubGlobal("fetch", fetchSpy);
 
       cookieStoreMap.set("cart_id", "cart_01OWN_CART_1234567890");
+      const { setOrderConfirmation } = await import("../lib/medusa/cookies");
+      await setOrderConfirmation("order_01OLD_ORDER_1234567890");
       const { GET } = await import("../app/api/checkout/status/route");
       const req = new NextRequest(
         "http://localhost:3100/api/checkout/status?cart_id=cart_01VICTIM_CART_999999",

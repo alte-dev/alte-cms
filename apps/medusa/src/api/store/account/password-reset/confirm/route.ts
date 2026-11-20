@@ -61,18 +61,32 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const now = new Date();
   const lockKey = `pwreset:${tokenHash}`;
   let advisoryLockAcquired = false;
+  let lockedConn: {
+    query: (sql: string, bindings?: unknown[]) => Promise<{ rows?: Array<{ locked?: boolean }> }>;
+  } | null = null;
 
-  if (typeof pgConnection.raw === "function") {
-    const lockRes = await pgConnection.raw(`SELECT pg_try_advisory_lock(hashtext(?)) AS locked`, [
-      lockKey,
-    ]);
-    advisoryLockAcquired = Boolean(lockRes?.rows?.[0]?.locked);
-    if (!advisoryLockAcquired) {
-      return res.status(400).json(UNIFORM_TOKEN_ERROR);
+  if (
+    typeof pgConnection.client?.acquireConnection === "function" &&
+    typeof pgConnection.client?.releaseConnection === "function"
+  ) {
+    lockedConn = await pgConnection.client.acquireConnection();
+    try {
+      const lockRes = await lockedConn!.query(
+        `SELECT pg_try_advisory_lock(hashtext($1)) AS locked`,
+        [lockKey],
+      );
+      advisoryLockAcquired = Boolean(lockRes?.rows?.[0]?.locked);
+    } catch (lockErr) {
+      await Promise.resolve(pgConnection.client.releaseConnection(lockedConn)).catch(() => {});
+      lockedConn = null;
+      throw lockErr;
     }
   }
 
   try {
+    if (lockedConn && !advisoryLockAcquired) {
+      return res.status(400).json(UNIFORM_TOKEN_ERROR);
+    }
     // 1. Validate reset token under advisory lock (serializes concurrent requests for same token)
     const pendingToken = await pgConnection("customer_password_reset")
       .where({ token_hash: tokenHash })
@@ -175,8 +189,13 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       message: "Parolanız güncellendi. Yeni parolanızla giriş yapabilirsiniz.",
     });
   } finally {
-    if (advisoryLockAcquired && typeof pgConnection.raw === "function") {
-      await pgConnection.raw(`SELECT pg_advisory_unlock(hashtext(?))`, [lockKey]).catch(() => {});
+    if (lockedConn) {
+      if (advisoryLockAcquired) {
+        await lockedConn
+          .query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockKey])
+          .catch(() => {});
+      }
+      await Promise.resolve(pgConnection.client.releaseConnection(lockedConn)).catch(() => {});
     }
   }
 };
