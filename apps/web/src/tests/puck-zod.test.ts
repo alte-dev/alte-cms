@@ -383,4 +383,39 @@ describe("Puck Data Security & Structural Validation", () => {
     expect(res.valid).toBe(true);
     expect(res.totalComponents).toBe(1);
   });
+
+  it("SEC-006: rejects unsafe bgImage URLs and CSS injection characters in Hero", () => {
+    const httpBg = {
+      content: [
+        {
+          type: "Hero",
+          props: { id: "hero-http-bg", bgImage: "http://evil.example.test/pixel.png" },
+        },
+      ],
+    };
+    expect(validatePuckData(httpBg).valid).toBe(false);
+
+    const cssInjectBg = {
+      content: [
+        {
+          type: "Hero",
+          props: {
+            id: "hero-css-bg",
+            bgImage: 'https://cdn.example.test/a.jpg"); background: red; /*',
+          },
+        },
+      ],
+    };
+    expect(validatePuckData(cssInjectBg).valid).toBe(false);
+
+    const safeBg = {
+      content: [
+        {
+          type: "Hero",
+          props: { id: "hero-safe-bg", bgImage: "https://cdn.example.test/hero.jpg" },
+        },
+      ],
+    };
+    expect(validatePuckData(safeBg).valid).toBe(true);
+  });
 });

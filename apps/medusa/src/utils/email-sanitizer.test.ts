@@ -119,4 +119,20 @@ describe("email-sanitizer utilities", () => {
       expect(isBlockedSmtpMetadataHost("172.16.0.5")).toBe(false);
     });
   });
+
+  describe("resolveAndValidateSmtpHost (SEC-009 DNS SSRF guard)", () => {
+    it("blocks hostnames resolving to cloud metadata IP in production", async () => {
+      const { resolveAndValidateSmtpHost } = await import("./email-sanitizer");
+      const res = await resolveAndValidateSmtpHost("metadata.attacker.test", "production", async () => [
+        { address: "169.254.169.254", family: 4 },
+      ]);
+      expect(res.valid).toBe(false);
+      expect(res.error).toMatch(/metadata/i);
+
+      const okRes = await resolveAndValidateSmtpHost("smtp.example.test", "production", async () => [
+        { address: "93.184.216.34", family: 4 },
+      ]);
+      expect(okRes.valid).toBe(true);
+    });
+  });
 });

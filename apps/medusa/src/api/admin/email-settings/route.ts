@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 import { getMaskedEmailSettings, updateEmailSettings } from "../../../services/email-service";
 import { checkAdminSettingsRole } from "../../../utils/admin-role-guard";
+import { resolveAdminActorId } from "../../../utils/order-metadata-tx";
 import { validateSmtpHost } from "../../../utils/email-sanitizer";
 
 const updateEmailSettingsSchema = z.object({
@@ -71,7 +72,7 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
       req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) ||
       req.scope.resolve("__pg_connection__");
 
-    const adminUser = (req as any).user?.email || (req as any).user?.id || "admin";
+    const adminUser = resolveAdminActorId(req);
     const updated = await updateEmailSettings(pgConnection, parseResult.data, adminUser);
 
     return res.status(200).json({

@@ -143,4 +143,32 @@ describe("Payload CMS Users Access Control (Staff-Only & Role Hierarchy)", () =>
     expect(roleField.defaultValue).toBe("editor");
     expect(roleField.required).toBe(true);
   });
+
+  it("SEC-010: restricts non-admin staff canReadUsers to own record and rejects weak staff passwords", async () => {
+    const editorReq = { user: { id: "ed-1", role: "editor" as UserRole } } as any;
+    const adminReq = { user: { id: "adm-1", role: "admin" as UserRole } } as any;
+
+    expect(await (canReadUsers as any)({ req: editorReq })).toEqual({
+      id: { equals: "ed-1" },
+    });
+    expect(await (canReadUsers as any)({ req: adminReq })).toBe(true);
+
+    const beforeChangeHook = Users.hooks?.beforeChange?.[0];
+    expect(beforeChangeHook).toBeDefined();
+
+    // Weak password rejected
+    expect(() =>
+      (beforeChangeHook as any)({ data: { email: "staff@example.test", password: "123" } }),
+    ).toThrow();
+    expect(() =>
+      (beforeChangeHook as any)({ data: { email: "staff@example.test", password: "password123" } }),
+    ).toThrow();
+
+    // Strong password accepted
+    expect(() =>
+      (beforeChangeHook as any)({
+        data: { email: "staff@example.test", password: "StrongStaffPass2026!" },
+      }),
+    ).not.toThrow();
+  });
 });

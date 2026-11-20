@@ -4,34 +4,27 @@ import { createTransporter, getOrCreateEmailSettings } from "../../../../service
 import {
   escapeHtml,
   isValidEmail,
+  resolveAndValidateSmtpHost,
   sanitizeHeader,
-  validateSmtpHost,
 } from "../../../../utils/email-sanitizer";
 import { checkAdminSettingsRole } from "../../../../utils/admin-role-guard";
+import { resolveAdminActorId } from "../../../../utils/order-metadata-tx";
+import { SlidingWindowRateLimiter } from "../../../../utils/rate-limiter";
 
-// In-memory rate limiter for test email: max 3 per 5 minutes per admin
-const testEmailRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkTestEmailRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = testEmailRateLimitMap.get(key);
-  if (!entry || now > entry.resetAt) {
-    testEmailRateLimitMap.set(key, { count: 1, resetAt: now + 5 * 60 * 1000 });
-    return true;
-  }
-  if (entry.count >= 3) {
-    return false;
-  }
-  entry.count++;
-  return true;
-}
+// Bounded in-memory rate limiter for test email: max 3 per 5 minutes per admin
+const testEmailRateLimiter = new SlidingWindowRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  maxRequests: 3,
+  maxEntries: 1000,
+});
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   if (!(await checkAdminSettingsRole(req, res))) return;
   const adminEmail = (req as any).user?.email || "admin@example.test";
-  const rateLimitKey = String((req as any).user?.id || req.ip || adminEmail);
+  const actorId = resolveAdminActorId(req);
+  const rateLimitKey = `test_email:${actorId}`;
 
-  if (!checkTestEmailRateLimit(rateLimitKey)) {
+  if (!testEmailRateLimiter.consume(rateLimitKey).allowed) {
     return res.status(429).json({
       error: "Çok fazla test e-postası gönderildi. Lütfen 5 dakika sonra tekrar deneyin.",
     });
@@ -54,7 +47,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     if (settings.host) {
-      const hostCheck = validateSmtpHost(settings.host);
+      const hostCheck = await resolveAndValidateSmtpHost(settings.host);
       if (!hostCheck.valid) {
         return res.status(400).json({ error: hostCheck.error });
       }

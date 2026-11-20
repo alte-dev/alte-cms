@@ -1,15 +1,25 @@
-import type { CollectionConfig, Access, FieldAccess, Where } from "payload";
-import { USER_ROLES, type UserRole } from "@alte/shared";
+import { ValidationError, type CollectionConfig, type Access, type FieldAccess, type Where } from "payload";
+import { USER_ROLES, validateCustomerPassword, type UserRole } from "@alte/shared";
 import { canReadUserEmail } from "../access/content";
 
 // Access Control: Read Users
-// Only authenticated staff members can read the Users collection directly.
+// Super-Admins and Admins can read all staff users.
+// Other authenticated staff members can only read their own record (least privilege).
 // Anonymous visitors and external customers have ZERO access to browse users.
 export const canReadUsers: Access = ({ req: { user } }) => {
   if (!user) {
     return false; // Default closed: anonymous blocked!
   }
-  return true; // All users in this collection are authenticated staff
+  const userRole = user.role as UserRole;
+  if (userRole === "super-admin" || userRole === "admin") {
+    return true;
+  }
+  const query: Where = {
+    id: {
+      equals: user.id,
+    },
+  };
+  return query;
 };
 
 // Access Control: Create Users
@@ -112,6 +122,28 @@ export const Users: CollectionConfig = {
     admin: ({ req: { user } }) => Boolean(user), // All users in Users collection are staff
   },
   hooks: {
+    beforeChange: [
+      ({ data }) => {
+        if (typeof data?.password === "string" && data.password.length > 0) {
+          const emailForCheck =
+            process.env.NODE_ENV === "production" && typeof data.email === "string"
+              ? data.email
+              : undefined;
+          const check = validateCustomerPassword(data.password, emailForCheck);
+          if (!check.valid) {
+            throw new ValidationError({
+              errors: [
+                {
+                  message: check.error || "Parola güvenlik gereksinimlerini karşılamıyor.",
+                  path: "password",
+                },
+              ],
+            });
+          }
+        }
+        return data;
+      },
+    ],
     afterError: [
       ({ error }) => {
         const msg = String((error as any)?.message || "");
