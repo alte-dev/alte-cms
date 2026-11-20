@@ -11,8 +11,9 @@ import React, {
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, Minus, Plus, ShoppingBag, Trash2, Truck, X } from "lucide-react";
+import { AlertTriangle, Minus, Plus, ShoppingBag, Tag, Trash2, Truck, X } from "lucide-react";
 import { removeCartItemAction, updateCartItemAction } from "../app/(store)/actions";
+import { calculateCartTotalSavings, resolveCartLinePricing } from "../lib/medusa/cart-pricing";
 import { calculateCheckoutTotals } from "../lib/medusa/checkout-pricing";
 import { formatTRY, type FreeShippingProgress } from "../lib/medusa/format";
 import type { StoreCart } from "../lib/medusa/types";
@@ -147,6 +148,7 @@ export function CartDrawerPanel({
     0,
   );
   const subtotalAmount = Math.max(0, productsGross - (totals?.discountTotal ?? 0));
+  const totalSavings = calculateCartTotalSavings(items, totals?.discountTotal ?? 0);
   const issueByLineItemId = new Map(availabilityIssues.map((issue) => [issue.lineItemId, issue]));
   const hasAvailabilityIssues = availabilityIssues.length > 0;
 
@@ -237,10 +239,7 @@ export function CartDrawerPanel({
                 const productHref = resolveCartItemHref(item);
                 const variantLabel = resolveCartItemVariantLabel(item);
                 const itemTitle = item.product_title || item.title;
-                const lineTotal =
-                  (item.unit_price ? item.unit_price * item.quantity : 0) ||
-                  item.total ||
-                  item.subtotal;
+                const pricing = resolveCartLinePricing(item);
 
                 const thumbnailVisual = thumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -331,9 +330,27 @@ export function CartDrawerPanel({
                           </button>
                         </div>
 
-                        <span className="text-sm font-semibold text-stone-900 tabular-nums">
-                          {formatTRY(lineTotal)}
-                        </span>
+                        <div className="flex flex-col items-end">
+                          {pricing.isDiscounted ? (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 rounded leading-none">
+                                  -%{pricing.discountPercent}
+                                </span>
+                                <span className="text-xs text-stone-400 line-through tabular-nums">
+                                  {formatTRY(pricing.originalLineTotal)}
+                                </span>
+                              </div>
+                              <span className="text-sm font-semibold text-stone-900 tabular-nums">
+                                {formatTRY(pricing.currentLineTotal)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-sm font-semibold text-stone-900 tabular-nums">
+                              {formatTRY(pricing.currentLineTotal)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -361,16 +378,24 @@ export function CartDrawerPanel({
               </div>
             )}
 
-            <div className="flex items-baseline justify-between">
-              <div>
-                <p className="text-sm font-semibold text-stone-900">Toplam</p>
-                <p className="text-[11px] text-stone-500">
-                  Vergi dahil ve kargo ücreti ödeme sırasında hesaplanır
-                </p>
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">Toplam</p>
+                  <p className="text-[11px] text-stone-500">
+                    Vergi dahil ve kargo ücreti ödeme sırasında hesaplanır
+                  </p>
+                </div>
+                <span className="text-base font-bold text-stone-900 tabular-nums">
+                  {formatTRY(subtotalAmount)}
+                </span>
               </div>
-              <span className="text-base font-bold text-stone-900 tabular-nums">
-                {formatTRY(subtotalAmount)}
-              </span>
+              {totalSavings > 0 && (
+                <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5 pt-0.5">
+                  <Tag className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>TOPLAM TASARRUF {formatTRY(totalSavings)}</span>
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">

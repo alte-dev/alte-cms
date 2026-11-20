@@ -9,6 +9,7 @@ import type { CartItemAvailabilityIssue, PaymentOptionsResult } from "../lib/med
 import { CheckoutFormSchema } from "../lib/medusa/validation";
 import { isVariantOutOfStock } from "../lib/medusa/variant-stock";
 import { CheckoutOrderSummaryItem } from "./checkout-order-summary-item";
+import { calculateCartTotalSavings } from "../lib/medusa/cart-pricing";
 import { addRecommendedProductToCart } from "../lib/medusa/checkout-recommendations";
 import type { CustomerAddress, CustomerProfile } from "../lib/medusa/account";
 import {
@@ -1626,12 +1627,16 @@ export function CheckoutForm({
               </span>
             </div>
             <p className="text-[12px] text-[#666666]">{formatTRY(taxTotal)} vergi dahil</p>
-            {discountTotal > 0 && (
-              <p className="text-[12px] font-semibold text-stone-900 pt-0.5 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-stone-700" />
-                <span>TOPLAM TASARRUF {formatTRY(discountTotal)}</span>
-              </p>
-            )}
+            {(() => {
+              const totalSavings = calculateCartTotalSavings(cart.items || [], discountTotal);
+              if (totalSavings <= 0) return null;
+              return (
+                <p className="text-[12px] font-semibold text-emerald-700 pt-0.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                  <span>TOPLAM TASARRUF {formatTRY(totalSavings)}</span>
+                </p>
+              );
+            })()}
           </div>
         </div>
 

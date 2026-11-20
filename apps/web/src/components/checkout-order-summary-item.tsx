@@ -1,5 +1,6 @@
 import React from "react";
 import { formatTRY } from "../lib/medusa/format";
+import { resolveCartLinePricing } from "../lib/medusa/cart-pricing";
 import type { StoreCartLineItem } from "../lib/medusa/types";
 import { isSafeHref } from "../lib/safe-href";
 import { PlaceholderImage } from "./placeholder-image";
@@ -54,8 +55,7 @@ export function resolveCartItemVariantLabel(item: StoreCartLineItem): string | n
 export function CheckoutOrderSummaryItem({ item }: { item: StoreCartLineItem }) {
   const thumbnail = resolveCartItemThumbnail(item);
   const variantLabel = resolveCartItemVariantLabel(item);
-  const lineTotal =
-    (item.unit_price ? item.unit_price * item.quantity : 0) || item.total || item.subtotal;
+  const pricing = resolveCartLinePricing(item);
 
   return (
     <div className="flex items-center gap-3.5 py-2">
@@ -92,9 +92,27 @@ export function CheckoutOrderSummaryItem({ item }: { item: StoreCartLineItem }) 
         )}
       </div>
 
-      <span className="text-[14px] font-medium text-stone-900 tabular-nums flex-shrink-0">
-        {formatTRY(lineTotal)}
-      </span>
+      <div className="text-right flex-shrink-0">
+        {pricing.isDiscounted ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 rounded leading-none">
+                -%{pricing.discountPercent}
+              </span>
+              <span className="text-[12px] text-[#666666] line-through tabular-nums">
+                {formatTRY(pricing.originalLineTotal)}
+              </span>
+            </div>
+            <span className="text-[14px] font-semibold text-stone-900 tabular-nums">
+              {formatTRY(pricing.currentLineTotal)}
+            </span>
+          </div>
+        ) : (
+          <span className="text-[14px] font-medium text-stone-900 tabular-nums">
+            {formatTRY(pricing.currentLineTotal)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

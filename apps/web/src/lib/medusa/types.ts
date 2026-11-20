@@ -76,9 +76,12 @@ export interface StoreCartLineItem {
   thumbnail?: string | null;
   quantity: number;
   unit_price: number;
+  compare_at_unit_price?: number | null;
   subtotal: number;
   tax_total: number;
   total: number;
+  original_total?: number;
+  discount_total?: number;
   product_id?: string;
   product_title?: string;
   product_handle?: string;
