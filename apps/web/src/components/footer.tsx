@@ -1,19 +1,46 @@
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { getNavigation, getSiteSettings } from "../lib/payload/content";
+import { getPaymentOptions } from "../lib/medusa/cart";
 import { safeHref } from "../lib/safe-href";
 import { CookiePreferencesTrigger } from "./cookie-consent/CookiePreferencesTrigger";
 
 export async function Footer() {
-  const [navigationGlobal, settingsGlobal] = await Promise.all([
+  const [navigationGlobal, settingsGlobal, paymentOptions] = await Promise.all([
     getNavigation().catch(() => null),
     getSiteSettings().catch(() => null),
+    getPaymentOptions().catch(() => null),
   ]);
+  const isIyzicoEnabled = Boolean(paymentOptions?.iyzico?.enabled);
+  const iyzicoLogoVariant =
+    paymentOptions?.iyzico?.footer_logo_variant === "white" ? "white" : "colored";
+
+  const footerSettings = settingsGlobal?.footer as
+    | {
+        taxNotice?: string | null;
+        copyrightText?: string | null;
+        poweredByText?: string | null;
+        showPaymentBadge?: boolean | null;
+      }
+    | undefined;
 
   const storeName = settingsGlobal?.storeName || "Mağaza";
   const storeDescription =
     settingsGlobal?.storeDescription ||
     "Özenle tasarlanmış giyim, aksesuar ve yaşam ürünleri. Türkiye geneli hızlı teslimat ve güvenli ödeme.";
+  const taxNotice =
+    footerSettings?.taxNotice !== undefined && footerSettings?.taxNotice !== null
+      ? footerSettings.taxNotice
+      : "Mağazamızdaki tüm ürün fiyatlarına yasal KDV oranları (%20 standart, %10 ve %1 indirimli) dahildir.";
+  const copyrightText =
+    footerSettings?.copyrightText?.trim() ||
+    `© ${new Date().getFullYear()} ${storeName}. Tüm hakları saklıdır.`;
+  const poweredByText =
+    footerSettings?.poweredByText !== undefined && footerSettings?.poweredByText !== null
+      ? footerSettings.poweredByText.trim()
+      : "Alte CMS & Medusa v2 E-Ticaret Altyapısı";
+  const showPaymentBadge = footerSettings?.showPaymentBadge !== false;
 
   const footerMenu = navigationGlobal?.footerMenu;
   const hasDynamicFooter = Array.isArray(footerMenu) && footerMenu.length > 0;
@@ -40,10 +67,7 @@ export async function Footer() {
                 </a>
               </p>
             )}
-            <p className="text-xs text-stone-400">
-              Mağazamızdaki tüm ürün fiyatlarına yasal KDV oranları (%20 standart, %10 ve %1
-              indirimli) dahildir.
-            </p>
+            {taxNotice && <p className="text-xs text-stone-400">{taxNotice}</p>}
           </div>
 
           {/* Dynamic Footer Columns OR Fallback */}
@@ -142,15 +166,40 @@ export async function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-400 gap-4">
-          <p>
-            © {new Date().getFullYear()} {storeName}. Tüm hakları saklıdır.
-          </p>
-          <div className="flex items-center gap-4">
+          <p>{copyrightText}</p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {isIyzicoEnabled &&
+              showPaymentBadge &&
+              (iyzicoLogoVariant === "white" ? (
+                <div className="inline-flex items-center">
+                  <Image
+                    src="/images/iyzico-footer-band-white.png"
+                    alt="iyzico ile Öde - Visa, Mastercard, Troy, American Express"
+                    width={429}
+                    height={32}
+                    className="h-6 w-auto"
+                  />
+                </div>
+              ) : (
+                <div className="bg-white rounded-md px-3 py-1.5 inline-flex items-center shadow-sm">
+                  <Image
+                    src="/images/iyzico-footer-band.png"
+                    alt="iyzico ile Öde - Visa, Mastercard, Troy, American Express"
+                    width={429}
+                    height={32}
+                    className="h-6 w-auto"
+                  />
+                </div>
+              ))}
             <CookiePreferencesTrigger />
-            <span aria-hidden="true" className="text-stone-600">
-              ·
-            </span>
-            <p>Alte CMS & Medusa v2 E-Ticaret Altyapısı</p>
+            {poweredByText && (
+              <>
+                <span aria-hidden="true" className="text-stone-600">
+                  ·
+                </span>
+                <p>{poweredByText}</p>
+              </>
+            )}
           </div>
         </div>
       </div>

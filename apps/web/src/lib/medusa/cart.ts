@@ -272,6 +272,7 @@ export interface PaymentOptionsResult {
     enabled: boolean;
     mode?: "sandbox" | "live";
     display_mode: "redirect" | "embedded";
+    footer_logo_variant?: "colored" | "white";
   };
   paytr: {
     enabled: boolean;

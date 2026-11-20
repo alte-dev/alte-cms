@@ -69,6 +69,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void
       enabled: iyzicoEnabled,
       mode: settings?.iyzico_mode === "live" ? "live" : "sandbox",
       display_mode: settings?.iyzico_display_mode === "embedded" ? "embedded" : "redirect",
+      footer_logo_variant: settings?.iyzico_footer_logo_variant === "white" ? "white" : "colored",
     },
     paytr: {
       enabled: paytrEnabled,

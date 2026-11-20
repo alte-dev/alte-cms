@@ -25,6 +25,7 @@ export interface DecryptedPaymentSettings {
   iyzico_display_mode: "redirect" | "embedded";
   iyzico_max_installment: number;
   iyzico_lang: "tr" | "en";
+  iyzico_footer_logo_variant: "colored" | "white";
   default_payment_method: PaymentMethodCode | null;
   cod_enabled: boolean;
   cod_fee: number;
@@ -54,6 +55,7 @@ export interface MaskedPaymentSettingsResponse {
   iyzico_display_mode: "redirect" | "embedded";
   iyzico_max_installment: number;
   iyzico_lang: "tr" | "en";
+  iyzico_footer_logo_variant: "colored" | "white";
   iyzico_callback_url: string;
   default_payment_method: PaymentMethodCode | null;
   cod_enabled: boolean;
@@ -128,6 +130,7 @@ export class PaymentSettingsService extends MedusaService({
         iyzico_display_mode: "redirect",
         iyzico_max_installment: 1,
         iyzico_lang: "tr",
+        iyzico_footer_logo_variant: "colored",
         default_payment_method: null,
         cod_enabled: false,
         cod_fee: 100,
@@ -213,6 +216,7 @@ export class PaymentSettingsService extends MedusaService({
       iyzico_display_mode: row.iyzico_display_mode === "embedded" ? "embedded" : "redirect",
       iyzico_max_installment: Math.min(12, Math.max(1, Number(row.iyzico_max_installment || 1))),
       iyzico_lang: row.iyzico_lang === "en" ? "en" : "tr",
+      iyzico_footer_logo_variant: row.iyzico_footer_logo_variant === "white" ? "white" : "colored",
       default_payment_method: defaultMethod,
       cod_enabled: Boolean(row.cod_enabled),
       cod_fee: Number(row.cod_fee ?? 100),
@@ -264,6 +268,7 @@ export class PaymentSettingsService extends MedusaService({
       iyzico_display_mode: decrypted.iyzico_display_mode,
       iyzico_max_installment: decrypted.iyzico_max_installment,
       iyzico_lang: decrypted.iyzico_lang,
+      iyzico_footer_logo_variant: decrypted.iyzico_footer_logo_variant,
       iyzico_callback_url: `${webPublicUrl.replace(/\/+$/, "")}/api/payment/iyzico/callback`,
       default_payment_method: decrypted.default_payment_method,
       cod_enabled: decrypted.cod_enabled,
@@ -304,6 +309,7 @@ export class PaymentSettingsService extends MedusaService({
       iyzico_display_mode: "redirect" | "embedded";
       iyzico_max_installment: number;
       iyzico_lang: "tr" | "en";
+      iyzico_footer_logo_variant: "colored" | "white";
       default_payment_method: PaymentMethodCode | null;
       cod_enabled: boolean;
       cod_fee: number;
@@ -469,6 +475,12 @@ export class PaymentSettingsService extends MedusaService({
     if (input.iyzico_lang !== undefined) {
       updateData.iyzico_lang = input.iyzico_lang === "en" ? "en" : "tr";
       changedFields.push("iyzico_lang");
+    }
+
+    if (input.iyzico_footer_logo_variant !== undefined) {
+      updateData.iyzico_footer_logo_variant =
+        input.iyzico_footer_logo_variant === "white" ? "white" : "colored";
+      changedFields.push("iyzico_footer_logo_variant");
     }
 
     if (input.default_payment_method !== undefined) {

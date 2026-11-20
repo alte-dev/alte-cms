@@ -313,5 +313,51 @@ export const SiteSettings: GlobalConfig = {
         },
       ],
     },
+    {
+      name: "footer",
+      type: "group",
+      label: "Footer Ayarları",
+      admin: {
+        description:
+          "Alt bilgi (footer) metinlerini ve ödeme logosu görünürlüğünü buradan düzenleyebilirsiniz. Footer kolonları ve bağlantıları Menü ve Navigasyon altından yönetilir.",
+      },
+      fields: [
+        {
+          name: "taxNotice",
+          type: "textarea",
+          defaultValue:
+            "Mağazamızdaki tüm ürün fiyatlarına yasal KDV oranları (%20 standart, %10 ve %1 indirimli) dahildir.",
+          label: "KDV / Vergi Bilgilendirme Metni",
+        },
+        {
+          name: "copyrightText",
+          type: "text",
+          label: "Telif Hakkı (Copyright) Metni",
+          admin: {
+            description:
+              "Boş bırakılırsa otomatik olarak '© Yıl Mağaza Adı. Tüm hakları saklıdır.' gösterilir.",
+          },
+        },
+        {
+          name: "poweredByText",
+          type: "text",
+          defaultValue: "Alte CMS & Medusa v2 E-Ticaret Altyapısı",
+          label: "Alt Bilgi (Altyapı) Metni",
+          admin: {
+            description: "Boş bırakılırsa bu metin gizlenir.",
+          },
+        },
+        {
+          name: "showPaymentBadge",
+          type: "checkbox",
+          defaultValue: true,
+          label: "Ödeme Sağlayıcı Logosunu Göster",
+          admin: {
+            description:
+              "Aktif ödeme sağlayıcısı (ör. iyzico) logosunun footer'da gösterilip gösterilmeyeceğini belirler.",
+          },
+        },
+      ],
+    },
   ],
 };
