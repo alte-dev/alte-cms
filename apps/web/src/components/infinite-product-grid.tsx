@@ -69,12 +69,14 @@ export function InfiniteProductGrid({
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const activeStorageKeyRef = useRef<string | null>(null);
+  const activeListingUrlRef = useRef<string | null>(null);
   const hasHydratedStateRef = useRef<boolean>(false);
   const scrollYRef = useRef<number>(0);
   const [pendingScroll, setPendingScroll] = useState<{ y: number; expectedCount: number } | null>(
     null,
   );
   const isRestoringScrollRef = useRef<boolean>(false);
+  const navigatingAwayRef = useRef<boolean>(false);
   const latestStateRef = useRef({
     products,
     page,
@@ -189,6 +191,12 @@ export function InfiniteProductGrid({
       ) {
         return;
       }
+      if (
+        activeListingUrlRef.current !== null &&
+        window.location.pathname + window.location.search !== activeListingUrlRef.current
+      ) {
+        return;
+      }
       saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
         ...latestStateRef.current,
         scrollY: scrollYRef.current,
@@ -196,20 +204,48 @@ export function InfiniteProductGrid({
     };
 
     const handleScroll = () => {
-      if (isRestoringScrollRef.current) return;
+      if (isRestoringScrollRef.current || navigatingAwayRef.current) return;
+      if (
+        activeListingUrlRef.current !== null &&
+        window.location.pathname + window.location.search !== activeListingUrlRef.current
+      ) {
+        return;
+      }
       scrollYRef.current = window.scrollY;
       if (timer) clearTimeout(timer);
       timer = setTimeout(persistCurrent, 150);
     };
 
+    let navResetTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleLinkClickCapture = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      if (anchor.target === "_blank") return;
+      // Freeze scrollY at the exact position when the user clicked the link
+      scrollYRef.current = window.scrollY;
+      navigatingAwayRef.current = true;
+      persistCurrent();
+      if (navResetTimer) clearTimeout(navResetTimer);
+      navResetTimer = setTimeout(() => {
+        navigatingAwayRef.current = false;
+      }, 1000);
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("pagehide", persistCurrent);
+    document.addEventListener("click", handleLinkClickCapture, true);
 
     return () => {
       if (timer) clearTimeout(timer);
+      if (navResetTimer) clearTimeout(navResetTimer);
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("pagehide", persistCurrent);
+      document.removeEventListener("click", handleLinkClickCapture, true);
       persistCurrent();
+      navigatingAwayRef.current = false;
     };
   }, []);
 
