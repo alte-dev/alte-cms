@@ -5,6 +5,7 @@ import {
   loadInfiniteGridSnapshot,
   clearInfiniteGridSnapshot,
   markBackNavigation,
+  markForwardNavigation,
   consumeBackNavigation,
   resetBackNavigationForTest,
   INFINITE_GRID_TTL_MS,
@@ -222,9 +223,13 @@ describe("Infinite Scroll State Persistence & Back-Navigation Restore", () => {
     expect(consumeBackNavigation(1000, "navigate")).toBe(false);
 
     markBackNavigation(1000);
-    expect(consumeBackNavigation(1500, "navigate")).toBe(true);
-    // Consumed once
-    expect(consumeBackNavigation(1600, "navigate")).toBe(false);
+    // StrictMode / RSC stream re-renders within the grace window both see true
+    expect(consumeBackNavigation(1050, "navigate")).toBe(true);
+    expect(consumeBackNavigation(1250, "navigate")).toBe(true);
+
+    // Cleared on forward click navigation
+    markForwardNavigation();
+    expect(consumeBackNavigation(1300, "navigate")).toBe(false);
 
     // Expired popstate (> 2000ms)
     markBackNavigation(1000);

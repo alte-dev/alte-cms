@@ -71,7 +71,10 @@ export function InfiniteProductGrid({
   const activeStorageKeyRef = useRef<string | null>(null);
   const hasHydratedStateRef = useRef<boolean>(false);
   const scrollYRef = useRef<number>(0);
-  const pendingScrollYRef = useRef<number | null>(null);
+  const [pendingScroll, setPendingScroll] = useState<{ y: number; expectedCount: number } | null>(
+    null,
+  );
+  const isRestoringScrollRef = useRef<boolean>(false);
   const latestStateRef = useRef({
     products,
     page,
@@ -106,13 +109,14 @@ export function InfiniteProductGrid({
       });
 
       if (snapshot) {
+        isRestoringScrollRef.current = true;
         setProducts(snapshot.products);
         setNewlyLoadedIds(new Set());
         setPage(snapshot.page);
         setHasMore(snapshot.hasMore && snapshot.page < totalPages);
         setErrorMsg(null);
         setAutoLoadLimit(Math.max(snapshot.autoLoadLimit, autoLoadPages));
-        pendingScrollYRef.current = snapshot.scrollY;
+        setPendingScroll({ y: snapshot.scrollY, expectedCount: snapshot.products.length });
         scrollYRef.current = snapshot.scrollY;
         hasHydratedStateRef.current = true;
         return;
@@ -120,31 +124,47 @@ export function InfiniteProductGrid({
     }
 
     clearInfiniteGridSnapshot(storage, key);
+    isRestoringScrollRef.current = false;
     setProducts(initialProducts);
     setNewlyLoadedIds(new Set());
     setPage(initialPage);
     setHasMore(initialPage < totalPages);
     setErrorMsg(null);
     setAutoLoadLimit(autoLoadPages);
-    pendingScrollYRef.current = null;
+    setPendingScroll(null);
     scrollYRef.current = 0;
     hasHydratedStateRef.current = true;
   }, [initialProducts, initialPage, totalPages, category, sort, limit, autoLoadPages]);
 
-  // Apply restored scroll position after products render into the DOM
+  // Apply restored scroll position after restored products have rendered into the DOM
   useEffect(() => {
-    if (pendingScrollYRef.current === null) return;
-    const targetY = pendingScrollYRef.current;
-    pendingScrollYRef.current = null;
-    const rafId = window.requestAnimationFrame(() => {
-      window.scrollTo({ top: targetY, behavior: "instant" as ScrollBehavior });
+    if (!pendingScroll || products.length < pendingScroll.expectedCount) return;
+    const targetY = pendingScroll.y;
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        scrollYRef.current = targetY;
+        window.scrollTo({ top: targetY, behavior: "instant" as ScrollBehavior });
+        isRestoringScrollRef.current = false;
+        setPendingScroll(null);
+      });
     });
-    return () => window.cancelAnimationFrame(rafId);
-  }, [products]);
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [products, pendingScroll]);
 
   // Persist pagination state whenever loaded products or page state changes
   useEffect(() => {
-    if (!hasHydratedStateRef.current || !activeStorageKeyRef.current) return;
+    if (
+      !hasHydratedStateRef.current ||
+      !activeStorageKeyRef.current ||
+      isRestoringScrollRef.current
+    ) {
+      return;
+    }
     saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
       products,
       page,
@@ -162,7 +182,13 @@ export function InfiniteProductGrid({
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const persistCurrent = () => {
-      if (!hasHydratedStateRef.current || !activeStorageKeyRef.current) return;
+      if (
+        !hasHydratedStateRef.current ||
+        !activeStorageKeyRef.current ||
+        isRestoringScrollRef.current
+      ) {
+        return;
+      }
       saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
         ...latestStateRef.current,
         scrollY: scrollYRef.current,
@@ -170,6 +196,7 @@ export function InfiniteProductGrid({
     };
 
     const handleScroll = () => {
+      if (isRestoringScrollRef.current) return;
       scrollYRef.current = window.scrollY;
       if (timer) clearTimeout(timer);
       timer = setTimeout(persistCurrent, 150);

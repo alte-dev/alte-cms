@@ -35,12 +35,23 @@ export function markBackNavigation(now: number = Date.now()): void {
   lastPopStateAt = now;
 }
 
+export function markForwardNavigation(): void {
+  lastPopStateAt = null;
+}
+
 export function initBackNavigationListener(): void {
   if (typeof window === "undefined" || listenerInitialized) return;
   listenerInitialized = true;
   window.addEventListener("popstate", () => {
     markBackNavigation();
   });
+  window.addEventListener(
+    "click",
+    () => {
+      markForwardNavigation();
+    },
+    true,
+  );
 }
 
 function getNavigationEntryType(): string | undefined {
@@ -55,8 +66,9 @@ function getNavigationEntryType(): string | undefined {
 
 /**
  * Returns true if the current navigation arrived via browser Back/Forward
- * (either SPA popstate or full-load back_forward), and consumes the signal
- * so subsequent forward link clicks start fresh.
+ * (either SPA popstate within the grace window or full-load back_forward).
+ * StrictMode double-invocations and RSC stream updates within the window
+ * both observe true; any user click clears the popstate signal.
  */
 export function consumeBackNavigation(
   now: number = Date.now(),
@@ -64,8 +76,10 @@ export function consumeBackNavigation(
 ): boolean {
   if (lastPopStateAt !== null) {
     const isRecent = now >= lastPopStateAt && now - lastPopStateAt <= POPSTATE_WINDOW_MS;
+    if (isRecent) {
+      return true;
+    }
     lastPopStateAt = null;
-    if (isRecent) return true;
   }
 
   if (!consumedPerfBackForward && navType === "back_forward") {
