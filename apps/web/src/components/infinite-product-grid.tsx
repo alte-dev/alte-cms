@@ -5,6 +5,14 @@ import { StoreProduct } from "../lib/medusa/types";
 import { ProductCard } from "./product-card";
 import { fetchMoreProductsAction } from "../app/(store)/actions";
 import { Loader2 } from "lucide-react";
+import {
+  buildInfiniteGridStorageKey,
+  clearInfiniteGridSnapshot,
+  consumeBackNavigation,
+  getBrowserSessionStorage,
+  loadInfiniteGridSnapshot,
+  saveInfiniteGridSnapshot,
+} from "../lib/infinite-scroll-state";
 
 export const MIN_INFINITE_SCROLL_DELAY_MS = 500;
 
@@ -60,16 +68,123 @@ export function InfiniteProductGrid({
   const [autoLoadLimit, setAutoLoadLimit] = useState<number>(autoLoadPages);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const activeStorageKeyRef = useRef<string | null>(null);
+  const hasHydratedStateRef = useRef<boolean>(false);
+  const scrollYRef = useRef<number>(0);
+  const pendingScrollYRef = useRef<number | null>(null);
+  const latestStateRef = useRef({
+    products,
+    page,
+    hasMore,
+    autoLoadLimit,
+    category,
+    sort,
+    limit,
+  });
+  latestStateRef.current = {
+    products,
+    page,
+    hasMore,
+    autoLoadLimit,
+    category,
+    sort,
+    limit,
+  };
 
-  // If initialProducts or category/sort change from props, reset local state
+  // Restore saved infinite-scroll state on browser Back/Forward, or reset on fresh navigation
   useEffect(() => {
+    const key = buildInfiniteGridStorageKey(window.location.pathname, window.location.search);
+    activeStorageKeyRef.current = key;
+    const storage = getBrowserSessionStorage();
+
+    if (consumeBackNavigation()) {
+      const snapshot = loadInfiniteGridSnapshot(storage, key, {
+        category,
+        sort,
+        limit,
+        initialFirstId: initialProducts[0]?.id,
+      });
+
+      if (snapshot) {
+        setProducts(snapshot.products);
+        setNewlyLoadedIds(new Set());
+        setPage(snapshot.page);
+        setHasMore(snapshot.hasMore && snapshot.page < totalPages);
+        setErrorMsg(null);
+        setAutoLoadLimit(Math.max(snapshot.autoLoadLimit, autoLoadPages));
+        pendingScrollYRef.current = snapshot.scrollY;
+        scrollYRef.current = snapshot.scrollY;
+        hasHydratedStateRef.current = true;
+        return;
+      }
+    }
+
+    clearInfiniteGridSnapshot(storage, key);
     setProducts(initialProducts);
     setNewlyLoadedIds(new Set());
     setPage(initialPage);
     setHasMore(initialPage < totalPages);
     setErrorMsg(null);
     setAutoLoadLimit(autoLoadPages);
-  }, [initialProducts, initialPage, totalPages, category, sort, autoLoadPages]);
+    pendingScrollYRef.current = null;
+    scrollYRef.current = 0;
+    hasHydratedStateRef.current = true;
+  }, [initialProducts, initialPage, totalPages, category, sort, limit, autoLoadPages]);
+
+  // Apply restored scroll position after products render into the DOM
+  useEffect(() => {
+    if (pendingScrollYRef.current === null) return;
+    const targetY = pendingScrollYRef.current;
+    pendingScrollYRef.current = null;
+    const rafId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: targetY, behavior: "instant" as ScrollBehavior });
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [products]);
+
+  // Persist pagination state whenever loaded products or page state changes
+  useEffect(() => {
+    if (!hasHydratedStateRef.current || !activeStorageKeyRef.current) return;
+    saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
+      products,
+      page,
+      hasMore,
+      autoLoadLimit,
+      scrollY: scrollYRef.current,
+      category,
+      sort,
+      limit,
+    });
+  }, [products, page, hasMore, autoLoadLimit, category, sort, limit]);
+
+  // Track scroll position and flush snapshot on pagehide/unmount
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const persistCurrent = () => {
+      if (!hasHydratedStateRef.current || !activeStorageKeyRef.current) return;
+      saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
+        ...latestStateRef.current,
+        scrollY: scrollYRef.current,
+      });
+    };
+
+    const handleScroll = () => {
+      scrollYRef.current = window.scrollY;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(persistCurrent, 150);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("pagehide", persistCurrent);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("pagehide", persistCurrent);
+      persistCurrent();
+    };
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
