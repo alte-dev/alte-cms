@@ -5,14 +5,6 @@ import { StoreProduct } from "../lib/medusa/types";
 import { ProductCard } from "./product-card";
 import { fetchMoreProductsAction } from "../app/(store)/actions";
 import { Loader2 } from "lucide-react";
-import {
-  buildInfiniteGridStorageKey,
-  clearInfiniteGridSnapshot,
-  consumeBackNavigation,
-  getBrowserSessionStorage,
-  loadInfiniteGridSnapshot,
-  saveInfiniteGridSnapshot,
-} from "../lib/infinite-scroll-state";
 
 export const MIN_INFINITE_SCROLL_DELAY_MS = 500;
 
@@ -68,150 +60,16 @@ export function InfiniteProductGrid({
   const [autoLoadLimit, setAutoLoadLimit] = useState<number>(autoLoadPages);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const activeStorageKeyRef = useRef<string | null>(null);
-  const hasHydratedStateRef = useRef<boolean>(false);
-  const scrollYRef = useRef<number>(0);
-  const [pendingScroll, setPendingScroll] = useState<{ y: number; expectedCount: number } | null>(
-    null,
-  );
-  const isRestoringScrollRef = useRef<boolean>(false);
-  const latestStateRef = useRef({
-    products,
-    page,
-    hasMore,
-    autoLoadLimit,
-    category,
-    sort,
-    limit,
-  });
-  latestStateRef.current = {
-    products,
-    page,
-    hasMore,
-    autoLoadLimit,
-    category,
-    sort,
-    limit,
-  };
 
-  // Restore saved infinite-scroll state on browser Back/Forward, or reset on fresh navigation
+  // If initialProducts or category/sort change from props, reset local state
   useEffect(() => {
-    const key = buildInfiniteGridStorageKey(window.location.pathname, window.location.search);
-    activeStorageKeyRef.current = key;
-    const storage = getBrowserSessionStorage();
-
-    if (consumeBackNavigation()) {
-      const snapshot = loadInfiniteGridSnapshot(storage, key, {
-        category,
-        sort,
-        limit,
-        initialFirstId: initialProducts[0]?.id,
-      });
-
-      if (snapshot) {
-        isRestoringScrollRef.current = true;
-        setProducts(snapshot.products);
-        setNewlyLoadedIds(new Set());
-        setPage(snapshot.page);
-        setHasMore(snapshot.hasMore && snapshot.page < totalPages);
-        setErrorMsg(null);
-        setAutoLoadLimit(Math.max(snapshot.autoLoadLimit, autoLoadPages));
-        setPendingScroll({ y: snapshot.scrollY, expectedCount: snapshot.products.length });
-        scrollYRef.current = snapshot.scrollY;
-        hasHydratedStateRef.current = true;
-        return;
-      }
-    }
-
-    clearInfiniteGridSnapshot(storage, key);
-    isRestoringScrollRef.current = false;
     setProducts(initialProducts);
     setNewlyLoadedIds(new Set());
     setPage(initialPage);
     setHasMore(initialPage < totalPages);
     setErrorMsg(null);
     setAutoLoadLimit(autoLoadPages);
-    setPendingScroll(null);
-    scrollYRef.current = 0;
-    hasHydratedStateRef.current = true;
-  }, [initialProducts, initialPage, totalPages, category, sort, limit, autoLoadPages]);
-
-  // Apply restored scroll position after restored products have rendered into the DOM
-  useEffect(() => {
-    if (!pendingScroll || products.length < pendingScroll.expectedCount) return;
-    const targetY = pendingScroll.y;
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = window.requestAnimationFrame(() => {
-      raf2 = window.requestAnimationFrame(() => {
-        scrollYRef.current = targetY;
-        window.scrollTo({ top: targetY, behavior: "instant" as ScrollBehavior });
-        isRestoringScrollRef.current = false;
-        setPendingScroll(null);
-      });
-    });
-    return () => {
-      window.cancelAnimationFrame(raf1);
-      window.cancelAnimationFrame(raf2);
-    };
-  }, [products, pendingScroll]);
-
-  // Persist pagination state whenever loaded products or page state changes
-  useEffect(() => {
-    if (
-      !hasHydratedStateRef.current ||
-      !activeStorageKeyRef.current ||
-      isRestoringScrollRef.current
-    ) {
-      return;
-    }
-    saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
-      products,
-      page,
-      hasMore,
-      autoLoadLimit,
-      scrollY: scrollYRef.current,
-      category,
-      sort,
-      limit,
-    });
-  }, [products, page, hasMore, autoLoadLimit, category, sort, limit]);
-
-  // Track scroll position and flush snapshot on pagehide/unmount
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const persistCurrent = () => {
-      if (
-        !hasHydratedStateRef.current ||
-        !activeStorageKeyRef.current ||
-        isRestoringScrollRef.current
-      ) {
-        return;
-      }
-      saveInfiniteGridSnapshot(getBrowserSessionStorage(), activeStorageKeyRef.current, {
-        ...latestStateRef.current,
-        scrollY: scrollYRef.current,
-      });
-    };
-
-    const handleScroll = () => {
-      if (isRestoringScrollRef.current) return;
-      scrollYRef.current = window.scrollY;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(persistCurrent, 150);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("pagehide", persistCurrent);
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("pagehide", persistCurrent);
-      persistCurrent();
-    };
-  }, []);
+  }, [initialProducts, initialPage, totalPages, category, sort, autoLoadPages]);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
