@@ -10,6 +10,7 @@ export type ProductSortOption = z.infer<typeof ProductSortSchema>;
 
 export const ProductQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
+  pages: z.coerce.number().int().min(1).max(50).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(12),
   sort: ProductSortSchema,
   category: z.string().trim().max(100).optional(),

@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getCategoryBySlug, getProducts } from "@/lib/medusa/products";
+import { getCategoryBySlug, getProducts, getProductsUpToPage } from "@/lib/medusa/products";
 import { ProductQuerySchema } from "@/lib/medusa/validation";
 import { resolveCatalogPageRedirect } from "@/lib/pagination";
 import { ProductCard } from "@/components/product-card";
@@ -39,7 +39,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const { slug } = await params;
   const rawParams = await searchParams;
 
-  const category = await getCategoryBySlug(slug);
+  const [category, settings] = await Promise.all([getCategoryBySlug(slug), getSiteSettings()]);
   if (!category) {
     notFound();
   }
@@ -68,19 +68,24 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     redirect(buildUrl({ page: undefined }));
   }
 
-  const [productsRes, settings] = await Promise.all([
-    getProducts({
-      page: query.page,
-      limit: query.limit,
-      sort: query.sort,
-      category_id: category.id,
-      q: query.q,
-    }),
-    getSiteSettings(),
-  ]);
+  const isInfinite = settings?.catalogListingMode === "infinite";
+  const productsRes = isInfinite
+    ? await getProductsUpToPage({
+        pages: query.pages,
+        limit: query.limit,
+        sort: query.sort,
+        category_id: category.id,
+        q: query.q,
+      })
+    : await getProducts({
+        page: query.page,
+        limit: query.limit,
+        sort: query.sort,
+        category_id: category.id,
+        q: query.q,
+      });
 
   const { products, count, totalPages, currentPage } = productsRes;
-  const isInfinite = settings?.catalogListingMode === "infinite";
 
   const targetPageRedirect = resolveCatalogPageRedirect(rawParams.page, totalPages);
   if (targetPageRedirect !== null) {

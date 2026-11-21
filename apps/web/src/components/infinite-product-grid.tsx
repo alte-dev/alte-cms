@@ -1,10 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { StoreProduct } from "../lib/medusa/types";
 import { ProductCard } from "./product-card";
 import { fetchMoreProductsAction } from "../app/(store)/actions";
 import { Loader2 } from "lucide-react";
+import {
+  buildInfinitePagesUrl,
+  buildInfiniteScrollKey,
+  clearInfiniteScrollY,
+  consumeBackNavigation,
+  getBrowserSessionStorage,
+  loadInfiniteScrollY,
+  saveInfiniteScrollY,
+} from "../lib/infinite-scroll-url";
 
 export const MIN_INFINITE_SCROLL_DELAY_MS = 500;
 
@@ -51,25 +61,149 @@ export function InfiniteProductGrid({
   limit = 12,
   autoLoadPages = 3,
 }: InfiniteProductGridProps) {
+  const router = useRouter();
   const [products, setProducts] = useState<StoreProduct[]>(initialProducts);
   const [newlyLoadedIds, setNewlyLoadedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState<number>(initialPage);
   const [hasMore, setHasMore] = useState<boolean>(initialPage < totalPages);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [autoLoadLimit, setAutoLoadLimit] = useState<number>(autoLoadPages);
+  const [autoLoadLimit, setAutoLoadLimit] = useState<number>(() =>
+    Math.max(autoLoadPages, Math.ceil(initialPage / autoLoadPages) * autoLoadPages),
+  );
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const activeListingUrlRef = useRef<string | null>(null);
+  const activeScrollKeyRef = useRef<string | null>(null);
+  const scrollYRef = useRef<number>(0);
+  const isRestoringRef = useRef<boolean>(false);
+  const navigatingAwayRef = useRef<boolean>(false);
 
-  // If initialProducts or category/sort change from props, reset local state
+  // Sync props when route/filter changes and restore scroll position on Back/Forward
   useEffect(() => {
     setProducts(initialProducts);
     setNewlyLoadedIds(new Set());
     setPage(initialPage);
     setHasMore(initialPage < totalPages);
     setErrorMsg(null);
-    setAutoLoadLimit(autoLoadPages);
+    setAutoLoadLimit(
+      Math.max(autoLoadPages, Math.ceil(initialPage / autoLoadPages) * autoLoadPages),
+    );
+
+    const currentUrl = window.location.pathname + window.location.search;
+    const key = buildInfiniteScrollKey(window.location.pathname, window.location.search);
+    activeListingUrlRef.current = currentUrl;
+    activeScrollKeyRef.current = key;
+
+    const storage = getBrowserSessionStorage();
+    let rafId = 0;
+
+    if (consumeBackNavigation()) {
+      const savedY = loadInfiniteScrollY(storage, key);
+      if (savedY !== null && savedY > 0) {
+        isRestoringRef.current = true;
+        scrollYRef.current = savedY;
+        let attempts = 0;
+
+        const attemptRestore = () => {
+          attempts += 1;
+          const maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
+          if (maxScrollable >= savedY || attempts >= 30) {
+            window.scrollTo({ top: savedY, behavior: "instant" as ScrollBehavior });
+            scrollYRef.current = savedY;
+            isRestoringRef.current = false;
+            return;
+          }
+          rafId = window.requestAnimationFrame(attemptRestore);
+        };
+
+        rafId = window.requestAnimationFrame(attemptRestore);
+        return () => {
+          if (rafId) window.cancelAnimationFrame(rafId);
+          isRestoringRef.current = false;
+        };
+      }
+    }
+
+    clearInfiniteScrollY(storage, key);
+    scrollYRef.current = 0;
+    isRestoringRef.current = false;
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
   }, [initialProducts, initialPage, totalPages, category, sort, autoLoadPages]);
+
+  // Manage manual scrollRestoration and persist scrollY before leaving via link click
+  useEffect(() => {
+    const prevRestoration =
+      "scrollRestoration" in window.history ? window.history.scrollRestoration : undefined;
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let navResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const persistCurrent = () => {
+      if (!activeScrollKeyRef.current || isRestoringRef.current) return;
+      if (
+        activeListingUrlRef.current !== null &&
+        window.location.pathname + window.location.search !== activeListingUrlRef.current
+      ) {
+        return;
+      }
+      saveInfiniteScrollY(
+        getBrowserSessionStorage(),
+        activeScrollKeyRef.current,
+        scrollYRef.current,
+      );
+    };
+
+    const handleScroll = () => {
+      if (isRestoringRef.current || navigatingAwayRef.current) return;
+      if (
+        activeListingUrlRef.current !== null &&
+        window.location.pathname + window.location.search !== activeListingUrlRef.current
+      ) {
+        return;
+      }
+      scrollYRef.current = window.scrollY;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(persistCurrent, 150);
+    };
+
+    const handleLinkClickCapture = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || anchor.target === "_blank") return;
+      scrollYRef.current = window.scrollY;
+      navigatingAwayRef.current = true;
+      persistCurrent();
+      if (navResetTimer) clearTimeout(navResetTimer);
+      navResetTimer = setTimeout(() => {
+        navigatingAwayRef.current = false;
+      }, 1000);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("pagehide", persistCurrent);
+    document.addEventListener("click", handleLinkClickCapture, true);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (navResetTimer) clearTimeout(navResetTimer);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("pagehide", persistCurrent);
+      document.removeEventListener("click", handleLinkClickCapture, true);
+      persistCurrent();
+      navigatingAwayRef.current = false;
+      if (prevRestoration && "scrollRestoration" in window.history) {
+        window.history.scrollRestoration = prevRestoration;
+      }
+    };
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -105,6 +239,16 @@ export function InfiniteProductGrid({
       }
       setPage(res.currentPage);
       setHasMore(res.hasMore);
+      if (typeof window !== "undefined") {
+        const nextUrl = buildInfinitePagesUrl(
+          window.location.pathname,
+          window.location.search,
+          res.currentPage,
+        );
+        activeListingUrlRef.current = nextUrl;
+        activeScrollKeyRef.current = buildInfiniteScrollKey(nextUrl, "");
+        router.replace(nextUrl, { scroll: false });
+      }
     } else {
       if (res.error) {
         setErrorMsg(res.error);

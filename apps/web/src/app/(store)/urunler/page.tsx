@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getProducts, getCategories } from "@/lib/medusa/products";
+import { getProducts, getProductsUpToPage, getCategories } from "@/lib/medusa/products";
 import { ProductQuerySchema } from "@/lib/medusa/validation";
 import { resolveCatalogPageRedirect } from "@/lib/pagination";
 import { ProductCard } from "@/components/product-card";
@@ -61,13 +61,21 @@ export default async function UrunlerPage({ searchParams }: UrunlerPageProps) {
     }
   }
 
-  const { products, count, totalPages, currentPage } = await getProducts({
-    page: query.page,
-    limit: query.limit,
-    sort: query.sort,
-    category_id: categoryId,
-    q: query.q,
-  });
+  const { products, count, totalPages, currentPage } = isInfinite
+    ? await getProductsUpToPage({
+        pages: query.pages,
+        limit: query.limit,
+        sort: query.sort,
+        category_id: categoryId,
+        q: query.q,
+      })
+    : await getProducts({
+        page: query.page,
+        limit: query.limit,
+        sort: query.sort,
+        category_id: categoryId,
+        q: query.q,
+      });
 
   const targetPageRedirect = resolveCatalogPageRedirect(rawParams.page, totalPages);
   if (targetPageRedirect !== null) {
