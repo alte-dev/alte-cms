@@ -227,6 +227,53 @@ export async function getProducts(
   }
 }
 
+export const MAX_SSR_INFINITE_PAGES = 20;
+
+/**
+ * Fetches pages 1..N in parallel for SSR infinite-scroll restoration when `?pages=N` is present.
+ */
+export async function getProductsUpToPage(
+  params: Omit<GetProductsParams, "page"> & { pages?: number },
+): Promise<{
+  products: StoreProduct[];
+  count: number;
+  totalPages: number;
+  currentPage: number;
+}> {
+  const requestedPages = Math.min(MAX_SSR_INFINITE_PAGES, Math.max(1, params.pages ?? 1));
+  const firstPage = await getProducts({ ...params, page: 1 });
+  if (requestedPages <= 1 || firstPage.totalPages <= 1) {
+    return firstPage;
+  }
+
+  const targetPages = Math.min(requestedPages, firstPage.totalPages);
+  if (targetPages <= 1) {
+    return firstPage;
+  }
+
+  const remaining = await Promise.all(
+    Array.from({ length: targetPages - 1 }, (_, idx) => getProducts({ ...params, page: idx + 2 })),
+  );
+
+  const seen = new Set(firstPage.products.map((p) => p.id));
+  const merged = [...firstPage.products];
+  for (const res of remaining) {
+    for (const product of res.products) {
+      if (!seen.has(product.id)) {
+        seen.add(product.id);
+        merged.push(product);
+      }
+    }
+  }
+
+  return {
+    products: merged,
+    count: firstPage.count,
+    totalPages: firstPage.totalPages,
+    currentPage: targetPages,
+  };
+}
+
 /**
  * Retrieves a single product by handle.
  */
